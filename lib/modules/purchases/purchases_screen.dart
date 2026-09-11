@@ -328,6 +328,8 @@ class _PurchaseFormState extends State<_PurchaseForm> {
               child: FilledButton(
                 onPressed: () async {
                   final store = DemoStoreProvider.of(context);
+                  final navigator = Navigator.of(context);
+                  final messenger = ScaffoldMessenger.of(context);
                   final supplier = store.suppliers.first;
                   await store.addPurchase(
                     DemoPurchase(
@@ -338,8 +340,8 @@ class _PurchaseFormState extends State<_PurchaseForm> {
                       paid: _payment == 'نقدي',
                     ),
                   );
-                  Navigator.of(context).maybePop();
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  navigator.maybePop();
+                  messenger.showSnackBar(
                     SnackBar(
                       behavior: SnackBarBehavior.floating,
                       backgroundColor: taj.success.dark,

@@ -204,7 +204,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
     );
     name.dispose();
     phone.dispose();
-    if (result == null || !mounted) return;
+    if (result == null) return;
+    if (!context.mounted) return;
     final store = DemoStoreProvider.of(context);
     if (_suppliersTab) {
       await store.addSupplier(
@@ -224,10 +225,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
         ),
       );
     }
-    if (mounted)
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تمت الإضافة')));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تمت الإضافة')));
   }
 
   TajRowData _row(BuildContext context, _Party p) {

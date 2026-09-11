@@ -36,7 +36,6 @@ String _short(FlutterErrorDetails d) {
   final full = d.toString();
   final over = RegExp(r'overflowed by [0-9.]+ pixels').firstMatch(full)?.group(0) ?? '';
   final cons = RegExp(r'constraints: BoxConstraints\([^)]*\)').firstMatch(full)?.group(0) ?? '';
-  final size = RegExp(r'size: Size\([^)]*\)').firstMatch(full)?.group(0) ?? '';
   final stripped = full
       .replaceAll('file:///C:/Users/MSI/Desktop/taj/lib/modules/employees/', '')
       .replaceAll('file:///C:/Users/MSI/Desktop/taj/lib/', '');

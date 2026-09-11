@@ -272,13 +272,13 @@ class _SalesScreenState extends State<SalesScreen> {
             ],
           ),
     );
-    if (next != null && mounted) {
-      await DemoStoreProvider.of(context).updateSaleStatus(sale.id, next);
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تم تحديث حالة الفاتورة')));
-    }
+    if (next == null) return;
+    if (!context.mounted) return;
+    await DemoStoreProvider.of(context).updateSaleStatus(sale.id, next);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تم تحديث حالة الفاتورة')));
   }
 }
 

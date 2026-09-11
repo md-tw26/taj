@@ -491,6 +491,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
       }
       return;
     }
+    if (!mounted) return;
     setState(() {
       _completedSales.add(
         _CompletedSale(
@@ -4337,110 +4338,6 @@ class _Product {
   final int stock;
 }
 
-const _mockProducts = [
-  _Product(
-    id: 'p1',
-    name: 'عود ملكي',
-    barcode: '6224000111',
-    category: 'عطور',
-    price: 450,
-    stock: 24,
-  ),
-  _Product(
-    id: 'p2',
-    name: 'عطر المسك',
-    barcode: '6224000112',
-    category: 'عطور',
-    price: 320,
-    stock: 3,
-  ),
-  _Product(
-    id: 'p3',
-    name: 'بخور فاخر',
-    barcode: '6224000113',
-    category: 'بخور',
-    price: 180,
-    stock: 57,
-  ),
-  _Product(
-    id: 'p4',
-    name: 'ماء الورد',
-    barcode: '6224000114',
-    category: 'زيوت',
-    price: 60,
-    stock: 0,
-  ),
-  _Product(
-    id: 'p5',
-    name: 'دهن العود',
-    barcode: '6224000115',
-    category: 'زيوت',
-    price: 700,
-    stock: 12,
-  ),
-  _Product(
-    id: 'p6',
-    name: 'عنبر',
-    barcode: '6224000116',
-    category: 'عطور',
-    price: 540,
-    stock: 2,
-  ),
-  _Product(
-    id: 'p7',
-    name: 'مبخرة نحاس',
-    barcode: '6224000117',
-    category: 'هدايا',
-    price: 240,
-    stock: 18,
-  ),
-  _Product(
-    id: 'p8',
-    name: 'بخور معمول',
-    barcode: '6224000118',
-    category: 'بخور',
-    price: 150,
-    stock: 40,
-  ),
-  _Product(
-    id: 'p9',
-    name: 'زيت الصندل',
-    barcode: '6224000119',
-    category: 'زيوت',
-    price: 210,
-    stock: 5,
-  ),
-  _Product(
-    id: 'p10',
-    name: 'طقم هدايا',
-    barcode: '6224000120',
-    category: 'هدايا',
-    price: 380,
-    stock: 9,
-  ),
-  _Product(
-    id: 'p11',
-    name: 'مسك أبيض',
-    barcode: '6224000121',
-    category: 'عطور',
-    price: 260,
-    stock: 33,
-  ),
-  _Product(
-    id: 'p12',
-    name: 'عود كمبودي',
-    barcode: '6224000122',
-    category: 'بخور',
-    price: 820,
-    stock: 0,
-  ),
-];
-
-/// Products below this stock level trigger the Professional stock indicator.
-const _lowStockThreshold = 5;
-List<_Product> _lowStockProducts =
-    _mockProducts.where((p) => p.stock <= _lowStockThreshold).toList();
-
 // ── Completed Sale (session tracking) ────────────────────────────────────────
 
 class _CompletedSale {
@@ -4455,21 +4352,6 @@ class _CompletedSale {
   final int itemCount;
   final DateTime time;
 }
-
-// ── Mock Customers ───────────────────────────────────────────────────────────
-
-const _mockCustomers = <String>[
-  'أحمد الفيتوري',
-  'فاطمة الزائدي',
-  'محمد الترهوني',
-  'سارة بنور',
-  'خالد مخلوف',
-  'نادية عبد السلام',
-  'علي الطرابلسي',
-  'هند القذافي',
-  'عمر بوزيد',
-  'آمال الشريف',
-];
 
 // ── Customer Picker Sheet ────────────────────────────────────────────────────
 

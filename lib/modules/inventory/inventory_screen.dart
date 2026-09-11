@@ -120,6 +120,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (delta != 0 && item.id.isNotEmpty)
         await store.adjustStock(item.id, delta);
     }
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,

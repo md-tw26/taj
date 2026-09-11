@@ -246,7 +246,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     name.dispose();
     price.dispose();
     stock.dispose();
-    if (result == null || !mounted) return;
+    if (result == null) return;
+    if (!context.mounted) return;
     final store = DemoStoreProvider.of(context);
     final source =
         existing == null
@@ -264,10 +265,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 .firstWhere((p) => p.id == existing.id)
                 .copyWith(name: result.$1, price: result.$2, stock: result.$3);
     await store.upsertProduct(source);
-    if (mounted)
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم حفظ الصنف')));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تم حفظ الصنف')));
   }
 
   Future<void> _deleteProduct(BuildContext context, Product product) async {
@@ -289,10 +290,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ],
           ),
     );
-    if (confirmed == true && mounted) {
-      await DemoStoreProvider.of(context).deleteProduct(product.id);
-      if (mounted) Navigator.of(context).maybePop();
-    }
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    await DemoStoreProvider.of(context).deleteProduct(product.id);
+    if (!context.mounted) return;
+    Navigator.of(context).maybePop();
   }
 
   TajRowData _row(BuildContext context, Product p) {
