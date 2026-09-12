@@ -4,11 +4,27 @@ import '../../core/chart_style.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/taj_colors.dart';
 import '../../shared/widgets/taj_ui.dart';
+import 'settings_models.dart';
+import 'settings_sections.dart';
 
-/// Settings (spec 7.18). The Appearance section lets the system admin pick the
-/// app's primary colour from the Minimals palette (default: info / سماوي) and
-/// toggle dark mode, with a live preview.
-class SettingsScreen extends StatelessWidget {
+/// Settings (spec 7.18) — a Linear-style **sub-navigation + content** module.
+///
+/// Layout keys off the *available* width (never the device):
+///  * **< [AppBreakpoints.settingsSplit] (820):** the section list is a full page
+///    and tapping a section pushes its page with a back affordance. The save bar
+///    is pinned to the screen bottom (respecting `SafeArea`).
+///  * **≥ 820:** a persistent sub-navigation sidebar (clamped, never stretched)
+///    sits beside the content; the content column caps at
+///    [AppBreakpoints.settingsContentMax] (~880) and centres, with the save bar
+///    inside the content area.
+///  * **> 1920:** the whole page caps at [AppBreakpoints.settingsContentMaxWidth]
+///    and centres.
+///
+/// The **Appearance** section (primary colour / dark mode / chart style) applies
+/// *live* through the app's own callbacks and is intentionally never part of the
+/// draft — its logic and system effects are untouched. The other five sections
+/// edit an in-memory [SettingsDraft]; "unsaved changes" is `draft != saved`.
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
     required this.currentPrimary,
@@ -16,6 +32,7 @@ class SettingsScreen extends StatelessWidget {
     required this.onToggleTheme,
     required this.chartStyle,
     required this.onChartStyleChanged,
+    this.testInitialSection,
   });
 
   final TajSwatch currentPrimary;
@@ -24,344 +41,519 @@ class SettingsScreen extends StatelessWidget {
   final ChartStyle chartStyle;
   final ValueChanged<ChartStyle> onChartStyleChanged;
 
+  /// Test hook: open straight into a section (as if it had been tapped).
+  final SettingsSectionId? testInitialSection;
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  SettingsSectionId _selected = SettingsSectionId.appearance;
+
+  /// Whether a section has been navigated into. On narrow widths this drives the
+  /// list ↔ section-page switch; on wide widths the content is always shown, so
+  /// resizing wide→narrow while inside a section keeps that section open.
+  bool _inSection = false;
+
+  SettingsDraft _saved = const SettingsDraft();
+  SettingsDraft _draft = const SettingsDraft();
+
+  bool get _dirty => _draft != _saved;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.testInitialSection != null) {
+      _selected = widget.testInitialSection!;
+      _inSection = true;
+    }
+  }
+
+  void _openSection(SettingsSectionId id) =>
+      setState(() {
+        _selected = id;
+        _inSection = true;
+      });
+
+  void _backToList() => setState(() => _inSection = false);
+
+  void _onDraft(SettingsDraft d) => setState(() => _draft = d);
+
+  void _save() {
+    setState(() => _saved = _draft);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('تم حفظ التغييرات')));
+  }
+
+  void _discard() => setState(() => _draft = _saved);
+
+  bool _rtl(BuildContext context) =>
+      Directionality.of(context) == TextDirection.rtl;
+
   @override
   Widget build(BuildContext context) {
-    final taj = context.taj;
-    final text = Theme.of(context).textTheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return LayoutBuilder(
       builder: (context, c) {
-        final pad = pagePaddingForWidth(c.maxWidth);
+        final wide = c.maxWidth >= AppBreakpoints.settingsSplit;
         return PageContainer(
-          child: ListView(
-          padding: EdgeInsets.all(pad),
-          children: [
-            const SectionHeading(
-              title: 'الإعدادات',
-              subtitle: 'المظهر، اللغة، الفواتير، الصلاحيات والمزامنة',
-            ),
-            const SizedBox(height: 20),
+          maxWidth: AppBreakpoints.settingsContentMaxWidth,
+          child: wide ? _buildWide(context, c.maxWidth) : _buildNarrow(context),
+        );
+      },
+    );
+  }
 
-            // ---- Appearance ----
-            _SettingsSection(
-              icon: Icons.palette_outlined,
-              title: 'المظهر',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+  SettingsSectionContent _content(SettingsSectionId id) => SettingsSectionContent(
+        key: ValueKey(id),
+        id: id,
+        draft: _draft,
+        onDraft: _onDraft,
+        currentPrimary: widget.currentPrimary,
+        onPrimaryChanged: widget.onPrimaryChanged,
+        onToggleTheme: widget.onToggleTheme,
+        chartStyle: widget.chartStyle,
+        onChartStyleChanged: widget.onChartStyleChanged,
+      );
+
+  // -------------------------------------------------------------------------
+  // Wide: sidebar + content
+  // -------------------------------------------------------------------------
+
+  Widget _buildWide(BuildContext context, double width) {
+    final taj = context.taj;
+    final railW = width < AppBreakpoints.laptop
+        ? (width * 0.26).clamp(
+            AppBreakpoints.settingsSidebarMin, AppBreakpoints.settingsSidebarMid)
+        : (width * 0.18).clamp(
+            AppBreakpoints.settingsSidebarMid, AppBreakpoints.settingsSidebarMax);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: railW.toDouble(),
+          child: _Sidebar(selected: _selected, onSelect: _openSection),
+        ),
+        VerticalDivider(width: 1, color: taj.divider),
+        Expanded(child: _wideContentPane(context)),
+      ],
+    );
+  }
+
+  Widget _wideContentPane(BuildContext context) {
+    final meta = settingsSectionMeta(_selected);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints:
+                  const BoxConstraints(maxWidth: AppBreakpoints.settingsContentMax),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
                 children: [
-                  Text('اللون الأساسي', style: text.titleSmall),
-                  const SizedBox(height: 4),
-                  Text('يختار مدير النظام لون العلامة الذي يريحه — من ألوان Minimals.',
-                      style: text.bodySmall?.copyWith(color: taj.textSecondary)),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 14,
-                    runSpacing: 14,
-                    children: [
-                      for (final (name, swatch) in TajColors.palette)
-                        _ColorSwatchDot(
-                          name: name,
-                          swatch: swatch,
-                          selected: swatch.main == currentPrimary.main,
-                          onTap: () => onPrimaryChanged(swatch),
-                        ),
-                    ],
-                  ),
+                  _ContentHeader(meta: meta),
                   const SizedBox(height: 20),
-                  Divider(height: 1, color: taj.divider),
-                  const SizedBox(height: 8),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: isDark,
-                    onChanged: (_) => onToggleTheme(),
-                    title: Text('الوضع الداكن', style: text.bodyLarge),
-                    subtitle: Text('تبديل بين الفاتح والداكن',
-                        style: text.bodySmall?.copyWith(color: taj.textSecondary)),
-                    secondary: Icon(
-                        isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                        color: taj.accentText),
-                  ),
-                  const SizedBox(height: 20),
-                  Divider(height: 1, color: taj.divider),
-                  const SizedBox(height: 16),
-                  Text('شكل الرسم البياني', style: text.titleSmall),
-                  const SizedBox(height: 4),
-                  Text(
-                      'نمط عرض الرسوم البيانية في لوحة التحكم — مساحة أو خط أو أعمدة.',
-                      style: text.bodySmall?.copyWith(color: taj.textSecondary)),
-                  const SizedBox(height: 12),
-                  _ChartStyleSelector(
-                    selected: chartStyle,
-                    onSelect: onChartStyleChanged,
-                  ),
-                  const SizedBox(height: 16),
-                  _Preview(chartStyle: chartStyle),
+                  _content(_selected),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            // ---- Other setting groups (placeholders) ----
-            _SettingsRow(icon: Icons.translate_rounded, title: 'اللغة والعملة والضرائب', subtitle: 'العربية • الدينار الليبي • الضريبة'),
-            _SettingsRow(icon: Icons.receipt_outlined, title: 'شكل الفواتير والطباعة', subtitle: 'قالب الفاتورة، الطابعة الحرارية'),
-            _SettingsRow(icon: Icons.percent_rounded, title: 'سياسة الخصم', subtitle: 'النطاق، المدة، المستخدمون المخوّلون'),
-            _SettingsRow(icon: Icons.event_available_outlined, title: 'سياسة الإقفال اليومي', subtitle: 'وقت الإقفال، المراجعة'),
-            _SettingsRow(icon: Icons.sync_rounded, title: 'المزامنة والنسخ الاحتياطي', subtitle: 'أوف‑لاين، آخر نسخة احتياطية'),
-          ],
           ),
+        ),
+        if (_dirty)
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints:
+                  const BoxConstraints(maxWidth: AppBreakpoints.settingsContentMax),
+              child: _SaveBar(onSave: _save, onDiscard: _discard, inContent: true),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Narrow: list → pushed section page
+  // -------------------------------------------------------------------------
+
+  Widget _buildNarrow(BuildContext context) =>
+      _inSection ? _narrowSectionPage(context) : _narrowListPage(context);
+
+  Widget _narrowListPage(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final pad = pagePaddingForWidth(c.maxWidth);
+        final short = c.maxHeight < AppBreakpoints.shortHeight;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(pad, pad, pad, pad + 16),
+                children: [
+                  SectionHeading(
+                    title: 'الإعدادات',
+                    subtitle: short
+                        ? null
+                        : 'المظهر، اللغة، الفواتير، الصلاحيات والمزامنة',
+                  ),
+                  const SizedBox(height: 16),
+                  for (final s in settingsSections)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _NavCard(
+                        meta: s,
+                        rtl: _rtl(context),
+                        onTap: () => _openSection(s.id),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (_dirty)
+              SafeArea(
+                top: false,
+                child: _SaveBar(onSave: _save, onDiscard: _discard),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _narrowSectionPage(BuildContext context) {
+    final meta = settingsSectionMeta(_selected);
+    return LayoutBuilder(
+      builder: (context, c) {
+        final pad = pagePaddingForWidth(c.maxWidth);
+        final short = c.maxHeight < AppBreakpoints.shortHeight;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SectionTopBar(
+              meta: meta,
+              rtl: _rtl(context),
+              condensed: short,
+              onBack: _backToList,
+            ),
+            Divider(height: 1, color: context.taj.divider),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(pad, pad, pad, pad + 24),
+                children: [_content(_selected)],
+              ),
+            ),
+            if (_dirty)
+              SafeArea(
+                top: false,
+                child: _SaveBar(onSave: _save, onDiscard: _discard),
+              ),
+          ],
         );
       },
     );
   }
 }
 
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({required this.icon, required this.title, required this.child});
-  final IconData icon;
-  final String title;
-  final Widget child;
+// ===========================================================================
+// Sub-navigation pieces
+// ===========================================================================
+
+class _Sidebar extends StatelessWidget {
+  const _Sidebar({required this.selected, required this.onSelect});
+  final SettingsSectionId selected;
+  final ValueChanged<SettingsSectionId> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 24, 12, 24),
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 8, bottom: 16),
+          child: Text('الإعدادات', style: text.titleLarge),
+        ),
+        for (final s in settingsSections)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: _SidebarItem(
+              meta: s,
+              selected: s.id == selected,
+              onTap: () => onSelect(s.id),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SidebarItem extends StatelessWidget {
+  const _SidebarItem(
+      {required this.meta, required this.selected, required this.onTap});
+  final SettingsSectionMeta meta;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final taj = context.taj;
+    final text = Theme.of(context).textTheme;
+    final fg = selected ? taj.primary.dark : taj.textPrimary;
+    return Material(
+      color: selected ? taj.primary.lighter : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Icon(meta.icon,
+                  size: 20, color: selected ? taj.primary.dark : taj.textSecondary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(meta.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium?.copyWith(
+                        color: fg,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavCard extends StatelessWidget {
+  const _NavCard({required this.meta, required this.rtl, required this.onTap});
+  final SettingsSectionMeta meta;
+  final bool rtl;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     return TajCard(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(color: taj.primary.lighter, borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, size: 20, color: taj.primary.dark),
-              ),
-              const SizedBox(width: 12),
-              Text(title, style: text.titleMedium),
-            ],
-          ),
-          const SizedBox(height: 20),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _ColorSwatchDot extends StatelessWidget {
-  const _ColorSwatchDot({
-    required this.name,
-    required this.swatch,
-    required this.selected,
-    required this.onTap,
-  });
-  final String name;
-  final TajSwatch swatch;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final taj = context.taj;
-    final text = Theme.of(context).textTheme;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: swatch.main,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? swatch.dark : Colors.transparent,
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: swatch.main.withValues(alpha: selected ? 0.5 : 0.25),
-                    blurRadius: selected ? 12 : 6,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: selected
-                  ? Icon(Icons.check_rounded, color: swatch.contrastText, size: 22)
-                  : null,
-            ),
-            const SizedBox(height: 6),
-            Text(name,
-                style: text.labelSmall?.copyWith(
-                    color: selected ? taj.textPrimary : taj.textSecondary,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChartStyleSelector extends StatelessWidget {
-  const _ChartStyleSelector({required this.selected, required this.onSelect});
-  final ChartStyle selected;
-  final ValueChanged<ChartStyle> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final taj = context.taj;
-    return Row(
-      children: [
-        for (final s in ChartStyle.values) ...[
-          if (s != ChartStyle.values.first) const SizedBox(width: 10),
-          Expanded(
-            child: _Tile(
-              style: s,
-              selected: s == selected,
-              taj: taj,
-              onTap: () => onSelect(s),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _Tile extends StatelessWidget {
-  const _Tile({
-    required this.style,
-    required this.selected,
-    required this.taj,
-    required this.onTap,
-  });
-  final ChartStyle style;
-  final bool selected;
-  final TajColors taj;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = selected ? taj.primary.dark : taj.textSecondary;
-    return Material(
-      color: selected ? taj.primary.lighter : taj.background,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? taj.primary.main : taj.divider,
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(style.icon, size: 22, color: fg),
-              const SizedBox(height: 6),
-              Text(style.label,
-                  style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Preview extends StatelessWidget {
-  const _Preview({required this.chartStyle});
-  final ChartStyle chartStyle;
-
-  @override
-  Widget build(BuildContext context) {
-    final taj = context.taj;
-    final text = Theme.of(context).textTheme;
-    return Container(
+      onTap: onTap,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: taj.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: taj.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text('معاينة حيّة', style: text.labelMedium?.copyWith(color: taj.textSecondary)),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              FilledButton(onPressed: () {}, child: const Text('زر أساسي')),
-              OutlinedButton(onPressed: () {}, child: const Text('ثانوي')),
-              const StatusBadge(label: 'نشط', status: TajStatus.primary),
-            ],
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+                color: taj.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: taj.divider)),
+            child: Icon(meta.icon, size: 20, color: taj.textSecondary),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 68,
-            child: Sparkline(
-              values: const [14, 20, 17, 26, 22, 30, 27],
-              color: taj.primary.main,
-              style: chartStyle,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(meta.title,
+                    style:
+                        text.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(meta.subtitle,
+                    style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+              ],
             ),
           ),
+          const SizedBox(width: 8),
+          Icon(rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+              color: taj.textDisabled),
         ],
       ),
     );
   }
 }
 
-class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({required this.icon, required this.title, required this.subtitle});
-  final IconData icon;
-  final String title;
-  final String subtitle;
+class _SectionTopBar extends StatelessWidget {
+  const _SectionTopBar({
+    required this.meta,
+    required this.rtl,
+    required this.condensed,
+    required this.onBack,
+  });
+  final SettingsSectionMeta meta;
+  final bool rtl;
+  final bool condensed;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TajCard(
-        onTap: () {},
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: taj.background, borderRadius: BorderRadius.circular(10), border: Border.all(color: taj.divider)),
-              child: Icon(icon, size: 20, color: taj.textSecondary),
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 8, 16, 8),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onBack,
+            tooltip: 'رجوع',
+            icon: Icon(rtl
+                ? Icons.arrow_forward_rounded
+                : Icons.arrow_back_rounded),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(meta.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.titleMedium),
+                if (!condensed)
+                  Text(meta.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          text.bodySmall?.copyWith(color: taj.textSecondary)),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-                  Text(subtitle, style: text.bodySmall?.copyWith(color: taj.textSecondary)),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_left_rounded, color: taj.textDisabled),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
+class _ContentHeader extends StatelessWidget {
+  const _ContentHeader({required this.meta});
+  final SettingsSectionMeta meta;
+
+  @override
+  Widget build(BuildContext context) {
+    final taj = context.taj;
+    final text = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+              color: taj.primary.lighter,
+              borderRadius: BorderRadius.circular(12)),
+          child: Icon(meta.icon, size: 22, color: taj.primary.dark),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(meta.title, style: text.headlineSmall),
+              const SizedBox(height: 2),
+              Text(meta.subtitle,
+                  style: text.bodyMedium?.copyWith(color: taj.textSecondary)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ===========================================================================
+// Save bar
+// ===========================================================================
+
+/// The unsaved-changes bar. Pinned to the bottom of the content area (or the
+/// screen on narrow widths). It is a sibling above the scroll view — never a
+/// floating overlay — so it can never cover the last setting. On narrow widths
+/// it lays out on two lines so the message and both actions always fit.
+class _SaveBar extends StatelessWidget {
+  const _SaveBar({
+    required this.onSave,
+    required this.onDiscard,
+    this.inContent = false,
+  });
+  final VoidCallback onSave;
+  final VoidCallback onDiscard;
+  final bool inContent;
+
+  @override
+  Widget build(BuildContext context) {
+    final taj = context.taj;
+    final text = Theme.of(context).textTheme;
+
+    final message = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.info_outline_rounded, size: 18, color: taj.warning.dark),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text('لديك تغييرات غير محفوظة',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+        ),
+      ],
+    );
+
+    final discardBtn = OutlinedButton(
+      onPressed: onDiscard,
+      child: const Text('تجاهل'),
+    );
+    final saveBtn = FilledButton.icon(
+      onPressed: onSave,
+      icon: const Icon(Icons.check_rounded, size: 18),
+      label: const Text('حفظ التغييرات'),
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: taj.paper,
+        border: Border(top: BorderSide(color: taj.divider)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: LayoutBuilder(
+          builder: (context, c) {
+            final tight = c.maxWidth < 440;
+            if (tight) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(alignment: AlignmentDirectional.centerStart, child: message),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: discardBtn),
+                      const SizedBox(width: 10),
+                      Expanded(child: saveBtn),
+                    ],
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: message),
+                const SizedBox(width: 12),
+                discardBtn,
+                const SizedBox(width: 10),
+                saveBtn,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}

@@ -388,6 +388,308 @@ class AppBreakpoints {
   /// [chatInputMaxLinesCompact]. This is exactly the landscape-phone-with-open-
   /// keyboard worst case (the resizing scaffold shrinks the pane below it).
   static const double chatCompactHeight = 460;
+
+  // ---------------------------------------------------------------------------
+  // Users & Permissions module thresholds
+  // ---------------------------------------------------------------------------
+  // The centrepiece is the permission matrix — a 2D grid (permissions × roles),
+  // the single worst component to squeeze onto a phone. Below
+  // [permissionMatrixMin] it is *replaced* by a different structure (a role
+  // selector + grouped toggle lists), not shrunk. Every threshold keys off the
+  // *available* width/height (a `LayoutBuilder`'s constraints), never the
+  // device, so it holds for the persistent side rail, split windows and resized
+  // desktops just as for phones.
+
+  /// **The key decision.** At or above this width the permissions view renders
+  /// the true matrix (roles as columns); below it the matrix is dropped
+  /// entirely for the alternate structure — a single role selector plus grouped
+  /// [ExpansionTile] toggle lists that edit one role at a time. This is also the
+  /// exact width at which a frozen name column (~[permNameColMin]) plus at least
+  /// two ≥44px role columns and their tap targets stop fitting, so the checkbox
+  /// grid can no longer honour its touch targets — the signal to switch.
+  static const double permissionMatrixMin = 900;
+
+  /// At or above this width the matrix shows *all* roles at once; between
+  /// [permissionMatrixMin] and here it shows a chooseable subset (2–4 columns by
+  /// default) with a show/hide-roles control and horizontal scroll for the rest.
+  /// Equal to [laptop].
+  static const double permissionMatrixFull = laptop; // 1440
+
+  /// The users & permissions page caps and centres its content beyond this width
+  /// so the matrix and master-detail never stretch edge-to-edge on 4K/ultra-wide;
+  /// extra width becomes comfortable gutters and spacing, not giant cells.
+  static const double usersContentMaxWidth = 1600;
+
+  /// At or above this width the Users tab becomes a master-detail layout: a user
+  /// list pane on the leading side and the selected user's detail + permission
+  /// summary on the trailing side. Below it the list is full width and picking a
+  /// user opens the detail as a sheet. Equal to [laptop].
+  static const double usersMasterDetail = laptop; // 1440
+
+  /// The master-detail user-list pane is `clamp(min, ~30% of width, max)` so it
+  /// never collapses to unreadable nor stretches on very wide displays.
+  static const double usersListPaneMin = 320;
+  static const double usersListPaneMax = 400;
+
+  /// At or above this width the Users/Audit lists render as a real table; below
+  /// it they become stacked cards (avatar + name + role + status). Equal to
+  /// [phone]. Between here and [usersFullTable] the table keeps a frozen name /
+  /// sticky header and scrolls horizontally rather than crushing cells.
+  static const double usersTableCards = phone; // 600
+
+  /// At or above this width the users table shows every column without a
+  /// horizontal scroll (the "full table"). Equal to [tablet].
+  static const double usersFullTable = tablet; // 1024
+
+  /// Fixed width of a role column in the matrix — wide enough for a truncated
+  /// role name (with a tooltip for the full text) and a centred ≥44px checkbox,
+  /// never so wide that six roles can't be reached by a horizontal scroll.
+  /// Kept in the 120–160 band the spec calls for; role headers truncate, they
+  /// are never rotated.
+  static const double permRoleColWidth = 132;
+
+  /// The frozen permission-name column is `clamp(min, ~26% of width, max)` so a
+  /// long Arabic permission name ("مراجعة الإغلاق اليومي") gets two lines plus a
+  /// short description underneath without ever pushing the role columns away.
+  static const double permNameColMin = 200;
+  static const double permNameColMax = 300;
+
+  /// Add/edit-user dialog width caps per size class; height is always ≤90% of
+  /// the space above the keyboard with an internal scroll. Fields stack to one
+  /// column below [phone] and pair into two at/above it.
+  static const double userDialogNarrow = 560; // tablet band
+  static const double userDialogMid = 640; // laptop band
+  static const double userDialogMax = 720; // desktop and beyond
+
+  /// The add/edit-user form pairs its short fields into two columns at or above
+  /// this available width; below it every field is full width and single column.
+  static const double userFormTwoColumn = 460;
+
+  /// Below this viewport height the page condenses its header (drops the
+  /// subtitle, tightens the tab bar) so the matrix/table keeps enough height —
+  /// the 1280×720 / 1366×768 landscape worst case.
+  static const double usersCondenseHeaderHeight = 760;
+
+  /// Below this available height the alternate (narrow) permissions editor moves
+  /// its role selector into a slim condensed top bar so the group list keeps
+  /// scrolling room — landscape phone with little vertical space.
+  static const double usersCondenseSelectorHeight = 520;
+
+  // ---------------------------------------------------------------------------
+  // Notifications module thresholds
+  // ---------------------------------------------------------------------------
+  // The module lives in two places — a full notification centre and a top-bar
+  // popover — each keyed off the *available* space, never the device.
+
+  /// At or above this width the notification centre becomes a two-pane layout:
+  /// a flexible list pane on the leading side and the selected notification's
+  /// detail/preview on the trailing side. Below it the list is full width and
+  /// tapping a notification pushes a detail page. Equal to [splitPane].
+  static const double inboxSplit = splitPane; // 820
+
+  /// The notification centre caps and centres its content beyond this width so
+  /// the two panes never stretch edge-to-edge on 4K/ultra-wide; extra width
+  /// becomes symmetric gutters. Equal to [laptop].
+  static const double inboxContentMaxWidth = laptop; // 1440
+
+  /// The two-pane list column is `clamp(min, ~34% of width, max)` so it never
+  /// collapses to unreadable nor stretches on very wide displays.
+  static const double inboxListPaneMin = 360;
+  static const double inboxListPaneMax = 420;
+
+  /// Top-bar popover width: ~360 in the [phone]–[inboxSplit] band, up to ~420
+  /// at/above [inboxSplit]; always additionally clamped to the window so it can
+  /// never escape the right/left edge.
+  static const double notifPanelMin = 360;
+  static const double notifPanelMax = 420;
+
+  /// The popover's height is this fraction of the viewport (with internal scroll
+  /// and a pinned "view all" footer) — never a fixed pixel height.
+  static const double notifPopoverMaxHeightFactor = 0.7;
+
+  /// Below this viewport height a hanging popover would be cramped or escape the
+  /// viewport (720p landscape, landscape phone), so the bell opens a bottom
+  /// sheet instead. Below [phone] *width* it opens the full page regardless.
+  static const double notifPopoverMinHeight = 760;
+
+  /// The bell count badge caps at this value and renders "99+" beyond it so a
+  /// three-character count can never stretch the top bar.
+  static const int notifBadgeMax = 99;
+
+  /// Minimum height of a notification row so the icon, two-line body, time and
+  /// unread dot always have room without the [Row] overflowing.
+  static const double notifRowMinHeight = 64;
+
+  // ---------------------------------------------------------------------------
+  // Operating Day & Day Closing module thresholds
+  // ---------------------------------------------------------------------------
+  // The centrepiece is a seven-step closing wizard. A horizontal Stepper with
+  // seven labels overflows any narrow width, and this screen runs mostly on
+  // cashier hardware (1366×768, 1280×720, short landscape). So the wizard's
+  // *type* switches on available width rather than the labels being shrunk, and
+  // the step content always scrolls under a pinned Back/Next bar. Every constant
+  // keys off the *available* width/height (a `LayoutBuilder`'s constraints),
+  // never the device, so it holds for resized windows and split panes too.
+
+  /// **The key decision.** Below this width the wizard renders *vertically*:
+  /// only the current step is shown, headed by an "الخطوة X من ٧" label and a
+  /// linear progress bar — never a seven-label horizontal [Stepper] (which
+  /// overflows). At or above it the stepper is horizontal. This is the width at
+  /// which seven numbered nodes plus the current title stop fitting on one line
+  /// without shrinking the font below the 12sp floor.
+  static const double stepperHorizontal = 700;
+
+  /// Between [stepperHorizontal] and here the horizontal stepper is *condensed*:
+  /// numbered nodes plus only the current step's title (the other titles are
+  /// dropped, not shrunk). At or above it every step shows its title. Equal to
+  /// [tablet].
+  static const double stepperFullLabels = tablet; // 1024
+
+  /// The wizard column caps at this width and centres, so on a wide/ultra-wide
+  /// display the seven-step wizard never spans the screen (a 3000px-wide stepper
+  /// is unusable) — extra width becomes gutters or the day-totals side panel,
+  /// never a wider wizard.
+  static const double closingContentMax = 1100;
+
+  /// At or above this width (and when tall enough — see
+  /// [closingSidePanelMinHeight]) a persistent day-totals summary panel sits
+  /// beside the (still-capped) wizard. Below it those totals live inline at the
+  /// top of the wizard instead. Equal to [laptop].
+  static const double closingSidePanel = laptop; // 1440
+
+  /// Fixed width of that day-totals side panel — narrow enough to leave the
+  /// wizard its full [closingContentMax], wide enough for a labelled figure row.
+  static const double closingSidePanelWidth = 320;
+
+  /// The side panel is only added when the viewport is at least this tall, so a
+  /// short landscape height (e.g. 1366×768) keeps the totals inline and gives
+  /// the wizard the vertical room. Equal to [shortHeight].
+  static const double closingSidePanelMinHeight = shortHeight; // 640
+
+  /// Minimum extent of a per-step summary card, fed to [gridColumnsFor] as a
+  /// fallback; explicit per-band counts (1 → 2 → 3 → 3–4) are layered on top so
+  /// the grid matches the spec exactly.
+  static const double closingSummaryCardMin = 240;
+
+  /// Below this width the variance figures render as one-column row-cards (item ·
+  /// expected · actual · variance in a semantic colour); at or above it they use
+  /// a table with a frozen first column and horizontally scrollable numeric
+  /// columns. Equal to [stepperHorizontal] so the switch lines up with the
+  /// wizard going vertical.
+  static const double varianceCards = stepperHorizontal; // 700
+
+  /// Minimum width the variance table's numeric block (expected · actual ·
+  /// variance) is given before it scrolls horizontally, so those columns never
+  /// crush against each other.
+  static const double varianceNumericMin = 360;
+
+  /// The variance table never grows taller than this inside a step; beyond it the
+  /// rows scroll internally under a sticky header, so a very long stock-variance
+  /// list can never push the pinned Back/Next bar off-screen.
+  static const double varianceTableMaxHeight = 360;
+
+  /// Below this viewport height the open-day banner and step header condense
+  /// (single line, tighter) so the banner never eats more than ~15% of a short
+  /// screen and the step content keeps its room.
+  static const double closingCondenseHeight = 760;
+
+  /// The closing-confirmation dialog width caps here; its height is always ≤90%
+  /// of the viewport with an internal scroll and a confirm button pinned below
+  /// that scroll.
+  static const double closingDialogMax = 720;
+
+  /// The daily-report print preview is a fixed-width thermal-receipt column; it
+  /// never reflows with the screen (print output is fixed A4/thermal). On a
+  /// screen narrower than this it scrolls rather than shrinking.
+  static const double closingReportPrintWidth = 360;
+
+  // ---------------------------------------------------------------------------
+  // Settings module thresholds
+  // ---------------------------------------------------------------------------
+  // Settings is a sub-navigation + content layout (Linear-style). The single
+  // most dangerous element is the *setting row* — label + long Arabic helper
+  // line + a control — which overflows the instant the control is placed beside
+  // the text without room. Every threshold below keys off the *available*
+  // width/height (a `LayoutBuilder`'s constraints), never the physical device,
+  // so it holds for the persistent side rail, split windows and resized desktops
+  // just as for phones.
+
+  /// **The key decision.** At or above this width Settings is a persistent
+  /// sub-navigation sidebar + content layout; below it the section list is a full
+  /// page and tapping a section pushes its page (with a back affordance) — never
+  /// a squeezed sidebar or a crowded tab bar. Equal to [splitPane]; a window
+  /// resized across it folds the sidebar back into the list *without losing the
+  /// open section*.
+  static const double settingsSplit = splitPane; // 820
+
+  /// A settings **section's content column** is capped at this width however wide
+  /// the pane, because setting text (labels + long Arabic helper lines) is
+  /// unreadable stretched across 2000px. Extra width becomes gutters, never a
+  /// wider column.
+  static const double settingsContentMax = 880;
+
+  /// The whole page (sidebar + content) caps and centres beyond this width so on
+  /// 4K/ultra-wide it never stretches edge-to-edge and the sidebar never grows
+  /// with the window.
+  static const double settingsContentMaxWidth = 1600;
+
+  /// The sub-navigation sidebar is clamped so it never collapses to unreadable
+  /// nor stretches: `clamp` to [settingsSidebarMin]…[settingsSidebarMid] in the
+  /// [settingsSplit]…[laptop] band, and [settingsSidebarMid]…[settingsSidebarMax]
+  /// at or above [laptop].
+  static const double settingsSidebarMin = 220;
+  static const double settingsSidebarMid = 260;
+  static const double settingsSidebarMax = 300;
+
+  /// **The setting-row rule.** A setting row whose control is *wide* (a dropdown
+  /// or a text field) keeps the control at the row's end only while the row is at
+  /// least this wide; below it the control drops to a full-width line *beneath*
+  /// the label + description. Switches always stay at the row end (intrinsic
+  /// width) regardless. This is the width at which a label, a wrapping helper
+  /// line and an intrinsic-width control stop coexisting on one line without
+  /// crushing the text.
+  static const double settingsRowStackControl = 560;
+
+  /// A pair of logically-related fields (currency + language, discount
+  /// start + end) sits two-up only when the field group has at least this much
+  /// width; below it each field is full width and stacked. Chosen so each half
+  /// stays a comfortable field width.
+  static const double settingsFieldPairTwoCol = 560;
+
+  /// Discount duration's two dates sit side by side at or above this width and
+  /// stack below it. Equal to [phone] per the module spec.
+  static const double settingsDatePairTwoCol = phone; // 600
+
+  /// A multi-select picker (discount items/categories, branches, authorized
+  /// users) opens as a full-width modal bottom sheet below this width and as a
+  /// centred dialog at or above it — never an unbounded dropdown that could
+  /// escape the window. Equal to [phone].
+  static const double settingsMultiSelectSheet = phone; // 600
+
+  /// Minimum extent of a colour/theme swatch tile, fed to [gridColumnsFor] so the
+  /// palette reflows as a grid (never a fixed Row of swatches that overflows).
+  static const double settingsSwatchMin = 76;
+
+  /// The live theme / invoice previews are miniatures of the real UI, so — and
+  /// only here — a fixed internal scale inside a [FittedBox] is allowed. They are
+  /// bounded to this width range and given a fixed aspect ratio so they can never
+  /// force the page's height.
+  static const double settingsPreviewMin = 240;
+  static const double settingsPreviewMax = 420;
+
+  /// The theme-preview miniature's aspect ratio (a small dashboard mock,
+  /// width / height).
+  static const double settingsThemePreviewAspect = 16 / 10;
+
+  /// A4 and thermal-receipt aspect ratios for the invoice print preview
+  /// (width / height). The preview is illustrative only — it never affects the
+  /// real printed output.
+  static const double settingsA4Aspect = 1 / 1.414;
+  static const double settingsReceiptAspect = 0.5;
+
+  /// Minimum width the backup-history table is given before it scrolls
+  /// horizontally, so its columns never crush together on a narrow pane.
+  static const double settingsBackupTableMin = 520;
 }
 
 /// The widest a centered content column is allowed to grow on large displays.

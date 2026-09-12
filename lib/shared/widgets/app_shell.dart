@@ -10,6 +10,7 @@ import '../../modules/dashboard/dashboard_screen.dart';
 import '../../modules/employees/employees_screen.dart';
 import '../../modules/expenses/expenses_screen.dart';
 import '../../modules/inventory/inventory_screen.dart';
+import '../../modules/notifications/notifications_screen.dart';
 import '../../modules/pos_management/pos_management_screen.dart';
 import '../../modules/products/products_screen.dart';
 import '../../modules/purchases/purchases_screen.dart';
@@ -20,6 +21,8 @@ import '../../modules/sales/sales_screen.dart';
 import '../../modules/accounting/accounting_screen.dart';
 import '../../modules/settings/settings_screen.dart';
 import '../../modules/treasury/treasury_screen.dart';
+import '../../modules/users/users_screen.dart';
+import '../../modules/day_closing/day_closing_screen.dart';
 import 'taj_ui.dart';
 
 // ---------------------------------------------------------------------------
@@ -246,6 +249,8 @@ class _AppShellState extends State<AppShell> {
     switch (id) {
       case 'dashboard':
         return DashboardScreen(chartStyle: widget.chartStyle);
+      case 'day':
+        return const DayClosingScreen();
       case 'pos':
         return PosManagementScreen(
           branchId: switch (_selectedBranch.id) {
@@ -279,6 +284,10 @@ class _AppShellState extends State<AppShell> {
         return const SmartReportsScreen();
       case 'assistant':
         return const AssistantScreen();
+      case 'users':
+        return const UsersScreen();
+      case 'inbox':
+        return const NotificationsScreen();
       case 'settings':
         return SettingsScreen(
           currentPrimary: widget.currentPrimary,
@@ -360,6 +369,7 @@ class _AppShellState extends State<AppShell> {
                       () => setState(() => _collapsed = !_collapsed),
                   onToggleTheme: widget.onToggleTheme,
                   onSearch: _openCommandPalette,
+                  onOpenInbox: () => _select('inbox'),
                   onLogout: widget.onLogout,
                 ),
                 Expanded(
@@ -871,6 +881,7 @@ class _TopBar extends StatelessWidget {
     required this.onToggleCollapse,
     required this.onToggleTheme,
     required this.onSearch,
+    required this.onOpenInbox,
     required this.onLogout,
   });
 
@@ -882,6 +893,7 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onToggleCollapse;
   final VoidCallback onToggleTheme;
   final VoidCallback onSearch;
+  final VoidCallback onOpenInbox;
   final VoidCallback? onLogout;
 
   @override
@@ -958,7 +970,7 @@ class _TopBar extends StatelessWidget {
                         : Icons.dark_mode_outlined,
                   ),
                 ),
-                _NotificationsButton(count: 3),
+                NotificationBell(onOpenFull: onOpenInbox),
                 const SizedBox(width: 8),
                 _UserMenu(onLogout: onLogout),
               ],
@@ -1083,39 +1095,6 @@ class _LanguagePill extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _NotificationsButton extends StatelessWidget {
-  const _NotificationsButton({required this.count});
-  final int count;
-  @override
-  Widget build(BuildContext context) {
-    final taj = context.taj;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          tooltip: 'الإشعارات',
-          onPressed: () {},
-          icon: const Icon(Icons.notifications_none_rounded),
-        ),
-        if (count > 0)
-          PositionedDirectional(
-            end: 8,
-            top: 8,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: taj.error.main,
-                shape: BoxShape.circle,
-                border: Border.all(color: taj.background, width: 1.5),
-              ),
-              constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
-            ),
-          ),
-      ],
     );
   }
 }
