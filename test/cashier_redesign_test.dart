@@ -30,6 +30,7 @@ Future<void> _pumpCashier(
   await tester.pumpWidget(
     const TajApp(
       testSignedIn: true,
+      testLicensed: true,
       testRole: UserRole.cashier,
       testUserName: 'cashier',
       testInitialCart: _cart,

@@ -231,12 +231,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       double.tryParse(price.text) ?? existing?.price ?? 0;
                   final parsedStock =
                       int.tryParse(stock.text) ?? existing?.stock ?? 0;
-                  if (name.text.trim().isNotEmpty)
+                  if (name.text.trim().isNotEmpty) {
                     Navigator.pop(dialogContext, (
                       name.text.trim(),
                       parsedPrice,
                       parsedStock,
                     ));
+                  }
                 },
                 child: const Text('حفظ'),
               ),

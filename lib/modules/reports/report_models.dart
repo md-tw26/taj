@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/demo/demo_store.dart';
+import '../../data/local/app_database.dart';
 import '../../shared/widgets/taj_report_table.dart';
 
 /// Top-level grouping of reports shown in the index.
@@ -192,6 +193,7 @@ typedef ReportBuilder = ReportResult Function(
   BuildContext context,
   DemoStore store,
   ReportFilters filters,
+  List<Branch> branches,
 );
 
 /// A report in the catalogue: its identity/metadata for the index card and its

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/demo/demo_store.dart';
+import '../../data/local/app_database.dart';
 
 /// Preset slicing periods for the analytics module. `custom` uses
 /// [SmartSlicers.range]; `all` means the whole history.
@@ -193,6 +194,7 @@ typedef AnalyticsBuilder = AnalyticsResult Function(
   BuildContext context,
   DemoStore store,
   SmartSlicers slicers,
+  List<Branch> branches,
 );
 
 /// A ready analytical question shown as a card and answered visually.

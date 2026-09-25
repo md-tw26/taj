@@ -8,6 +8,9 @@ import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/database_provider.dart';
+import '../../data/local/app_database.dart';
+import '../../data/repositories/drift_branch_repository.dart';
 import '../../shared/widgets/taj_filters.dart';
 import '../../shared/widgets/taj_table.dart';
 import '../../shared/widgets/taj_ui.dart';
@@ -356,6 +359,27 @@ class _RecentOrdersCard extends StatefulWidget {
 
 class _RecentOrdersCardState extends State<_RecentOrdersCard> {
   final List<TajFilter> _filters = [];
+  List<Branch> _branches = [];
+  bool _branchesLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final db = DatabaseProvider.of(context);
+      final branches = await DriftBranchRepository(db).getAll();
+      if (!mounted) return;
+      setState(() {
+        _branches = branches;
+        _branchesLoaded = true;
+      });
+    });
+  }
 
   List<_Order> get _orders =>
       widget.store.sales.map((sale) {
@@ -363,7 +387,7 @@ class _RecentOrdersCardState extends State<_RecentOrdersCard> {
           (c) => c.id == sale.customerId,
         );
         final customer = customerMatches.isEmpty ? null : customerMatches.first;
-        final branchMatches = widget.store.branches.where(
+        final branchMatches = _branches.where(
           (b) => b.id == sale.branchId,
         );
         final branch =
@@ -493,7 +517,12 @@ class _RecentOrdersCardState extends State<_RecentOrdersCard> {
             onSortBy: _openAddMenu,
           ),
           const SizedBox(height: 8),
-          if (orders.isEmpty)
+          if (!_branchesLoaded)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (orders.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: TajEmptyState(

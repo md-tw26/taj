@@ -1157,8 +1157,9 @@ class DemoStore extends ChangeNotifier {
     final lines = <DemoSaleLine>[];
     for (final entry in quantities.entries) {
       final p = products.firstWhere((item) => item.id == entry.key);
-      if (entry.value <= 0 || p.stock < entry.value)
+      if (entry.value <= 0 || p.stock < entry.value) {
         throw StateError('المخزون غير كافٍ للصنف ${p.name}');
+      }
       lines.add(
         DemoSaleLine(
           productId: p.id,

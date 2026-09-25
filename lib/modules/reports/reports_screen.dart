@@ -5,6 +5,9 @@ import '../../core/demo/demo_store.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/database_provider.dart';
+import '../../data/local/app_database.dart';
+import '../../data/repositories/drift_branch_repository.dart';
 import '../../shared/widgets/taj_report_table.dart';
 import '../../shared/widgets/taj_ui.dart';
 import 'report_catalog.dart';
@@ -38,20 +41,36 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   String? _selectedId;
   ReportFilters _filters = const ReportFilters();
+  List<Branch> _branches = [];
+  bool _branchesLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _selectedId = widget.testInitialReportId;
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final db = DatabaseProvider.of(context);
+      final branches = await DriftBranchRepository(db).getAll();
+      if (!mounted) return;
+      setState(() {
+        _branches = branches;
+        _branchesLoaded = true;
+      });
+    });
   }
 
   DemoStore get _store => DemoStoreProvider.of(context);
 
   void _select(String id) => setState(() {
-        _selectedId = id;
-        // Segment meaning is report-specific, so reset it when switching.
-        _filters = _filters.copyWith(clearSegment: true);
-      });
+    _selectedId = id;
+    // Segment meaning is report-specific, so reset it when switching.
+    _filters = _filters.copyWith(clearSegment: true);
+  });
 
   void _clearSelection() => setState(() => _selectedId = null);
 
@@ -59,17 +78,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_branchesLoaded) {
+      return const PageContainer(
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
     return AnimatedBuilder(
       animation: _store,
-      builder: (context, _) => LayoutBuilder(
-        builder: (context, c) {
-          final rail = c.maxWidth >= AppBreakpoints.reportIndexRail;
-          return PageContainer(
-            maxWidth: AppBreakpoints.reportContentMaxWidth,
-            child: rail ? _buildRail(context, c.maxWidth) : _buildSingle(context),
-          );
-        },
-      ),
+      builder:
+          (context, _) => LayoutBuilder(
+            builder: (context, c) {
+              final rail = c.maxWidth >= AppBreakpoints.reportIndexRail;
+              return PageContainer(
+                maxWidth: AppBreakpoints.reportContentMaxWidth,
+                child:
+                    rail
+                        ? _buildRail(context, c.maxWidth)
+                        : _buildSingle(context),
+              );
+            },
+          ),
     );
   }
 
@@ -77,18 +105,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget _buildRail(BuildContext context, double width) {
     final taj = context.taj;
     final selected = _selectedId ?? reportCatalog.first.id;
-    final railW = (width * 0.24)
-        .clamp(AppBreakpoints.reportRailMin, AppBreakpoints.reportRailMax)
-        .toDouble();
+    final railW =
+        (width * 0.24)
+            .clamp(AppBreakpoints.reportRailMin, AppBreakpoints.reportRailMax)
+            .toDouble();
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
           width: railW,
-          child: _ReportRail(
-            selectedId: selected,
-            onSelect: _select,
-          ),
+          child: _ReportRail(selectedId: selected, onSelect: _select),
         ),
         VerticalDivider(width: 1, color: taj.divider),
         Expanded(
@@ -96,6 +122,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             key: ValueKey(selected),
             report: reportById(selected),
             store: _store,
+            branches: _branches,
             filters: _filters,
             onFilters: _onFilters,
           ),
@@ -114,6 +141,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       key: ValueKey(id),
       report: reportById(id),
       store: _store,
+      branches: _branches,
       filters: _filters,
       onFilters: _onFilters,
       onBack: _clearSelection,
@@ -143,11 +171,18 @@ class _ReportIndexPage extends StatelessWidget {
         for (final cat in ReportCategory.values) {
           final items = reportCatalog.where((r) => r.category == cat).toList();
           if (items.isEmpty) continue;
-          sections.add(Padding(
-            padding: EdgeInsets.only(top: sections.isEmpty ? 0 : 24, bottom: 12),
-            child: Text(cat.label,
-                style: Theme.of(context).textTheme.titleMedium),
-          ));
+          sections.add(
+            Padding(
+              padding: EdgeInsets.only(
+                top: sections.isEmpty ? 0 : 24,
+                bottom: 12,
+              ),
+              child: Text(
+                cat.label,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          );
           sections.add(_CardGrid(items: items, columns: cols, onOpen: onOpen));
         }
         return ListView(
@@ -167,7 +202,11 @@ class _ReportIndexPage extends StatelessWidget {
 }
 
 class _CardGrid extends StatelessWidget {
-  const _CardGrid({required this.items, required this.columns, required this.onOpen});
+  const _CardGrid({
+    required this.items,
+    required this.columns,
+    required this.onOpen,
+  });
   final List<ReportDef> items;
   final int columns;
   final ValueChanged<String> onOpen;
@@ -223,24 +262,35 @@ class _ReportCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(def.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                child: Text(
+                  def.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(def.description,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: text.bodySmall?.copyWith(color: taj.textSecondary, height: 1.4)),
+          Text(
+            def.description,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall?.copyWith(
+              color: taj.textSecondary,
+              height: 1.4,
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Text('عرض التقرير',
-                  style: text.labelMedium
-                      ?.copyWith(color: taj.accentText, fontWeight: FontWeight.w700)),
+              Text(
+                'عرض التقرير',
+                style: text.labelMedium?.copyWith(
+                  color: taj.accentText,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(width: 4),
               Icon(Icons.chevron_left_rounded, size: 18, color: taj.accentText),
             ],
@@ -273,25 +323,41 @@ class _ReportRail extends StatelessWidget {
     for (final cat in ReportCategory.values) {
       final items = reportCatalog.where((r) => r.category == cat).toList();
       if (items.isEmpty) continue;
-      children.add(Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-        child: Text(cat.label.toUpperCase(),
-            style: text.labelSmall?.copyWith(color: taj.textDisabled, letterSpacing: 0.5)),
-      ));
+      children.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+          child: Text(
+            cat.label.toUpperCase(),
+            style: text.labelSmall?.copyWith(
+              color: taj.textDisabled,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      );
       for (final r in items) {
         final sel = r.id == selectedId;
-        children.add(_RailTile(def: r, selected: sel, onTap: () => onSelect(r.id)));
+        children.add(
+          _RailTile(def: r, selected: sel, onTap: () => onSelect(r.id)),
+        );
       }
     }
     return Container(
       color: taj.paper,
-      child: ListView(padding: const EdgeInsets.only(bottom: 16), children: children),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 16),
+        children: children,
+      ),
     );
   }
 }
 
 class _RailTile extends StatelessWidget {
-  const _RailTile({required this.def, required this.selected, required this.onTap});
+  const _RailTile({
+    required this.def,
+    required this.selected,
+    required this.onTap,
+  });
   final ReportDef def;
   final bool selected;
   final VoidCallback onTap;
@@ -315,14 +381,22 @@ class _RailTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(def.icon, size: 19, color: selected ? taj.primary.dark : taj.textSecondary),
+              Icon(
+                def.icon,
+                size: 19,
+                color: selected ? taj.primary.dark : taj.textSecondary,
+              ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(def.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodyMedium?.copyWith(
-                        color: fg, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+                child: Text(
+                  def.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyMedium?.copyWith(
+                    color: fg,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ),
@@ -341,6 +415,7 @@ class ReportResultView extends StatefulWidget {
     super.key,
     required this.report,
     required this.store,
+    required this.branches,
     required this.filters,
     required this.onFilters,
     this.onBack,
@@ -348,6 +423,7 @@ class ReportResultView extends StatefulWidget {
 
   final ReportDef report;
   final DemoStore store;
+  final List<Branch> branches;
   final ReportFilters filters;
   final ValueChanged<ReportFilters> onFilters;
 
@@ -376,9 +452,9 @@ class _ReportResultViewState extends State<ReportResultView> {
     await Future<void>.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
     setState(() => _busy = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('تصدير $kind سيتوفر قريبًا')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('تصدير $kind سيتوفر قريبًا')));
   }
 
   @override
@@ -390,7 +466,12 @@ class _ReportResultViewState extends State<ReportResultView> {
     ReportResult? result;
     Object? error;
     try {
-      result = widget.report.build(context, widget.store, widget.filters);
+      result = widget.report.build(
+        context,
+        widget.store,
+        widget.filters,
+        widget.branches,
+      );
     } catch (e) {
       error = e;
     }
@@ -400,12 +481,15 @@ class _ReportResultViewState extends State<ReportResultView> {
         final w = c.maxWidth;
         final h = c.maxHeight;
         final veryShort = h < 480; // landscape phone / very short window
-        final sidePanel = w >= AppBreakpoints.reportInsightsPanel &&
+        final sidePanel =
+            w >= AppBreakpoints.reportInsightsPanel &&
             h >= AppBreakpoints.reportInsightsMinHeight;
-        final hasInsights = result != null &&
+        final hasInsights =
+            result != null &&
             (result.chart != null || result.summary.isNotEmpty);
         final showToggle = !sidePanel && hasInsights && !veryShort;
-        final showSummaryStrip = !sidePanel &&
+        final showSummaryStrip =
+            !sidePanel &&
             _mode == _InsightsMode.table &&
             hasInsights &&
             h >= AppBreakpoints.reportSummaryMinHeight;
@@ -416,13 +500,14 @@ class _ReportResultViewState extends State<ReportResultView> {
           filters: widget.filters,
           onBack: widget.onBack,
           veryShort: veryShort,
-          exportDensity: veryShort
-              ? _ExportDensity.menu
-              : w >= AppBreakpoints.reportExportButtons
+          exportDensity:
+              veryShort
+                  ? _ExportDensity.menu
+                  : w >= AppBreakpoints.reportExportButtons
                   ? _ExportDensity.full
                   : w >= AppBreakpoints.reportExportIcons
-                      ? _ExportDensity.icons
-                      : _ExportDensity.menu,
+                  ? _ExportDensity.icons
+                  : _ExportDensity.menu,
           onExport: _export,
           showToggle: showToggle,
           mode: _mode,
@@ -459,7 +544,10 @@ class _ReportResultViewState extends State<ReportResultView> {
               ],
             );
           } else if (_mode == _InsightsMode.insights && hasInsights) {
-            content = _InsightsPanel(result: r, wide: w >= AppBreakpoints.tablet);
+            content = _InsightsPanel(
+              result: r,
+              wide: w >= AppBreakpoints.tablet,
+            );
           } else {
             content = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -471,7 +559,12 @@ class _ReportResultViewState extends State<ReportResultView> {
                   ),
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(pad, showSummaryStrip ? 12 : 4, pad, pad),
+                    padding: EdgeInsets.fromLTRB(
+                      pad,
+                      showSummaryStrip ? 12 : 4,
+                      pad,
+                      pad,
+                    ),
                     child: table,
                   ),
                 ),
@@ -489,6 +582,7 @@ class _ReportResultViewState extends State<ReportResultView> {
               _FiltersRegion(
                 report: widget.report,
                 store: widget.store,
+                branches: widget.branches,
                 filters: widget.filters,
                 onFilters: widget.onFilters,
                 width: w,
@@ -550,15 +644,19 @@ class _HeaderBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(report.title,
+        Text(
+          report.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        if (!veryShort)
+          Text(
+            'الفترة: ${periodSummary(filters)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-        if (!veryShort)
-          Text('الفترة: ${periodSummary(filters)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+            style: text.bodySmall?.copyWith(color: taj.textSecondary),
+          ),
       ],
     );
 
@@ -594,7 +692,11 @@ class _HeaderBar extends StatelessWidget {
 }
 
 class _InsightsToggle extends StatelessWidget {
-  const _InsightsToggle({required this.mode, required this.onMode, this.compact = false});
+  const _InsightsToggle({
+    required this.mode,
+    required this.onMode,
+    this.compact = false,
+  });
   final _InsightsMode mode;
   final ValueChanged<_InsightsMode> onMode;
   final bool compact;
@@ -609,7 +711,10 @@ class _InsightsToggle extends StatelessWidget {
         child: GestureDetector(
           onTap: () => onMode(m),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: 7),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 12,
+              vertical: 7,
+            ),
             decoration: BoxDecoration(
               color: sel ? taj.paper : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
@@ -618,14 +723,21 @@ class _InsightsToggle extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 16, color: sel ? taj.primary.dark : taj.textSecondary),
+                Icon(
+                  icon,
+                  size: 16,
+                  color: sel ? taj.primary.dark : taj.textSecondary,
+                ),
                 if (!compact) ...[
                   const SizedBox(width: 6),
-                  Text(label,
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: sel ? taj.primary.dark : taj.textSecondary)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: sel ? taj.primary.dark : taj.textSecondary,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -697,13 +809,20 @@ class _ExportControl extends StatelessWidget {
           tooltip: 'تصدير',
           icon: const Icon(Icons.ios_share_rounded, size: 20),
           onSelected: onExport,
-          itemBuilder: (_) => [
-            for (final k in _kinds)
-              PopupMenuItem(
-                value: k.$1,
-                child: Row(children: [Icon(k.$3, size: 18), const SizedBox(width: 10), Text(k.$2)]),
-              ),
-          ],
+          itemBuilder:
+              (_) => [
+                for (final k in _kinds)
+                  PopupMenuItem(
+                    value: k.$1,
+                    child: Row(
+                      children: [
+                        Icon(k.$3, size: 18),
+                        const SizedBox(width: 10),
+                        Text(k.$2),
+                      ],
+                    ),
+                  ),
+              ],
         );
     }
   }
@@ -715,6 +834,7 @@ class _FiltersRegion extends StatelessWidget {
   const _FiltersRegion({
     required this.report,
     required this.store,
+    required this.branches,
     required this.filters,
     required this.onFilters,
     required this.width,
@@ -722,6 +842,7 @@ class _FiltersRegion extends StatelessWidget {
 
   final ReportDef report;
   final DemoStore store;
+  final List<Branch> branches;
   final ReportFilters filters;
   final ValueChanged<ReportFilters> onFilters;
   final double width;
@@ -744,13 +865,14 @@ class _FiltersRegion extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(periodSummary(filters),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: taj.textSecondary)),
+            child: Text(
+              periodSummary(filters),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: taj.textSecondary),
+            ),
           ),
         ],
       );
@@ -764,19 +886,28 @@ class _FiltersRegion extends StatelessWidget {
           if (grouped)
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 2),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.filter_list_rounded, size: 16, color: taj.textSecondary),
-                const SizedBox(width: 4),
-                Text('الفلاتر:',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelMedium
-                        ?.copyWith(color: taj.textSecondary)),
-              ]),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.filter_list_rounded,
+                    size: 16,
+                    color: taj.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'الفلاتر:',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelMedium?.copyWith(color: taj.textSecondary),
+                  ),
+                ],
+              ),
             ),
           _periodPill(context),
           _branchPill(context),
-          if (segment != null && segment.options.isNotEmpty) _segmentPill(context, segment),
+          if (segment != null && segment.options.isNotEmpty)
+            _segmentPill(context, segment),
         ],
       );
     }
@@ -811,55 +942,67 @@ class _FiltersRegion extends StatelessWidget {
   List<Widget> _activeChips(BuildContext context, ReportSegment? segment) {
     final chips = <Widget>[];
     if (filters.period != ReportPeriodPreset.all) {
-      chips.add(_RemovableChip(
-        label: 'الفترة',
-        value: periodSummary(filters),
-        onRemove: () => onFilters(filters.copyWith(
-            period: ReportPeriodPreset.all, clearCustomRange: true)),
-      ));
+      chips.add(
+        _RemovableChip(
+          label: 'الفترة',
+          value: periodSummary(filters),
+          onRemove:
+              () => onFilters(
+                filters.copyWith(
+                  period: ReportPeriodPreset.all,
+                  clearCustomRange: true,
+                ),
+              ),
+        ),
+      );
     }
     if (filters.branchId != null) {
-      chips.add(_RemovableChip(
-        label: 'الفرع',
-        value: _branchLabel(filters.branchId),
-        onRemove: () => onFilters(filters.copyWith(clearBranch: true)),
-      ));
+      chips.add(
+        _RemovableChip(
+          label: 'الفرع',
+          value: _branchLabel(filters.branchId),
+          onRemove: () => onFilters(filters.copyWith(clearBranch: true)),
+        ),
+      );
     }
     if (filters.segment != null && segment != null) {
       final opt = segment.options.firstWhere(
         (o) => o.value == filters.segment,
-        orElse: () => ReportSegmentOption(filters.segment, filters.segment ?? ''),
+        orElse:
+            () => ReportSegmentOption(filters.segment, filters.segment ?? ''),
       );
-      chips.add(_RemovableChip(
-        label: segment.label,
-        value: opt.label,
-        onRemove: () => onFilters(filters.copyWith(clearSegment: true)),
-      ));
+      chips.add(
+        _RemovableChip(
+          label: segment.label,
+          value: opt.label,
+          onRemove: () => onFilters(filters.copyWith(clearSegment: true)),
+        ),
+      );
     }
     return chips;
   }
 
   String _branchLabel(String? id) {
     if (id == null) return 'كل الفروع';
-    for (final b in store.branches) {
+    for (final b in branches) {
       if (b.id == id) return b.name;
     }
     return id;
   }
 
   Widget _periodPill(BuildContext context) => _FilterPill(
-        icon: Icons.event_outlined,
-        label: 'الفترة',
-        value: periodSummary(filters),
-        onTap: () => _pickPeriod(context),
-      );
+    icon: Icons.event_outlined,
+    label: 'الفترة',
+    value: periodSummary(filters),
+    onTap: () => _pickPeriod(context),
+  );
 
   Widget _branchPill(BuildContext context) => _FilterPill(
-        icon: Icons.store_mall_directory_outlined,
-        label: 'الفرع',
-        value: _branchLabel(filters.branchId),
-        onTap: () => _pickBranch(context),
-      );
+    icon: Icons.store_mall_directory_outlined,
+    label: 'الفرع',
+    value: _branchLabel(filters.branchId),
+    onTap: () => _pickBranch(context),
+  );
 
   Widget _segmentPill(BuildContext context, ReportSegment segment) {
     final opt = segment.options.firstWhere(
@@ -890,7 +1033,12 @@ class _FiltersRegion extends StatelessWidget {
       if (!context.mounted) return;
       final range = await _pickRange(context);
       if (range != null) {
-        onFilters(filters.copyWith(period: ReportPeriodPreset.custom, customRange: range));
+        onFilters(
+          filters.copyWith(
+            period: ReportPeriodPreset.custom,
+            customRange: range,
+          ),
+        );
       }
     } else {
       onFilters(filters.copyWith(period: choice, clearCustomRange: true));
@@ -908,17 +1056,19 @@ class _FiltersRegion extends StatelessWidget {
       initialDateRange: filters.resolveRange(now),
       // Full width on a phone; a centred dialog no wider than the cap and no
       // taller than 90% of the viewport on tablet-and-up.
-      builder: (ctx, child) => phone
-          ? child!
-          : Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: AppBreakpoints.reportDateDialogMax,
-                  maxHeight: h * 0.9,
-                ),
-                child: child,
-              ),
-            ),
+      builder:
+          (ctx, child) =>
+              phone
+                  ? child!
+                  : Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: AppBreakpoints.reportDateDialogMax,
+                        maxHeight: h * 0.9,
+                      ),
+                      child: child,
+                    ),
+                  ),
     );
   }
 
@@ -926,10 +1076,7 @@ class _FiltersRegion extends StatelessWidget {
     final (picked, choice) = await _showMenu<String?>(
       context,
       title: 'الفرع',
-      options: [
-        (null, 'كل الفروع'),
-        for (final b in store.branches) (b.id, b.name),
-      ],
+      options: [(null, 'كل الفروع'), for (final b in branches) (b.id, b.name)],
       selected: filters.branchId,
     );
     if (!picked) return;
@@ -952,15 +1099,17 @@ class _FiltersRegion extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _FilterSheet(
-        store: store,
-        filters: filters,
-        segment: segment,
-        onApply: (f) {
-          onFilters(f);
-          Navigator.of(context).maybePop();
-        },
-      ),
+      builder:
+          (_) => _FilterSheet(
+            store: store,
+            branches: branches,
+            filters: filters,
+            segment: segment,
+            onApply: (f) {
+              onFilters(f);
+              Navigator.of(context).maybePop();
+            },
+          ),
     );
   }
 }
@@ -980,33 +1129,38 @@ Future<(bool, T?)> _showMenu<T>(
   final idx = await showModalBottomSheet<int>(
     context: context,
     showDragHandle: true,
-    builder: (ctx) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
+    builder:
+        (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Text(title, style: Theme.of(ctx).textTheme.titleMedium),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (var i = 0; i < options.length; i++)
+                      ListTile(
+                        title: Text(options[i].$2),
+                        trailing:
+                            options[i].$1 == selected
+                                ? Icon(
+                                  Icons.check_rounded,
+                                  color: taj.primary.main,
+                                )
+                                : null,
+                        onTap: () => Navigator.of(ctx).pop<int>(i),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                for (var i = 0; i < options.length; i++)
-                  ListTile(
-                    title: Text(options[i].$2),
-                    trailing: options[i].$1 == selected
-                        ? Icon(Icons.check_rounded, color: taj.primary.main)
-                        : null,
-                    onTap: () => Navigator.of(ctx).pop<int>(i),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
+        ),
   );
   if (idx == null) return (false, null);
   return (true, options[idx].$1);
@@ -1048,17 +1202,27 @@ class _FilterPill extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: taj.textSecondary),
               const SizedBox(width: 6),
-              Text('$label: ',
-                  style: text.labelMedium?.copyWith(color: taj.textSecondary)),
+              Text(
+                '$label: ',
+                style: text.labelMedium?.copyWith(color: taj.textSecondary),
+              ),
               Flexible(
-                child: Text(value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.labelMedium
-                        ?.copyWith(color: taj.textPrimary, fontWeight: FontWeight.w700)),
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.labelMedium?.copyWith(
+                    color: taj.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.expand_more_rounded, size: 16, color: taj.textSecondary),
+              Icon(
+                Icons.expand_more_rounded,
+                size: 16,
+                color: taj.textSecondary,
+              ),
             ],
           ),
         ),
@@ -1068,7 +1232,11 @@ class _FilterPill extends StatelessWidget {
 }
 
 class _RemovableChip extends StatelessWidget {
-  const _RemovableChip({required this.label, required this.value, required this.onRemove});
+  const _RemovableChip({
+    required this.label,
+    required this.value,
+    required this.onRemove,
+  });
   final String label;
   final String value;
   final VoidCallback onRemove;
@@ -1088,14 +1256,20 @@ class _RemovableChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$label: ',
-              style: text.labelSmall?.copyWith(color: taj.primary.dark)),
+          Text(
+            '$label: ',
+            style: text.labelSmall?.copyWith(color: taj.primary.dark),
+          ),
           Flexible(
-            child: Text(value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.labelSmall
-                    ?.copyWith(color: taj.primary.dark, fontWeight: FontWeight.w800)),
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.labelSmall?.copyWith(
+                color: taj.primary.dark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
           const SizedBox(width: 4),
           GestureDetector(
@@ -1132,23 +1306,35 @@ class _FilterButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.filter_list_rounded, size: 18, color: taj.textSecondary),
+              Icon(
+                Icons.filter_list_rounded,
+                size: 18,
+                color: taj.textSecondary,
+              ),
               const SizedBox(width: 8),
-              Text('تصفية',
-                  style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                'تصفية',
+                style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
               if (activeCount > 0) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: taj.primary.main,
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: Text('$activeCount',
-                      style: TextStyle(
-                          color: taj.primary.contrastText,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700)),
+                  child: Text(
+                    '$activeCount',
+                    style: TextStyle(
+                      color: taj.primary.contrastText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -1164,11 +1350,13 @@ class _FilterButton extends StatelessWidget {
 class _FilterSheet extends StatefulWidget {
   const _FilterSheet({
     required this.store,
+    required this.branches,
     required this.filters,
     required this.segment,
     required this.onApply,
   });
   final DemoStore store;
+  final List<Branch> branches;
   final ReportFilters filters;
   final ReportSegment? segment;
   final ValueChanged<ReportFilters> onApply;
@@ -1182,7 +1370,7 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   String _branchLabel(String? id) {
     if (id == null) return 'كل الفروع';
-    for (final b in widget.store.branches) {
+    for (final b in widget.branches) {
       if (b.id == id) return b.name;
     }
     return id;
@@ -1221,13 +1409,17 @@ class _FilterSheetState extends State<_FilterSheet> {
                       value: _branchLabel(_f.branchId),
                       onTap: _pickBranch,
                     ),
-                    if (widget.segment != null && widget.segment!.options.isNotEmpty)
+                    if (widget.segment != null &&
+                        widget.segment!.options.isNotEmpty)
                       _SheetRow(
                         label: widget.segment!.label,
-                        value: widget.segment!.options
-                            .firstWhere((o) => o.value == _f.segment,
-                                orElse: () => widget.segment!.options.first)
-                            .label,
+                        value:
+                            widget.segment!.options
+                                .firstWhere(
+                                  (o) => o.value == _f.segment,
+                                  orElse: () => widget.segment!.options.first,
+                                )
+                                .label,
                         onTap: _pickSegment,
                       ),
                   ],
@@ -1238,7 +1430,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => setState(() => _f = const ReportFilters()),
+                      onPressed:
+                          () => setState(() => _f = const ReportFilters()),
                       child: const Text('إعادة تعيين'),
                     ),
                   ),
@@ -1280,7 +1473,13 @@ class _FilterSheetState extends State<_FilterSheet> {
         initialDateRange: _f.resolveRange(now),
       );
       if (range != null) {
-        setState(() => _f = _f.copyWith(period: ReportPeriodPreset.custom, customRange: range));
+        setState(
+          () =>
+              _f = _f.copyWith(
+                period: ReportPeriodPreset.custom,
+                customRange: range,
+              ),
+        );
       }
     } else {
       setState(() => _f = _f.copyWith(period: choice, clearCustomRange: true));
@@ -1293,12 +1492,14 @@ class _FilterSheetState extends State<_FilterSheet> {
       title: 'الفرع',
       options: [
         (null, 'كل الفروع'),
-        for (final b in widget.store.branches) (b.id, b.name),
+        for (final b in widget.branches) (b.id, b.name),
       ],
       selected: _f.branchId,
     );
     if (!picked) return;
-    setState(() => _f = _f.copyWith(branchId: choice, clearBranch: choice == null));
+    setState(
+      () => _f = _f.copyWith(branchId: choice, clearBranch: choice == null),
+    );
   }
 
   Future<void> _pickSegment() async {
@@ -1310,12 +1511,18 @@ class _FilterSheetState extends State<_FilterSheet> {
       selected: _f.segment,
     );
     if (!picked) return;
-    setState(() => _f = _f.copyWith(segment: choice, clearSegment: choice == null));
+    setState(
+      () => _f = _f.copyWith(segment: choice, clearSegment: choice == null),
+    );
   }
 }
 
 class _SheetRow extends StatelessWidget {
-  const _SheetRow({required this.label, required this.value, required this.onTap});
+  const _SheetRow({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
   final String label;
   final String value;
   final VoidCallback onTap;
@@ -1329,7 +1536,10 @@ class _SheetRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(label, style: text.labelMedium?.copyWith(color: taj.textSecondary)),
+          Text(
+            label,
+            style: text.labelMedium?.copyWith(color: taj.textSecondary),
+          ),
           const SizedBox(height: 6),
           GestureDetector(
             onTap: onTap,
@@ -1343,12 +1553,20 @@ class _SheetRow extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  Icon(Icons.expand_more_rounded, size: 18, color: taj.textSecondary),
+                  Icon(
+                    Icons.expand_more_rounded,
+                    size: 18,
+                    color: taj.textSecondary,
+                  ),
                 ],
               ),
             ),
@@ -1383,9 +1601,10 @@ class _InsightsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
-    final aspect = wide
-        ? AppBreakpoints.reportChartAspectWide
-        : AppBreakpoints.reportChartAspectPhone;
+    final aspect =
+        wide
+            ? AppBreakpoints.reportChartAspectWide
+            : AppBreakpoints.reportChartAspectPhone;
     return Container(
       decoration: BoxDecoration(
         border: BorderDirectional(start: BorderSide(color: taj.divider)),
@@ -1419,7 +1638,8 @@ class _StatTile extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final tile = Container(
       width: expand ? double.infinity : null,
-      constraints: expand ? null : const BoxConstraints(minWidth: 120, maxWidth: 220),
+      constraints:
+          expand ? null : const BoxConstraints(minWidth: 120, maxWidth: 220),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: taj.paper,
@@ -1437,19 +1657,27 @@ class _StatTile extends StatelessWidget {
                 const SizedBox(width: 6),
               ],
               Flexible(
-                child: Text(stat.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+                child: Text(
+                  stat.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(stat.value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppThemes.numeralStyle(context,
-                  fontSize: 17, fontWeight: FontWeight.w800, color: stat.tone ?? taj.textPrimary)),
+          Text(
+            stat.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppThemes.numeralStyle(
+              context,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: stat.tone ?? taj.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -1473,8 +1701,10 @@ class _NoteBanner extends StatelessWidget {
           Icon(Icons.info_outline_rounded, size: 16, color: taj.info.dark),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text,
-                style: TextStyle(fontSize: 12, color: taj.info.dark, height: 1.4)),
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 12, color: taj.info.dark, height: 1.4),
+            ),
           ),
         ],
       ),
@@ -1501,8 +1731,13 @@ class _GenerationOverlay extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 3),
           ),
           const SizedBox(height: 14),
-          Text(label,
-              style: TextStyle(color: taj.textPrimary, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: TextStyle(
+              color: taj.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

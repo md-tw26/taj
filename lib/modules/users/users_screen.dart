@@ -77,8 +77,9 @@ class _UsersScreenState extends State<UsersScreen>
   }
 
   // ---- Grant helpers --------------------------------------------------------
-  static Map<String, Set<String>> _cloneGrants(Map<String, Set<String>> g) =>
-      {for (final e in g.entries) e.key: {...e.value}};
+  static Map<String, Set<String>> _cloneGrants(Map<String, Set<String>> g) => {
+    for (final e in g.entries) e.key: {...e.value},
+  };
 
   bool get _dirty {
     for (final e in _grants.entries) {
@@ -126,9 +127,9 @@ class _UsersScreenState extends State<UsersScreen>
         ),
       );
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حفظ الصلاحيات')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تم حفظ الصلاحيات')));
   }
 
   void _discardGrants() => setState(() => _grants = _cloneGrants(_saved));
@@ -152,11 +153,7 @@ class _UsersScreenState extends State<UsersScreen>
               child: TabBarView(
                 controller: _tabs,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _usersTab(),
-                  _permissionsTab(),
-                  _auditTab(),
-                ],
+                children: [_usersTab(), _permissionsTab(), _auditTab()],
               ),
             ),
           ],
@@ -243,9 +240,7 @@ class _UsersScreenState extends State<UsersScreen>
   List<_MgUser> get _filteredUsers {
     final q = _userQuery.trim();
     return _users.where((u) {
-      if (q.isNotEmpty &&
-          !u.name.contains(q) &&
-          !u.username.contains(q)) {
+      if (q.isNotEmpty && !u.name.contains(q) && !u.username.contains(q)) {
         return false;
       }
       if (_roleFilter != null && u.roleId != _roleFilter) return false;
@@ -279,15 +274,16 @@ class _UsersScreenState extends State<UsersScreen>
                     isDense: true,
                     prefixIcon: const Icon(Icons.search_rounded, size: 20),
                     hintText: 'ابحث بالاسم أو اسم الدخول…',
-                    suffixIcon: _userQuery.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 18),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() => _userQuery = '');
-                            },
-                          ),
+                    suffixIcon:
+                        _userQuery.isEmpty
+                            ? null
+                            : IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _userQuery = '');
+                              },
+                            ),
                   ),
                 ),
               ),
@@ -316,12 +312,11 @@ class _UsersScreenState extends State<UsersScreen>
             onPressed: _openUsersFilterSheet,
             icon: const Icon(Icons.tune_rounded, size: 18),
             label: Text(
-              activeFilters == 0
-                  ? 'تصفية'
-                  : 'تصفية (${arNum(activeFilters)})',
+              activeFilters == 0 ? 'تصفية' : 'تصفية (${arNum(activeFilters)})',
             ),
             style: OutlinedButton.styleFrom(
-              foregroundColor: activeFilters == 0 ? taj.textSecondary : taj.primary.main,
+              foregroundColor:
+                  activeFilters == 0 ? taj.textSecondary : taj.primary.main,
               minimumSize: const Size.fromHeight(44),
             ),
           ),
@@ -350,16 +345,18 @@ class _UsersScreenState extends State<UsersScreen>
         _FilterChoice(
           label: 'نشط',
           selected: _statusFilter == true,
-          onTap: () => setState(
-            () => _statusFilter = _statusFilter == true ? null : true,
-          ),
+          onTap:
+              () => setState(
+                () => _statusFilter = _statusFilter == true ? null : true,
+              ),
         ),
         _FilterChoice(
           label: 'معطّل',
           selected: _statusFilter == false,
-          onTap: () => setState(
-            () => _statusFilter = _statusFilter == false ? null : false,
-          ),
+          onTap:
+              () => setState(
+                () => _statusFilter = _statusFilter == false ? null : false,
+              ),
         ),
       ],
     );
@@ -406,9 +403,12 @@ class _UsersScreenState extends State<UsersScreen>
                       const SizedBox(height: 16),
                       Text('تصفية المستخدمين', style: text.titleLarge),
                       const SizedBox(height: 16),
-                      Text('الدور',
-                          style: text.titleSmall
-                              ?.copyWith(color: taj.textSecondary)),
+                      Text(
+                        'الدور',
+                        style: text.titleSmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -417,22 +417,23 @@ class _UsersScreenState extends State<UsersScreen>
                           _FilterChoice(
                             label: 'الكل',
                             selected: _roleFilter == null,
-                            onTap: () =>
-                                refresh(() => _roleFilter = null),
+                            onTap: () => refresh(() => _roleFilter = null),
                           ),
                           for (final r in _roles)
                             _FilterChoice(
                               label: r.name,
                               selected: _roleFilter == r.id,
-                              onTap: () =>
-                                  refresh(() => _roleFilter = r.id),
+                              onTap: () => refresh(() => _roleFilter = r.id),
                             ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Text('الحالة',
-                          style: text.titleSmall
-                              ?.copyWith(color: taj.textSecondary)),
+                      Text(
+                        'الحالة',
+                        style: text.titleSmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -441,20 +442,17 @@ class _UsersScreenState extends State<UsersScreen>
                           _FilterChoice(
                             label: 'الكل',
                             selected: _statusFilter == null,
-                            onTap: () =>
-                                refresh(() => _statusFilter = null),
+                            onTap: () => refresh(() => _statusFilter = null),
                           ),
                           _FilterChoice(
                             label: 'نشط',
                             selected: _statusFilter == true,
-                            onTap: () =>
-                                refresh(() => _statusFilter = true),
+                            onTap: () => refresh(() => _statusFilter = true),
                           ),
                           _FilterChoice(
                             label: 'معطّل',
                             selected: _statusFilter == false,
-                            onTap: () =>
-                                refresh(() => _statusFilter = false),
+                            onTap: () => refresh(() => _statusFilter = false),
                           ),
                         ],
                       ),
@@ -519,16 +517,22 @@ class _UsersScreenState extends State<UsersScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(u.name,
-                            style: text.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        Text('@${u.username}',
-                            style: text.bodySmall
-                                ?.copyWith(color: taj.textSecondary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
+                        Text(
+                          u.name,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '@${u.username}',
+                          style: text.bodySmall?.copyWith(
+                            color: taj.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
@@ -541,15 +545,19 @@ class _UsersScreenState extends State<UsersScreen>
                 children: [
                   _RolePill(role: _roleById(u.roleId)),
                   const SizedBox(width: 8),
-                  Icon(Icons.store_mall_directory_outlined,
-                      size: 14, color: taj.textSecondary),
+                  Icon(
+                    Icons.store_mall_directory_outlined,
+                    size: 14,
+                    color: taj.textSecondary,
+                  ),
                   const SizedBox(width: 4),
                   Flexible(
-                    child: Text(u.branch,
-                        style: text.bodySmall
-                            ?.copyWith(color: taj.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      u.branch,
+                      style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -563,11 +571,15 @@ class _UsersScreenState extends State<UsersScreen>
   // 600–1024 — frozen name column + sticky header, horizontal scroll.
   Widget _usersStickyTable(List<_MgUser> users) {
     final text = Theme.of(context).textTheme;
-    Widget head(String s) => Text(s,
-        style: text.bodySmall
-            ?.copyWith(color: context.taj.textSecondary, fontWeight: FontWeight.w600),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis);
+    Widget head(String s) => Text(
+      s,
+      style: text.bodySmall?.copyWith(
+        color: context.taj.textSecondary,
+        fontWeight: FontWeight.w600,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
     return _PinnedGrid(
       frozenWidth: 190,
       frozenHeader: head('المستخدم'),
@@ -585,12 +597,18 @@ class _UsersScreenState extends State<UsersScreen>
             frozen: _userFrozenCell(u),
             cells: [
               _RolePill(role: _roleById(u.roleId)),
-              Text(u.branch,
-                  style: text.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text(_fmtDateTime(u.lastActive),
-                  style: AppThemes.numeralStyle(context, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
+              Text(
+                u.branch,
+                style: text.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                _fmtDateTime(u.lastActive),
+                style: AppThemes.numeralStyle(context, fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               _statusBadge(u.active),
             ],
           ),
@@ -609,15 +627,20 @@ class _UsersScreenState extends State<UsersScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(u.name,
-                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              Text('@${u.username}',
-                  style: text.bodySmall
-                      ?.copyWith(color: context.taj.textSecondary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
+              Text(
+                u.name,
+                style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '@${u.username}',
+                style: text.bodySmall?.copyWith(
+                  color: context.taj.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
@@ -651,10 +674,12 @@ class _UsersScreenState extends State<UsersScreen>
               _userFrozenCell(u),
               _RolePill(role: _roleById(u.roleId)),
               Text(u.branch, maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text(_fmtDateTime(u.lastActive),
-                  style: AppThemes.numeralStyle(context, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
+              Text(
+                _fmtDateTime(u.lastActive),
+                style: AppThemes.numeralStyle(context, fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: _statusBadge(u.active),
@@ -691,8 +716,8 @@ class _UsersScreenState extends State<UsersScreen>
             child: ListView.separated(
               padding: EdgeInsets.zero,
               itemCount: users.length,
-              separatorBuilder: (_, __) =>
-                  Divider(height: 1, color: taj.divider),
+              separatorBuilder:
+                  (_, __) => Divider(height: 1, color: taj.divider),
               itemBuilder: (_, i) {
                 final u = users[i];
                 return _UserListTile(
@@ -732,14 +757,19 @@ class _UsersScreenState extends State<UsersScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(u.name,
-                              style: text.headlineSmall,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis),
+                          Text(
+                            u.name,
+                            style: text.headlineSmall,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const SizedBox(height: 4),
-                          Text('@${u.username}',
-                              style: text.bodyMedium
-                                  ?.copyWith(color: taj.textSecondary)),
+                          Text(
+                            '@${u.username}',
+                            style: text.bodyMedium?.copyWith(
+                              color: taj.textSecondary,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -754,8 +784,11 @@ class _UsersScreenState extends State<UsersScreen>
                   children: [
                     _detailField('الدور', role.name),
                     _detailField('الفرع', u.branch),
-                    _detailField('آخر نشاط', _fmtDateTime(u.lastActive),
-                        numeral: true),
+                    _detailField(
+                      'آخر نشاط',
+                      _fmtDateTime(u.lastActive),
+                      numeral: true,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -789,12 +822,18 @@ class _UsersScreenState extends State<UsersScreen>
               children: [
                 Row(
                   children: [
-                    Icon(Icons.verified_user_outlined,
-                        size: 18, color: taj.primary.main),
+                    Icon(
+                      Icons.verified_user_outlined,
+                      size: 18,
+                      color: taj.primary.main,
+                    ),
                     const SizedBox(width: 8),
-                    Text('الصلاحيات الفعّالة (حسب الدور)',
-                        style: text.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                      'الصلاحيات الفعّالة (حسب الدور)',
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -812,13 +851,15 @@ class _UsersScreenState extends State<UsersScreen>
                         children: [
                           Row(
                             children: [
-                              Icon(g.icon,
-                                  size: 15, color: taj.textSecondary),
+                              Icon(g.icon, size: 15, color: taj.textSecondary),
                               const SizedBox(width: 6),
-                              Text(g.name,
-                                  style: text.bodySmall?.copyWith(
-                                      color: taj.textSecondary,
-                                      fontWeight: FontWeight.w700)),
+                              Text(
+                                g.name,
+                                style: text.bodySmall?.copyWith(
+                                  color: taj.textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -827,17 +868,17 @@ class _UsersScreenState extends State<UsersScreen>
                             runSpacing: 6,
                             children: [
                               for (final p in g.perms)
-                                if (granted.contains(p.id))
-                                  _PermChip(perm: p),
+                                if (granted.contains(p.id)) _PermChip(perm: p),
                             ],
                           ),
                         ],
                       ),
                     ),
                 if (granted.isEmpty)
-                  Text('لا صلاحيات ممنوحة لهذا الدور.',
-                      style:
-                          text.bodyMedium?.copyWith(color: taj.textSecondary)),
+                  Text(
+                    'لا صلاحيات ممنوحة لهذا الدور.',
+                    style: text.bodyMedium?.copyWith(color: taj.textSecondary),
+                  ),
               ],
             ),
           ),
@@ -854,13 +895,15 @@ class _UsersScreenState extends State<UsersScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label,
-            style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+        Text(label, style: text.bodySmall?.copyWith(color: taj.textSecondary)),
         const SizedBox(height: 4),
-        Text(value,
-            style: numeral
-                ? AppThemes.numeralStyle(context, fontSize: 15)
-                : text.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+        Text(
+          value,
+          style:
+              numeral
+                  ? AppThemes.numeralStyle(context, fontSize: 15)
+                  : text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -926,13 +969,18 @@ class _UsersScreenState extends State<UsersScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(u.name,
-                                style: text.titleLarge,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis),
-                            Text('@${u.username}',
-                                style: text.bodyMedium
-                                    ?.copyWith(color: taj.textSecondary)),
+                            Text(
+                              u.name,
+                              style: text.titleLarge,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '@${u.username}',
+                              style: text.bodyMedium?.copyWith(
+                                color: taj.textSecondary,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -946,14 +994,20 @@ class _UsersScreenState extends State<UsersScreen>
                     children: [
                       _detailField('الدور', role.name),
                       _detailField('الفرع', u.branch),
-                      _detailField('آخر نشاط', _fmtDateTime(u.lastActive),
-                          numeral: true),
+                      _detailField(
+                        'آخر نشاط',
+                        _fmtDateTime(u.lastActive),
+                        numeral: true,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Text('الصلاحيات الفعّالة',
-                      style: text.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(
+                    'الصلاحيات الفعّالة',
+                    style: text.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
@@ -963,9 +1017,12 @@ class _UsersScreenState extends State<UsersScreen>
                         for (final p in g.perms)
                           if (granted.contains(p.id)) _PermChip(perm: p),
                       if (granted.isEmpty)
-                        Text('لا صلاحيات.',
-                            style: text.bodyMedium
-                                ?.copyWith(color: taj.textSecondary)),
+                        Text(
+                          'لا صلاحيات.',
+                          style: text.bodyMedium?.copyWith(
+                            color: taj.textSecondary,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -1019,9 +1076,10 @@ class _UsersScreenState extends State<UsersScreen>
     // Dialog width caps per size class (≤560 tablet · ≤640 laptop · ≤720 wide;
     // full-width on a phone, handled inside _cappedDialog).
     final sw = MediaQuery.sizeOf(context).width;
-    final maxW = sw < AppBreakpoints.tablet
-        ? AppBreakpoints.userDialogNarrow
-        : sw < AppBreakpoints.laptop
+    final maxW =
+        sw < AppBreakpoints.tablet
+            ? AppBreakpoints.userDialogNarrow
+            : sw < AppBreakpoints.laptop
             ? AppBreakpoints.userDialogMid
             : AppBreakpoints.userDialogMax;
     final saved = await _cappedDialog<bool>(
@@ -1038,7 +1096,9 @@ class _UsersScreenState extends State<UsersScreen>
               label: 'الاسم الكامل',
               child: TextField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(hintText: 'مثال: سالم أبوبكر'),
+                decoration: const InputDecoration(
+                  hintText: 'مثال: سالم أبوبكر',
+                ),
               ),
             );
             final userField = _LabeledField(
@@ -1051,7 +1111,7 @@ class _UsersScreenState extends State<UsersScreen>
             final roleField = _LabeledField(
               label: 'الدور',
               child: DropdownButtonFormField<String>(
-                value: roleId,
+                value: roleId, // ignore: deprecated_member_use
                 isExpanded: true,
                 items: [
                   for (final r in _roles)
@@ -1063,7 +1123,7 @@ class _UsersScreenState extends State<UsersScreen>
             final branchField = _LabeledField(
               label: 'الفرع',
               child: DropdownButtonFormField<String>(
-                value: branch,
+                value: branch, // ignore: deprecated_member_use
                 isExpanded: true,
                 items: [
                   for (final b in _branches)
@@ -1072,19 +1132,20 @@ class _UsersScreenState extends State<UsersScreen>
                 onChanged: (v) => setLocal(() => branch = v ?? branch),
               ),
             );
-            Widget pair(Widget a, Widget b) => twoCol
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: a),
-                      const SizedBox(width: 14),
-                      Expanded(child: b),
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [a, const SizedBox(height: 14), b],
-                  );
+            Widget pair(Widget a, Widget b) =>
+                twoCol
+                    ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: a),
+                        const SizedBox(width: 14),
+                        Expanded(child: b),
+                      ],
+                    )
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [a, const SizedBox(height: 14), b],
+                    );
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
@@ -1113,14 +1174,18 @@ class _UsersScreenState extends State<UsersScreen>
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.info_outline_rounded,
-                          size: 18, color: ctx.taj.accentFor(taj.info)),
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 18,
+                        color: ctx.taj.accentFor(taj.info),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'الصلاحيات المبدئية تُشتقّ من الدور المختار، ويمكن تعديلها لاحقًا من تبويب الأدوار والصلاحيات.',
-                          style: text.bodySmall
-                              ?.copyWith(color: ctx.taj.accentFor(taj.info)),
+                          style: text.bodySmall?.copyWith(
+                            color: ctx.taj.accentFor(taj.info),
+                          ),
                         ),
                       ),
                     ],
@@ -1209,8 +1274,7 @@ class _UsersScreenState extends State<UsersScreen>
             time: DateTime.now(),
             before:
                 '{"role":"${_roleById(existing.roleId).name}","active":${existing.active}}',
-            after:
-                '{"role":"${_roleById(roleId).name}","active":$active}',
+            after: '{"role":"${_roleById(roleId).name}","active":$active}',
           ),
         );
       }
@@ -1228,9 +1292,7 @@ class _UsersScreenState extends State<UsersScreen>
         final useMatrix = w >= AppBreakpoints.permissionMatrixMin;
         return Column(
           children: [
-            Expanded(
-              child: useMatrix ? _matrixView(w) : _groupedView(w, h),
-            ),
+            Expanded(child: useMatrix ? _matrixView(w) : _groupedView(w, h)),
             if (_dirty) _saveBar(),
           ],
         );
@@ -1250,25 +1312,24 @@ class _UsersScreenState extends State<UsersScreen>
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: Row(
             children: [
-              Icon(Icons.edit_note_rounded,
-                  size: 20, color: taj.accentFor(taj.warning)),
+              Icon(
+                Icons.edit_note_rounded,
+                size: 20,
+                color: taj.accentFor(taj.warning),
+              ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('تغييرات غير محفوظة',
-                    style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
+                child: Text(
+                  'تغييرات غير محفوظة',
+                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 8),
-              TextButton(
-                onPressed: _discardGrants,
-                child: const Text('تجاهل'),
-              ),
+              TextButton(onPressed: _discardGrants, child: const Text('تجاهل')),
               const SizedBox(width: 6),
-              FilledButton(
-                onPressed: _saveGrants,
-                child: const Text('حفظ'),
-              ),
+              FilledButton(onPressed: _saveGrants, child: const Text('حفظ')),
             ],
           ),
         ),
@@ -1280,9 +1341,10 @@ class _UsersScreenState extends State<UsersScreen>
   Widget _matrixView(double w) {
     final pad = pagePaddingForWidth(w);
     final showAll = w >= AppBreakpoints.permissionMatrixFull;
-    final visibleRoles = showAll
-        ? _roles
-        : _roles.where((r) => _visibleRoleIds.contains(r.id)).toList();
+    final visibleRoles =
+        showAll
+            ? _roles
+            : _roles.where((r) => _visibleRoleIds.contains(r.id)).toList();
     return PageContainer(
       maxWidth: AppBreakpoints.usersContentMaxWidth,
       child: Padding(
@@ -1311,11 +1373,19 @@ class _UsersScreenState extends State<UsersScreen>
       children: [
         Row(
           children: [
-            Icon(Icons.view_column_outlined, size: 16, color: taj.textSecondary),
+            Icon(
+              Icons.view_column_outlined,
+              size: 16,
+              color: taj.textSecondary,
+            ),
             const SizedBox(width: 6),
-            Text('الأدوار المعروضة',
-                style: text.bodySmall
-                    ?.copyWith(color: taj.textSecondary, fontWeight: FontWeight.w600)),
+            Text(
+              'الأدوار المعروضة',
+              style: text.bodySmall?.copyWith(
+                color: taj.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -1364,11 +1434,14 @@ class _UsersScreenState extends State<UsersScreen>
                   Icon(g.icon, size: 16, color: taj.textSecondary),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(g.name,
-                        style: text.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      g.name,
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -1387,9 +1460,7 @@ class _UsersScreenState extends State<UsersScreen>
               _GridRow(
                 height: 66,
                 frozen: _permNameCell(p),
-                cells: [
-                  for (final r in roles) _checkCell(r, p),
-                ],
+                cells: [for (final r in roles) _checkCell(r, p)],
               ),
             );
           }
@@ -1397,9 +1468,13 @@ class _UsersScreenState extends State<UsersScreen>
         return _PinnedGrid(
           frozenWidth: nameW.toDouble(),
           headerHeight: 52,
-          frozenHeader: Text('الصلاحية',
-              style: text.bodySmall?.copyWith(
-                  color: taj.textSecondary, fontWeight: FontWeight.w700)),
+          frozenHeader: Text(
+            'الصلاحية',
+            style: text.bodySmall?.copyWith(
+              color: taj.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           cols: [
             for (final r in roles)
               _GridCol(
@@ -1422,16 +1497,21 @@ class _UsersScreenState extends State<UsersScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(r.name,
-              style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center),
+          Text(
+            r.name,
+            style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
           if (r.locked)
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Icon(Icons.lock_outline_rounded,
-                  size: 12, color: taj.textDisabled),
+              child: Icon(
+                Icons.lock_outline_rounded,
+                size: 12,
+                color: taj.textDisabled,
+              ),
             ),
         ],
       ),
@@ -1449,27 +1529,34 @@ class _UsersScreenState extends State<UsersScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Text(p.name,
-                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
+              child: Text(
+                p.name,
+                style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             if (p.sensitive)
               Padding(
                 padding: const EdgeInsetsDirectional.only(start: 4),
                 child: Tooltip(
                   message: 'صلاحية حسّاسة',
-                  child: Icon(Icons.shield_outlined,
-                      size: 14, color: taj.accentFor(taj.warning)),
+                  child: Icon(
+                    Icons.shield_outlined,
+                    size: 14,
+                    color: taj.accentFor(taj.warning),
+                  ),
                 ),
               ),
           ],
         ),
         if (p.description.isNotEmpty)
-          Text(p.description,
-              style: text.bodySmall?.copyWith(color: taj.textSecondary),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
+          Text(
+            p.description,
+            style: text.bodySmall?.copyWith(color: taj.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
       ],
     );
   }
@@ -1518,14 +1605,18 @@ class _UsersScreenState extends State<UsersScreen>
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.lock_outline_rounded,
-                            size: 16, color: taj.textDisabled),
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          size: 16,
+                          color: taj.textDisabled,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'دور «${role.name}» يملك وصولًا كاملًا موروثًا ولا يمكن تعديل صلاحياته.',
-                            style: text.bodySmall
-                                ?.copyWith(color: taj.textSecondary),
+                            style: text.bodySmall?.copyWith(
+                              color: taj.textSecondary,
+                            ),
                           ),
                         ),
                       ],
@@ -1538,9 +1629,7 @@ class _UsersScreenState extends State<UsersScreen>
             child: ListView(
               key: const Key('perm-groups-list'),
               padding: EdgeInsets.fromLTRB(pad, 0, pad, 16),
-              children: [
-                for (final g in _permGroups) _groupExpansion(g, role),
-              ],
+              children: [for (final g in _permGroups) _groupExpansion(g, role)],
             ),
           ),
         ],
@@ -1573,21 +1662,22 @@ class _UsersScreenState extends State<UsersScreen>
     final text = Theme.of(context).textTheme;
     return Row(
       children: [
-        Text('الدور:',
-            style:
-                text.bodyMedium?.copyWith(color: taj.textSecondary)),
+        Text(
+          'الدور:',
+          style: text.bodyMedium?.copyWith(color: taj.textSecondary),
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: DropdownButtonFormField<String>(
-            value: _selectedRoleId,
+            value: _selectedRoleId, // ignore: deprecated_member_use
             isExpanded: true,
             decoration: const InputDecoration(isDense: true),
             items: [
               for (final r in _roles)
                 DropdownMenuItem(value: r.id, child: Text(r.name)),
             ],
-            onChanged: (v) =>
-                setState(() => _selectedRoleId = v ?? _selectedRoleId),
+            onChanged:
+                (v) => setState(() => _selectedRoleId = v ?? _selectedRoleId),
           ),
         ),
       ],
@@ -1606,21 +1696,27 @@ class _UsersScreenState extends State<UsersScreen>
         border: Border.all(color: taj.divider),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: g == _permGroups.first,
-          leading: Icon(g.icon, color: taj.primary.main),
-          title: Text(g.name,
-              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-          subtitle: Text(
-            '${arNum(count)} من ${arNum(g.perms.length)} مفعّلة',
-            style: text.bodySmall?.copyWith(color: taj.textSecondary),
+      // The card paints its own background: the ExpansionTile's internal
+      // ListTile needs a Material of its own in here, otherwise it would paint
+      // on (and be hidden by) this DecoratedBox.
+      child: Material(
+        type: MaterialType.transparency,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            initiallyExpanded: g == _permGroups.first,
+            leading: Icon(g.icon, color: taj.primary.main),
+            title: Text(
+              g.name,
+              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              '${arNum(count)} من ${arNum(g.perms.length)} مفعّلة',
+              style: text.bodySmall?.copyWith(color: taj.textSecondary),
+            ),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
+            children: [for (final p in g.perms) _permSwitchRow(role, p)],
           ),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
-          children: [
-            for (final p in g.perms) _permSwitchRow(role, p),
-          ],
         ),
       ),
     );
@@ -1642,17 +1738,22 @@ class _UsersScreenState extends State<UsersScreen>
                 Row(
                   children: [
                     Flexible(
-                      child: Text(p.name,
-                          style: text.bodyLarge,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        p.name,
+                        style: text.bodyLarge,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     if (p.sensitive) ...[
                       const SizedBox(width: 6),
                       Tooltip(
                         message: 'صلاحية حسّاسة',
-                        child: Icon(Icons.shield_outlined,
-                            size: 15, color: taj.accentFor(taj.warning)),
+                        child: Icon(
+                          Icons.shield_outlined,
+                          size: 15,
+                          color: taj.accentFor(taj.warning),
+                        ),
                       ),
                     ],
                   ],
@@ -1660,11 +1761,12 @@ class _UsersScreenState extends State<UsersScreen>
                 if (p.description.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text(p.description,
-                        style: text.bodySmall
-                            ?.copyWith(color: taj.textSecondary),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      p.description,
+                      style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
               ],
             ),
@@ -1672,8 +1774,7 @@ class _UsersScreenState extends State<UsersScreen>
           const SizedBox(width: 12),
           Switch(
             value: on,
-            onChanged:
-                role.locked ? null : (v) => _setGrant(role.id, p, v),
+            onChanged: role.locked ? null : (v) => _setGrant(role.id, p, v),
           ),
         ],
       ),
@@ -1717,8 +1818,11 @@ class _UsersScreenState extends State<UsersScreen>
           backgroundColor: taj.paper,
           title: Row(
             children: [
-              Icon(Icons.shield_outlined,
-                  color: taj.accentFor(taj.warning), size: 22),
+              Icon(
+                Icons.shield_outlined,
+                color: taj.accentFor(taj.warning),
+                size: 22,
+              ),
               const SizedBox(width: 10),
               const Expanded(child: Text('صلاحية حسّاسة')),
             ],
@@ -1773,9 +1877,10 @@ class _UsersScreenState extends State<UsersScreen>
     );
   }
 
-  List<_Audit> get _filteredAudit => _auditActionFilter == null
-      ? _audit
-      : _audit.where((a) => a.action == _auditActionFilter).toList();
+  List<_Audit> get _filteredAudit =>
+      _auditActionFilter == null
+          ? _audit
+          : _audit.where((a) => a.action == _auditActionFilter).toList();
 
   Widget _auditToolbar(double w, double h) {
     final taj = context.taj;
@@ -1820,9 +1925,13 @@ class _UsersScreenState extends State<UsersScreen>
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: Text('نوع الحدث:',
-              style: text.bodyMedium?.copyWith(
-                  color: taj.textSecondary, fontWeight: FontWeight.w600)),
+          child: Text(
+            'نوع الحدث:',
+            style: text.bodyMedium?.copyWith(
+              color: taj.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(child: chips),
@@ -1876,20 +1985,26 @@ class _UsersScreenState extends State<UsersScreen>
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('كل الأحداث'),
-                        trailing: _auditActionFilter == null
-                            ? Icon(Icons.check_rounded,
-                                color: taj.primary.main)
-                            : null,
+                        trailing:
+                            _auditActionFilter == null
+                                ? Icon(
+                                  Icons.check_rounded,
+                                  color: taj.primary.main,
+                                )
+                                : null,
                         onTap: () => pick(null),
                       ),
                       for (final a in actions)
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(a),
-                          trailing: _auditActionFilter == a
-                              ? Icon(Icons.check_rounded,
-                                  color: taj.primary.main)
-                              : null,
+                          trailing:
+                              _auditActionFilter == a
+                                  ? Icon(
+                                    Icons.check_rounded,
+                                    color: taj.primary.main,
+                                  )
+                                  : null,
                           onTap: () => pick(a),
                         ),
                     ],
@@ -1941,37 +2056,55 @@ class _UsersScreenState extends State<UsersScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(a.action,
-                            style: text.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        Text(a.actor,
-                            style: text.bodySmall
-                                ?.copyWith(color: taj.textSecondary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
+                        Text(
+                          a.action,
+                          style: text.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          a.actor,
+                          style: text.bodySmall?.copyWith(
+                            color: taj.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(_fmtDateTime(a.time),
-                      style: AppThemes.numeralStyle(context, fontSize: 12)
-                          .copyWith(color: taj.textSecondary)),
+                  Text(
+                    _fmtDateTime(a.time),
+                    style: AppThemes.numeralStyle(
+                      context,
+                      fontSize: 12,
+                    ).copyWith(color: taj.textSecondary),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(a.target,
-                  style: text.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(
+                a.target,
+                style: text.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.chevron_left_rounded,
-                      size: 16, color: taj.textSecondary),
+                  Icon(
+                    Icons.chevron_left_rounded,
+                    size: 16,
+                    color: taj.textSecondary,
+                  ),
                   Expanded(
-                    child: Text('التفاصيل (قبل / بعد)',
-                        style: text.bodySmall
-                            ?.copyWith(color: taj.textSecondary)),
+                    child: Text(
+                      'التفاصيل (قبل / بعد)',
+                      style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                    ),
                   ),
                 ],
               ),
@@ -1985,13 +2118,21 @@ class _UsersScreenState extends State<UsersScreen>
   Widget _auditTable(List<_Audit> entries) {
     final text = Theme.of(context).textTheme;
     final taj = context.taj;
-    Widget head(String s) => Text(s,
-        style: text.bodySmall
-            ?.copyWith(color: taj.textSecondary, fontWeight: FontWeight.w600),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis);
-    Widget clamp2(String s) => Text(s,
-        style: text.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis);
+    Widget head(String s) => Text(
+      s,
+      style: text.bodySmall?.copyWith(
+        color: taj.textSecondary,
+        fontWeight: FontWeight.w600,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+    Widget clamp2(String s) => Text(
+      s,
+      style: text.bodySmall,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
     return _PinnedGrid(
       frozenWidth: 150,
       frozenHeader: head('الوقت'),
@@ -2007,17 +2148,31 @@ class _UsersScreenState extends State<UsersScreen>
           _GridRow(
             height: 66,
             onTap: () => _openAuditDetail(a),
-            frozen: Text(_fmtDateTime(a.time),
-                style: AppThemes.numeralStyle(context, fontSize: 13),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
+            frozen: Text(
+              _fmtDateTime(a.time),
+              style: AppThemes.numeralStyle(context, fontSize: 13),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             cells: [
-              Text(a.actor,
-                  style: text.bodyMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
-              Text(a.action,
-                  style: text.bodyMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
-              Text(a.target,
-                  style: text.bodyMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(
+                a.actor,
+                style: text.bodyMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                a.action,
+                style: text.bodyMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                a.target,
+                style: text.bodyMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               clamp2(a.before),
               clamp2(a.after),
             ],
@@ -2035,25 +2190,29 @@ class _UsersScreenState extends State<UsersScreen>
         final taj = ctx.taj;
         final text = Theme.of(ctx).textTheme;
         Widget block(String label, String value, TajStatus tint) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(label,
-                    style: text.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: ctx.taj.swatch(tint).lighter,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(value,
-                      style: text.bodyMedium
-                          ?.copyWith(color: ctx.taj.accentFor(ctx.taj.swatch(tint)))),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              label,
+              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: ctx.taj.swatch(tint).lighter,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                value,
+                style: text.bodyMedium?.copyWith(
+                  color: ctx.taj.accentFor(ctx.taj.swatch(tint)),
                 ),
-              ],
-            );
+              ),
+            ),
+          ],
+        );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -2087,9 +2246,9 @@ class _UsersScreenState extends State<UsersScreen>
 
   // ---- Shared bits ----------------------------------------------------------
   Widget _statusBadge(bool active) => StatusBadge(
-        label: active ? 'نشط' : 'معطّل',
-        status: active ? TajStatus.success : TajStatus.error,
-      );
+    label: active ? 'نشط' : 'معطّل',
+    status: active ? TajStatus.success : TajStatus.error,
+  );
 }
 
 // ===========================================================================
@@ -2114,8 +2273,10 @@ Future<T?> _cappedDialog<T>(
           final insets = MediaQuery.viewInsetsOf(ctx).bottom;
           final maxH = (size.height - insets) * 0.9;
           return Dialog(
-            insetPadding:
-                EdgeInsets.symmetric(horizontal: phone ? 8 : 24, vertical: 24),
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: phone ? 8 : 24,
+              vertical: 24,
+            ),
             backgroundColor: taj.paper,
             child: Padding(
               padding: EdgeInsets.only(bottom: insets),
@@ -2126,15 +2287,21 @@ Future<T?> _cappedDialog<T>(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(20, 14, 8, 8),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        20,
+                        14,
+                        8,
+                        8,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
-                            child: Text(title,
-                                style: Theme.of(ctx).textTheme.titleLarge,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              title,
+                              style: Theme.of(ctx).textTheme.titleLarge,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           IconButton(
                             onPressed: () => Navigator.of(ctx).pop(),
@@ -2249,12 +2416,12 @@ class _PinnedGridState extends State<_PinnedGrid> {
     final frozenW = widget.frozenWidth;
 
     Widget headerCell(_GridCol col) => SizedBox(
-          width: col.width,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.symmetric(horizontal: 8),
-            child: Align(alignment: col.alignment, child: col.header),
-          ),
-        );
+      width: col.width,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.symmetric(horizontal: 8),
+        child: Align(alignment: col.alignment, child: col.header),
+      ),
+    );
 
     final header = Container(
       decoration: BoxDecoration(
@@ -2281,7 +2448,9 @@ class _PinnedGridState extends State<_PinnedGrid> {
               physics: const NeverScrollableScrollPhysics(),
               child: SizedBox(
                 width: restWidth,
-                child: Row(children: [for (final c in widget.cols) headerCell(c)]),
+                child: Row(
+                  children: [for (final c in widget.cols) headerCell(c)],
+                ),
               ),
             ),
           ),
@@ -2290,51 +2459,51 @@ class _PinnedGridState extends State<_PinnedGrid> {
     );
 
     Widget frozenCell(_GridRow r) => GestureDetector(
-          onTap: r.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            width: frozenW,
-            height: r.height,
-            decoration: BoxDecoration(
-              color: r.background,
-              border: Border(bottom: BorderSide(color: taj.divider)),
-            ),
-            padding: const EdgeInsetsDirectional.symmetric(horizontal: 12),
-            alignment: AlignmentDirectional.centerStart,
-            child: r.frozen,
-          ),
-        );
+      onTap: r.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: frozenW,
+        height: r.height,
+        decoration: BoxDecoration(
+          color: r.background,
+          border: Border(bottom: BorderSide(color: taj.divider)),
+        ),
+        padding: const EdgeInsetsDirectional.symmetric(horizontal: 12),
+        alignment: AlignmentDirectional.centerStart,
+        child: r.frozen,
+      ),
+    );
 
     Widget restRow(_GridRow r) => GestureDetector(
-          onTap: r.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            height: r.height,
-            decoration: BoxDecoration(
-              color: r.background,
-              border: Border(bottom: BorderSide(color: taj.divider)),
-            ),
-            child: Row(
-              children: [
-                for (var i = 0; i < widget.cols.length; i++)
-                  SizedBox(
-                    width: widget.cols[i].width,
-                    height: r.height,
-                    child: Padding(
-                      padding:
-                          const EdgeInsetsDirectional.symmetric(horizontal: 8),
-                      child: Align(
-                        alignment: widget.cols[i].alignment,
-                        child: i < r.cells.length
+      onTap: r.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: r.height,
+        decoration: BoxDecoration(
+          color: r.background,
+          border: Border(bottom: BorderSide(color: taj.divider)),
+        ),
+        child: Row(
+          children: [
+            for (var i = 0; i < widget.cols.length; i++)
+              SizedBox(
+                width: widget.cols[i].width,
+                height: r.height,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.symmetric(horizontal: 8),
+                  child: Align(
+                    alignment: widget.cols[i].alignment,
+                    child:
+                        i < r.cells.length
                             ? r.cells[i]
                             : const SizedBox.shrink(),
-                      ),
-                    ),
                   ),
-              ],
-            ),
-          ),
-        );
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
 
     final body = SingleChildScrollView(
       child: Row(
@@ -2398,9 +2567,10 @@ class _CheckTarget extends StatelessWidget {
       color = taj.textDisabled;
     }
     return Tooltip(
-      message: locked
-          ? 'موروثة — لا يمكن تعطيلها'
-          : (value ? 'ممنوحة' : 'غير ممنوحة'),
+      message:
+          locked
+              ? 'موروثة — لا يمكن تعطيلها'
+              : (value ? 'ممنوحة' : 'غير ممنوحة'),
       child: InkResponse(
         onTap: onTap,
         radius: 24,
@@ -2461,14 +2631,20 @@ class _RolePill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (role.locked) ...[
-            Icon(Icons.lock_outline_rounded, size: 12, color: taj.textSecondary),
+            Icon(
+              Icons.lock_outline_rounded,
+              size: 12,
+              color: taj.textSecondary,
+            ),
             const SizedBox(width: 4),
           ],
           Flexible(
-            child: Text(role.name,
-                style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              role.name,
+              style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -2490,24 +2666,26 @@ class _PermChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: sensitive ? taj.warning.lighter : taj.background,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-            color: sensitive ? taj.warning.light : taj.divider),
+        border: Border.all(color: sensitive ? taj.warning.light : taj.divider),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (sensitive) ...[
-            Icon(Icons.shield_outlined,
-                size: 12, color: taj.accentFor(taj.warning)),
+            Icon(
+              Icons.shield_outlined,
+              size: 12,
+              color: taj.accentFor(taj.warning),
+            ),
             const SizedBox(width: 4),
           ],
-          Text(perm.name,
-              style: text.bodySmall?.copyWith(
-                color: sensitive
-                    ? taj.accentFor(taj.warning)
-                    : taj.textSecondary,
-                fontWeight: FontWeight.w600,
-              )),
+          Text(
+            perm.name,
+            style: text.bodySmall?.copyWith(
+              color: sensitive ? taj.accentFor(taj.warning) : taj.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -2543,16 +2721,20 @@ class _UserListTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(user.name,
-                      style:
-                          text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  Text('${role.name} · ${user.branch}',
-                      style: text.bodySmall
-                          ?.copyWith(color: taj.textSecondary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    user.name,
+                    style: text.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${role.name} · ${user.branch}',
+                    style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -2585,9 +2767,13 @@ class _LabeledField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label,
-            style: text.bodySmall?.copyWith(
-                color: taj.textSecondary, fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: text.bodySmall?.copyWith(
+            color: taj.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 6),
         child,
       ],
@@ -2619,9 +2805,9 @@ class _ChipDivider extends StatelessWidget {
   const _ChipDivider();
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 28,
-        child: VerticalDivider(width: 12, color: context.taj.divider),
-      );
+    height: 28,
+    child: VerticalDivider(width: 12, color: context.taj.divider),
+  );
 }
 
 /// Applies a text theme wrapper (no-op passthrough kept for readability).
@@ -2683,16 +2869,15 @@ class _MgUser {
     String? branch,
     bool? active,
     DateTime? lastActive,
-  }) =>
-      _MgUser(
-        id: id,
-        name: name ?? this.name,
-        username: username ?? this.username,
-        roleId: roleId ?? this.roleId,
-        branch: branch ?? this.branch,
-        active: active ?? this.active,
-        lastActive: lastActive ?? this.lastActive,
-      );
+  }) => _MgUser(
+    id: id,
+    name: name ?? this.name,
+    username: username ?? this.username,
+    roleId: roleId ?? this.roleId,
+    branch: branch ?? this.branch,
+    active: active ?? this.active,
+    lastActive: lastActive ?? this.lastActive,
+  );
 }
 
 class _Audit {
@@ -2728,30 +2913,58 @@ const _roles = <_Role>[
 const _permGroups = <_PermGroup>[
   _PermGroup('المبيعات', Icons.receipt_long_outlined, [
     _Perm('sales_create', 'إنشاء فاتورة بيع', 'تسجيل عملية بيع جديدة'),
-    _Perm('sales_edit_price', 'تعديل السعر', 'تغيير سعر بند يدويًا',
-        sensitive: true),
-    _Perm('sales_discount', 'تطبيق خصم يدوي', 'منح خصم على الفاتورة',
-        sensitive: true),
-    _Perm('sales_refund', 'استرداد / مرتجع', 'إرجاع الأموال للعميل',
-        sensitive: true),
+    _Perm(
+      'sales_edit_price',
+      'تعديل السعر',
+      'تغيير سعر بند يدويًا',
+      sensitive: true,
+    ),
+    _Perm(
+      'sales_discount',
+      'تطبيق خصم يدوي',
+      'منح خصم على الفاتورة',
+      sensitive: true,
+    ),
+    _Perm(
+      'sales_refund',
+      'استرداد / مرتجع',
+      'إرجاع الأموال للعميل',
+      sensitive: true,
+    ),
   ]),
   _PermGroup('نقطة البيع', Icons.storefront_outlined, [
     _Perm('pos_open', 'فتح نقطة البيع', 'بدء وردية وفتح الصندوق'),
     _Perm('pos_execute', 'تنفيذ عملية بيع', 'إتمام الدفع والبيع'),
-    _Perm('pos_discount', 'خصم في نقطة البيع', 'خصم سريع أثناء البيع',
-        sensitive: true),
+    _Perm(
+      'pos_discount',
+      'خصم في نقطة البيع',
+      'خصم سريع أثناء البيع',
+      sensitive: true,
+    ),
     _Perm('pos_void', 'إلغاء عملية', 'إبطال فاتورة قبل الدفع', sensitive: true),
-    _Perm('pos_return', 'إرجاع صنف', 'إرجاع صنف في نقطة البيع', sensitive: true),
+    _Perm(
+      'pos_return',
+      'إرجاع صنف',
+      'إرجاع صنف في نقطة البيع',
+      sensitive: true,
+    ),
     _Perm('pos_hold', 'تعليق الطلب', 'حفظ الطلب مؤقتًا'),
     _Perm('pos_print', 'طباعة الإيصال', 'إعادة طباعة إيصال البيع'),
-    _Perm('pos_review_closing', 'مراجعة الإغلاق اليومي',
-        'اعتماد إغلاق وردية الصندوق',
-        sensitive: true),
+    _Perm(
+      'pos_review_closing',
+      'مراجعة الإغلاق اليومي',
+      'اعتماد إغلاق وردية الصندوق',
+      sensitive: true,
+    ),
   ]),
   _PermGroup('المخزون', Icons.inventory_2_outlined, [
     _Perm('inv_view', 'عرض المخزون', 'الاطلاع على الأرصدة'),
-    _Perm('inv_adjust', 'تسوية المخزون', 'تعديل الكميات بعد الجرد',
-        sensitive: true),
+    _Perm(
+      'inv_adjust',
+      'تسوية المخزون',
+      'تعديل الكميات بعد الجرد',
+      sensitive: true,
+    ),
     _Perm('inv_transfer', 'تحويل بين الفروع', 'نقل بضاعة بين المستودعات'),
     _Perm('inv_count', 'جرد المخزون', 'تنفيذ جلسة جرد'),
   ]),
@@ -2767,18 +2980,32 @@ const _permGroups = <_PermGroup>[
     _Perm('pay_advance', 'صرف سلفة', 'منح سلفة لموظف'),
   ]),
   _PermGroup('الإعدادات', Icons.settings_outlined, [
-    _Perm('set_users', 'إدارة المستخدمين', 'إضافة وتعطيل المستخدمين',
-        sensitive: true),
-    _Perm('set_roles', 'تعديل الأدوار والصلاحيات', 'تغيير صلاحيات الأدوار',
-        sensitive: true),
+    _Perm(
+      'set_users',
+      'إدارة المستخدمين',
+      'إضافة وتعطيل المستخدمين',
+      sensitive: true,
+    ),
+    _Perm(
+      'set_roles',
+      'تعديل الأدوار والصلاحيات',
+      'تغيير صلاحيات الأدوار',
+      sensitive: true,
+    ),
     _Perm('set_branches', 'إدارة الفروع', 'إضافة وتعديل الفروع'),
-    _Perm('set_system', 'إعدادات النظام', 'تكوين النظام العام',
-        sensitive: true),
+    _Perm(
+      'set_system',
+      'إعدادات النظام',
+      'تكوين النظام العام',
+      sensitive: true,
+    ),
   ]),
 ];
 
-Set<String> get _allPermIds =>
-    {for (final g in _permGroups) for (final p in g.perms) p.id};
+Set<String> get _allPermIds => {
+  for (final g in _permGroups)
+    for (final p in g.perms) p.id,
+};
 
 final Map<String, Set<String>> _seedGrants = {
   // Admin — full access, inherited/locked.
@@ -2786,23 +3013,40 @@ final Map<String, Set<String>> _seedGrants = {
   // Owner — everything except raw system config.
   'owner': {..._allPermIds}..remove('set_system'),
   'supervisor': {
-    'sales_create', 'sales_discount', 'sales_refund',
-    'pos_open', 'pos_execute', 'pos_discount', 'pos_void', 'pos_return',
-    'pos_hold', 'pos_print', 'pos_review_closing',
-    'inv_view', 'inv_transfer', 'inv_count',
-    'acc_view', 'pay_view',
+    'sales_create',
+    'sales_discount',
+    'sales_refund',
+    'pos_open',
+    'pos_execute',
+    'pos_discount',
+    'pos_void',
+    'pos_return',
+    'pos_hold',
+    'pos_print',
+    'pos_review_closing',
+    'inv_view',
+    'inv_transfer',
+    'inv_count',
+    'acc_view',
+    'pay_view',
   },
   'accountant': {
-    'acc_view', 'acc_post', 'acc_reverse', 'acc_reports',
-    'pay_view', 'inv_view',
+    'acc_view',
+    'acc_post',
+    'acc_reverse',
+    'acc_reports',
+    'pay_view',
+    'inv_view',
   },
-  'inventory': {
-    'inv_view', 'inv_adjust', 'inv_transfer', 'inv_count',
-  },
+  'inventory': {'inv_view', 'inv_adjust', 'inv_transfer', 'inv_count'},
   // Cashier — mirrors the enforced RBAC: no price edit / discount / refund /
   // reports. POS basics only.
   'cashier': {
-    'sales_create', 'pos_open', 'pos_execute', 'pos_hold', 'pos_print',
+    'sales_create',
+    'pos_open',
+    'pos_execute',
+    'pos_hold',
+    'pos_print',
     'inv_view',
   },
 };

@@ -15,7 +15,7 @@ void main() {
     tester.view.physicalSize = const Size(600, 960);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const TajApp(testSignedIn: true));
+    await tester.pumpWidget(const TajApp(testSignedIn: true, testLicensed: true));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     FlutterError.onError = prev;

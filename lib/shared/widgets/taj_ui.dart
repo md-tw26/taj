@@ -410,32 +410,36 @@ class TajEmptyState extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: taj.background,
-                shape: BoxShape.circle,
-                border: Border.all(color: taj.divider),
+        // Short viewports (a profile tab can be ~120px tall on a landscape
+        // phone) scroll this instead of overflowing.
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: taj.background,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: taj.divider),
+                ),
+                child: Icon(icon, size: 32, color: taj.textDisabled),
               ),
-              child: Icon(icon, size: 32, color: taj.textDisabled),
-            ),
-            const SizedBox(height: 16),
-            Text(title, style: text.titleMedium),
-            if (message != null) ...[
-              const SizedBox(height: 6),
-              Text(message!,
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium?.copyWith(color: taj.textSecondary)),
+              const SizedBox(height: 16),
+              Text(title, style: text.titleMedium),
+              if (message != null) ...[
+                const SizedBox(height: 6),
+                Text(message!,
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium?.copyWith(color: taj.textSecondary)),
+              ],
+              if (actionLabel != null) ...[
+                const SizedBox(height: 20),
+                FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+              ],
             ],
-            if (actionLabel != null) ...[
-              const SizedBox(height: 20),
-              FilledButton(onPressed: onAction, child: Text(actionLabel!)),
-            ],
-          ],
+          ),
         ),
       ),
     );

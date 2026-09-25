@@ -1,5 +1,6 @@
 name: taj
-description: "A new Flutter project."
+description: "تاج — نظام نقاط بيع و ERP عربي أوفلاين (Libya) مبني بـ Flutter مع بوابة تفعيل ترخيص HMAC."
+repository: https://github.com/md-tw26/taj
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -44,10 +45,24 @@ dependencies:
   # Audio playback for sale confirmation sound.
   audioplayers: ^6.1.0
   shared_preferences: ^2.5.3
+  drift: ^2.22.1
+  sqlite3_flutter_libs: ^0.5.28
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+  # Offline license activation gate.
+  crypto: ^3.0.3
+  file_selector: ^1.0.3
+  taj_license_core:
+    path: ../taj_license_core
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  drift_dev: ^2.22.1
+  build_runner: ^2.4.14
+  # Raw SQLite file authoring for the legacy schema-migration test.
+  sqlite3: ^2.4.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

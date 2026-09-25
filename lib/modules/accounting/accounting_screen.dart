@@ -2887,6 +2887,7 @@ Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async 
           final navigator = Navigator.of(ctx);
           await store.addJournalEntry(_buildEntry(store, lines, descCtrl.text,
               refCtrl.text, DemoEntryStatus.draft));
+          if (!ctx.mounted) return;
           navigator.pop();
           messenger.showSnackBar(const SnackBar(
               behavior: SnackBarBehavior.floating,
@@ -2899,6 +2900,7 @@ Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async 
                 final success = ctx.taj.success.dark;
                 await store.addJournalEntry(_buildEntry(store, lines,
                     descCtrl.text, refCtrl.text, DemoEntryStatus.posted));
+                if (!ctx.mounted) return;
                 navigator.pop();
                 messenger.showSnackBar(SnackBar(
                     behavior: SnackBarBehavior.floating,

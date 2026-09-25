@@ -6,6 +6,7 @@
 // through FlutterError and surfaces via `tester.takeException()`, so an
 // unintended overflow at any size fails the corresponding case.
 
+import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -84,11 +85,14 @@ Widget _host(Widget screen) => MaterialApp(
     );
 
 void main() {
+  // Every pumped `TajApp` builds its own isolated database instance.
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
   // Full app (shell + navigation chrome) in each role at every size.
   group('TajApp shell — no overflow at any size', () {
     for (final (label, w, h) in _sizes) {
       testWidgets('admin @ $label ($w×$h)', (tester) async {
-        await _pumpAt(tester, w, h, const TajApp(testSignedIn: true));
+        await _pumpAt(tester, w, h, const TajApp(testSignedIn: true, testLicensed: true));
         expect(tester.takeException(), isNull);
       });
 
@@ -97,7 +101,7 @@ void main() {
           tester,
           w,
           h,
-          const TajApp(testSignedIn: true, testRole: UserRole.cashier),
+          const TajApp(testSignedIn: true, testRole: UserRole.cashier, testLicensed: true),
         );
         expect(tester.takeException(), isNull);
       });
@@ -107,13 +111,13 @@ void main() {
           tester,
           w,
           h,
-          const TajApp(testSignedIn: true, testRole: UserRole.merchant),
+          const TajApp(testSignedIn: true, testRole: UserRole.merchant, testLicensed: true),
         );
         expect(tester.takeException(), isNull);
       });
 
       testWidgets('login @ $label ($w×$h)', (tester) async {
-        await _pumpAt(tester, w, h, const TajApp(testSignedIn: false));
+        await _pumpAt(tester, w, h, const TajApp(testSignedIn: false, testLicensed: true));
         expect(tester.takeException(), isNull);
       });
     }

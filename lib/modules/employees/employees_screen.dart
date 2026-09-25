@@ -9,6 +9,9 @@ import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/database_provider.dart';
+import '../../data/local/app_database.dart';
+import '../../data/repositories/drift_branch_repository.dart';
 import '../../shared/widgets/taj_ui.dart';
 
 /// Employees & Payroll: employee list/table, a dense tabbed profile (salary
@@ -34,6 +37,23 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   String? _branchFilter;
   String _statusFilter = 'all'; // all · paid · unpaid
   final Set<String> _selected = {}; // payroll-run selection
+  List<Branch> _branches = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final db = DatabaseProvider.of(context);
+      final branches = await DriftBranchRepository(db).getAll();
+      if (!mounted) return;
+      setState(() => _branches = branches);
+    });
+  }
 
   DemoStore get _store => DemoStoreProvider.of(context);
 
@@ -66,6 +86,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                       ? _employeesBody(c.maxWidth, c.maxHeight)
                       : _PayrollRun(
                           store: _store,
+                          branches: _branches,
                           width: c.maxWidth,
                           selected: _selected,
                           branchFilter: _branchFilter,
@@ -106,6 +127,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       if (selected != null && _profilePushed) {
         return _EmployeeProfile(
           store: _store,
+          branches: _branches,
           employeeId: selected,
           width: width,
           height: height,
@@ -117,6 +139,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       }
       return _EmployeesList(
         store: _store,
+        branches: _branches,
         employees: employees,
         width: width,
         selectedId: null,
@@ -142,6 +165,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           width: paneWidth.toDouble(),
           child: _EmployeesList(
             store: _store,
+            branches: _branches,
             employees: employees,
             width: paneWidth.toDouble(),
             selectedId: selected,
@@ -162,6 +186,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   message: 'اختر موظفًا من القائمة لعرض ملفه وراتبه.')
               : _EmployeeProfile(
                   store: _store,
+                  branches: _branches,
                   employeeId: selected,
                   width: width - paneWidth.toDouble(),
                   height: height,
@@ -177,7 +202,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   Future<void> _openEmployeeDialog({DemoEmployee? edit}) =>
-      showEmployeeDialog(context, _store, edit: edit);
+      showEmployeeDialog(context, _store, _branches, edit: edit);
 
   Future<void> _openPayDialog(String employeeId) =>
       showPaySalaryDialog(context, _store, employeeId);
@@ -271,6 +296,7 @@ class _SectionChip extends StatelessWidget {
 class _EmployeesList extends StatelessWidget {
   const _EmployeesList({
     required this.store,
+    required this.branches,
     required this.employees,
     required this.width,
     required this.selectedId,
@@ -282,6 +308,7 @@ class _EmployeesList extends StatelessWidget {
     required this.onTap,
   });
   final DemoStore store;
+  final List<Branch> branches;
   final List<DemoEmployee> employees;
   final double width;
   final String? selectedId;
@@ -292,12 +319,61 @@ class _EmployeesList extends StatelessWidget {
   final VoidCallback onAdd;
   final ValueChanged<String> onTap;
 
+  /// Height always reserved for the list itself, so the block above it can
+  /// shrink (and scroll) instead of overflowing on short screens.
+  static const double _minListHeight = 160;
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final compactPane = width < AppBreakpoints.phone; // list-pane cards vs table
 
+    return LayoutBuilder(builder: (context, c) {
+      // On a short viewport (a landscape phone is only ~320px tall) the heading
+      // + KPI cards + filters no longer fit above the list. Cap that block so
+      // the list keeps its room, and let the block scroll rather than overflow.
+      final headerCap = c.maxHeight.isFinite
+          ? math.max(0.0, c.maxHeight - _minListHeight)
+          : double.infinity;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: headerCap),
+            child: SingleChildScrollView(child: _header(text)),
+          ),
+          Expanded(
+            child: employees.isEmpty
+                ? const TajEmptyState(
+                    icon: Icons.badge_outlined,
+                    title: 'لا موظفين',
+                    message: 'لا يوجد موظفون مطابقون للفلاتر الحالية.')
+                : compactPane
+                    ? _EmployeeCards(
+                        store: store,
+                        employees: employees,
+                        selectedId: selectedId,
+                        onTap: onTap)
+                    : Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: _EmployeeTable(
+                          store: store,
+                          branches: branches,
+                          employees: employees,
+                          selectedId: selectedId,
+                          onTap: onTap,
+                        ),
+                      ),
+          ),
+        ],
+      );
+    });
+  }
+
+  /// Everything above the employee list: heading, KPI cards and filters.
+  Widget _header(TextTheme text) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -335,7 +411,7 @@ class _EmployeesList extends StatelessWidget {
                 value: branchFilter,
                 options: [
                   const (null, 'كل الفروع'),
-                  for (final b in store.branches) (b.id, b.city),
+                  for (final b in branches) (b.id, b.city),
                 ],
                 onSelected: onBranch,
               ),
@@ -351,28 +427,6 @@ class _EmployeesList extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        Expanded(
-          child: employees.isEmpty
-              ? const TajEmptyState(
-                  icon: Icons.badge_outlined,
-                  title: 'لا موظفين',
-                  message: 'لا يوجد موظفون مطابقون للفلاتر الحالية.')
-              : compactPane
-                  ? _EmployeeCards(
-                      store: store,
-                      employees: employees,
-                      selectedId: selectedId,
-                      onTap: onTap)
-                  : Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: _EmployeeTable(
-                        store: store,
-                        employees: employees,
-                        selectedId: selectedId,
-                        onTap: onTap,
-                      ),
-                    ),
         ),
       ],
     );
@@ -594,11 +648,13 @@ class _EmployeeCard extends StatelessWidget {
 class _EmployeeTable extends StatelessWidget {
   const _EmployeeTable({
     required this.store,
+    required this.branches,
     required this.employees,
     required this.selectedId,
     required this.onTap,
   });
   final DemoStore store;
+  final List<Branch> branches;
   final List<DemoEmployee> employees;
   final String? selectedId;
   final ValueChanged<String> onTap;
@@ -637,7 +693,7 @@ class _EmployeeTable extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: text.bodySmall),
-              Text(_branchCity(store, e.branchId),
+              Text(_branchCity(branches, e.branchId),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: text.bodySmall?.copyWith(color: taj.textSecondary)),
@@ -662,6 +718,7 @@ class _EmployeeTable extends StatelessWidget {
 class _EmployeeProfile extends StatelessWidget {
   const _EmployeeProfile({
     required this.store,
+    required this.branches,
     required this.employeeId,
     required this.width,
     required this.height,
@@ -671,6 +728,7 @@ class _EmployeeProfile extends StatelessWidget {
     required this.onPay,
   });
   final DemoStore store;
+  final List<Branch> branches;
   final String employeeId;
   final double width;
   final double height;
@@ -696,6 +754,7 @@ class _EmployeeProfile extends StatelessWidget {
         children: [
           _ProfileHeader(
             store: store,
+            branches: branches,
             employee: e,
             compact: compact,
             showBack: showBack,
@@ -724,7 +783,7 @@ class _EmployeeProfile extends StatelessWidget {
               children: [
                 _SalaryBreakdownTab(store: store, employee: e, width: width),
                 _AdvancesTab(store: store, employee: e),
-                _LinkedExpensesTab(store: store, employee: e),
+                _LinkedExpensesTab(store: store, branches: branches, employee: e),
               ],
             ),
           ),
@@ -739,6 +798,7 @@ class _EmployeeProfile extends StatelessWidget {
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.store,
+    required this.branches,
     required this.employee,
     required this.compact,
     required this.showBack,
@@ -747,6 +807,7 @@ class _ProfileHeader extends StatelessWidget {
     required this.onPay,
   });
   final DemoStore store;
+  final List<Branch> branches;
   final DemoEmployee employee;
   final bool compact;
   final bool showBack;
@@ -793,7 +854,7 @@ class _ProfileHeader extends StatelessWidget {
                   Text(employee.title,
                       style:
                           text.bodySmall?.copyWith(color: taj.textSecondary)),
-                  Text(_branchCity(store, employee.branchId),
+                  Text(_branchCity(branches, employee.branchId),
                       style:
                           text.bodySmall?.copyWith(color: taj.textDisabled)),
                   _PayStatusBadge(paid: paid),
@@ -1223,8 +1284,9 @@ class _TxnRow extends StatelessWidget {
 }
 
 class _LinkedExpensesTab extends StatelessWidget {
-  const _LinkedExpensesTab({required this.store, required this.employee});
+  const _LinkedExpensesTab({required this.store, required this.branches, required this.employee});
   final DemoStore store;
+  final List<Branch> branches;
   final DemoEmployee employee;
   @override
   Widget build(BuildContext context) {
@@ -1270,7 +1332,7 @@ class _LinkedExpensesTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('راتب — ${_branchCity(store, x.branchId)}',
+                    Text('راتب — ${_branchCity(branches, x.branchId)}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: text.bodyMedium
@@ -1304,6 +1366,7 @@ class _LinkedExpensesTab extends StatelessWidget {
 class _PayrollRun extends StatelessWidget {
   const _PayrollRun({
     required this.store,
+    required this.branches,
     required this.width,
     required this.selected,
     required this.branchFilter,
@@ -1312,6 +1375,7 @@ class _PayrollRun extends StatelessWidget {
     required this.onClear,
   });
   final DemoStore store;
+  final List<Branch> branches;
   final double width;
   final Set<String> selected;
   final String? branchFilter;
@@ -1350,7 +1414,7 @@ class _PayrollRun extends StatelessWidget {
                 value: branchFilter,
                 options: [
                   const (null, 'كل الفروع'),
-                  for (final b in store.branches) (b.id, b.city),
+                  for (final b in branches) (b.id, b.city),
                 ],
                 onSelected: onBranch,
               ),
@@ -1390,6 +1454,7 @@ class _PayrollRun extends StatelessWidget {
                   for (final id in ids) {
                     await store.paySalary(id);
                   }
+                  if (!context.mounted) return;
                   onClear();
                   messenger.showSnackBar(SnackBar(
                     behavior: SnackBarBehavior.floating,
@@ -2019,11 +2084,18 @@ class _FilterPill<T> extends StatelessWidget {
   }
 }
 
-String _branchCity(DemoStore store, String branchId) => store.branches
+String _branchCity(List<Branch> branches, String branchId) => branches
     .firstWhere((b) => b.id == branchId,
-        orElse: () => store.branches.isEmpty
-            ? const DemoBranch(id: '', name: '—', city: '—')
-            : store.branches.first)
+        orElse: () => branches.isEmpty
+            ? Branch(
+                id: '',
+                name: '—',
+                city: '—',
+                active: false,
+                createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+                updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
+              )
+            : branches.first)
     .city;
 
 String _fmtDate(DateTime d) =>
@@ -2094,8 +2166,11 @@ Future<T?> _empDialog<T>(
                       top: false,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        // A narrow phone dialog is only ~272px wide, so the
+                        // action buttons wrap instead of overflowing.
+                        child: Wrap(
+                          alignment: WrapAlignment.end,
+                          runSpacing: 8,
                           children: actions(ctx),
                         ),
                       ),
@@ -2111,7 +2186,7 @@ Future<T?> _empDialog<T>(
   );
 }
 
-Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
+Future<void> showEmployeeDialog(BuildContext context, DemoStore store, List<Branch> branches,
     {DemoEmployee? edit}) async {
   final name = TextEditingController(text: edit?.name ?? '');
   final title = TextEditingController(text: edit?.title ?? '');
@@ -2123,7 +2198,7 @@ Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
   final overtime = TextEditingController(text: _init(edit?.overtime));
   final deductions = TextEditingController(text: _init(edit?.deductions));
   String branchId = edit?.branchId ??
-      (store.branches.isNotEmpty ? store.branches.first.id : 'b1');
+      (branches.isNotEmpty ? branches.first.id : 'b1');
 
   await _empDialog<void>(
     context,
@@ -2164,10 +2239,10 @@ Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
             _LabeledField(
               label: 'الفرع',
               child: DropdownButtonFormField<String>(
-                value: branchId,
+                value: branchId, // ignore: deprecated_member_use
                 isExpanded: true,
                 items: [
-                  for (final b in store.branches)
+                  for (final b in branches)
                     DropdownMenuItem(value: b.id, child: Text(b.city)),
                 ],
                 onChanged: (v) => setLocal(() => branchId = v ?? branchId),
@@ -2232,6 +2307,7 @@ Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
               deductions: p(deductions),
             ));
           }
+          if (!ctx.mounted) return;
           navigator.pop();
         },
         child: const Text('حفظ'),

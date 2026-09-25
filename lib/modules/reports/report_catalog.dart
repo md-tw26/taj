@@ -4,6 +4,7 @@ import '../../core/demo/demo_models.dart';
 import '../../core/demo/demo_store.dart';
 import '../../core/format.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/local/app_database.dart';
 import '../../shared/widgets/taj_report_table.dart';
 import 'report_models.dart';
 
@@ -22,8 +23,8 @@ DateTime _now() => DateTime.now();
 String _fmtDate(DateTime d) =>
     '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
 
-String _branchName(DemoStore s, String id) {
-  for (final b in s.branches) {
+String _branchName(List<Branch> branches, String id) {
+  for (final b in branches) {
     if (b.id == id) return b.name;
   }
   return id;
@@ -248,7 +249,7 @@ ReportSegment? reportSegmentFor(ReportDef def, DemoStore store) {
 // Financial reports
 // ---------------------------------------------------------------------------
 
-ReportResult _trialBalance(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _trialBalance(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final rows = <ReportRow>[];
   var totalD = 0.0, totalC = 0.0;
   final chartLabels = <String>[];
@@ -309,7 +310,7 @@ ReportResult _trialBalance(BuildContext c, DemoStore s, ReportFilters f) {
   );
 }
 
-ReportResult _incomeStatement(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _incomeStatement(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final rows = <ReportRow>[];
   final columns = const [
     ReportColumn('البيان', sticky: true, minWidth: 200, flex: 3),
@@ -366,7 +367,7 @@ ReportResult _incomeStatement(BuildContext c, DemoStore s, ReportFilters f) {
   );
 }
 
-ReportResult _balanceSheet(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _balanceSheet(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final rows = <ReportRow>[];
   final columns = const [
     ReportColumn('البيان', sticky: true, minWidth: 200, flex: 3),
@@ -430,7 +431,7 @@ ReportResult _balanceSheet(BuildContext c, DemoStore s, ReportFilters f) {
   );
 }
 
-ReportResult _cashFlow(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _cashFlow(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final now = _now();
   final accounts = s.accounts.where((a) => _branchOk(a.branchId, f)).toList();
   final accountIds = accounts.map((a) => a.id).toSet();
@@ -495,7 +496,7 @@ ReportResult _cashFlow(BuildContext c, DemoStore s, ReportFilters f) {
   );
 }
 
-ReportResult _ledger(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _ledger(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final now = _now();
   // Resolve the account: explicit segment, else the first leaf with activity.
   String? accountId = f.segment;
@@ -588,7 +589,7 @@ ReportResult _ledger(BuildContext c, DemoStore s, ReportFilters f) {
   );
 }
 
-ReportResult _journal(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _journal(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final now = _now();
   final columns = const [
     ReportColumn('التاريخ', sticky: true, minWidth: 120, flex: 1),
@@ -648,7 +649,7 @@ ReportResult _journal(BuildContext c, DemoStore s, ReportFilters f) {
 // Tax & Zakat
 // ---------------------------------------------------------------------------
 
-ReportResult _salesTax(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _salesTax(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final now = _now();
   final columns = const [
     ReportColumn('الفرع', sticky: true, minWidth: 180, flex: 3),
@@ -660,7 +661,7 @@ ReportResult _salesTax(BuildContext c, DemoStore s, ReportFilters f) {
   var totalTaxable = 0.0, totalTax = 0.0;
   final chartLabels = <String>[];
   final chartVals = <double>[];
-  for (final b in s.branches) {
+  for (final b in branches) {
     if (!_branchOk(b.id, f)) continue;
     final taxable = s.sales
         .where((sale) =>
@@ -706,7 +707,7 @@ ReportResult _salesTax(BuildContext c, DemoStore s, ReportFilters f) {
   );
 }
 
-ReportResult _zakat(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _zakat(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   double bal(String id) => s.ledgerAccountById(id) == null ? 0 : s.ledgerBalance(id);
   final cash = bal('1101');
   final banks = bal('1102');
@@ -761,7 +762,7 @@ ReportResult _zakat(BuildContext c, DemoStore s, ReportFilters f) {
 // HR
 // ---------------------------------------------------------------------------
 
-ReportResult _payroll(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _payroll(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final columns = const [
     ReportColumn('الموظف', sticky: true, minWidth: 170, flex: 2),
     ReportColumn('المسمى', minWidth: 120, priority: 1),
@@ -837,7 +838,7 @@ ReportResult _payroll(BuildContext c, DemoStore s, ReportFilters f) {
   );
 }
 
-ReportResult _employees(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _employees(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final columns = const [
     ReportColumn('الموظف', sticky: true, minWidth: 170, flex: 2),
     ReportColumn('المسمى', minWidth: 120, priority: 1),
@@ -857,7 +858,7 @@ ReportResult _employees(BuildContext c, DemoStore s, ReportFilters f) {
     rows.add(ReportRow(cells: [
       _t(c, e.name),
       _t(c, e.title, muted: true),
-      _t(c, _branchName(s, e.branchId), muted: true),
+      _t(c, _branchName(branches, e.branchId), muted: true),
       _t(c, e.phone, muted: true),
       _t(c, _fmtDate(e.hireDate), muted: true),
       _t(c, e.active ? 'نشط' : 'موقوف', color: e.active ? c.taj.success.dark : c.taj.textDisabled),
@@ -886,7 +887,7 @@ ReportResult _employees(BuildContext c, DemoStore s, ReportFilters f) {
     chart: ReportChartData(
       type: ReportChartType.donut,
       title: 'التوزيع حسب الفرع',
-      labels: [for (final k in byBranch.keys) _branchName(s, k)],
+      labels: [for (final k in byBranch.keys) _branchName(branches, k)],
       series: [ReportSeries(label: 'الموظفون', color: _palette(c).first, values: byBranch.values.toList())],
     ),
   );
@@ -896,7 +897,7 @@ ReportResult _employees(BuildContext c, DemoStore s, ReportFilters f) {
 // Operations
 // ---------------------------------------------------------------------------
 
-ReportResult _partners(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _partners(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final columns = const [
     ReportColumn('الاسم', sticky: true, minWidth: 180, flex: 2),
     ReportColumn('النوع', minWidth: 90, priority: 0),
@@ -963,7 +964,7 @@ ReportResult _partners(BuildContext c, DemoStore s, ReportFilters f) {
   );
 }
 
-ReportResult _expenses(BuildContext c, DemoStore s, ReportFilters f) {
+ReportResult _expenses(BuildContext c, DemoStore s, ReportFilters f, List<Branch> branches) {
   final now = _now();
   final columns = const [
     ReportColumn('التاريخ', sticky: true, minWidth: 120, flex: 1),
@@ -988,7 +989,7 @@ ReportResult _expenses(BuildContext c, DemoStore s, ReportFilters f) {
     rows.add(ReportRow(cells: [
       _t(c, _fmtDate(e.date)),
       _t(c, e.category),
-      _t(c, _branchName(s, e.branchId), muted: true),
+      _t(c, _branchName(branches, e.branchId), muted: true),
       _t(c, _method(e.method), muted: true),
       _n(c, e.amount),
     ]));

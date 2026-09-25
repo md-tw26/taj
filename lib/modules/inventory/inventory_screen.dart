@@ -117,8 +117,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final store = DemoStoreProvider.of(context);
     for (final item in _activeItems) {
       final delta = _diff(item);
-      if (delta != 0 && item.id.isNotEmpty)
+      if (delta != 0 && item.id.isNotEmpty) {
         await store.adjustStock(item.id, delta);
+      }
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

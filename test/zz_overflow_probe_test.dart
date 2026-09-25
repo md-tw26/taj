@@ -62,14 +62,14 @@ void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   testWidgets('probe admin @ tablet-sm 600x960', (tester) async {
-    await _probe(tester, const Size(600, 960), const TajApp(testSignedIn: true));
+    await _probe(tester, const Size(600, 960), const TajApp(testSignedIn: true, testLicensed: true));
   });
 
   testWidgets('probe merchant @ phone-xs-landscape 568x320', (tester) async {
     await _probe(
       tester,
       const Size(568, 320),
-      const TajApp(testSignedIn: true, testRole: UserRole.merchant),
+      const TajApp(testSignedIn: true, testRole: UserRole.merchant, testLicensed: true),
     );
   });
 
@@ -79,6 +79,7 @@ void main() {
       const Size(390, 844),
       const TajApp(
         testSignedIn: true,
+        testLicensed: true,
         testRole: UserRole.cashier,
         testUserName: 'cashier',
         testInitialCart: {'p1': 2, 'p2': 1, 'p3': 1},
@@ -93,6 +94,7 @@ void main() {
       const Size(390, 844),
       const TajApp(
         testSignedIn: true,
+        testLicensed: true,
         testRole: UserRole.cashier,
         testUserName: 'cashier',
         testInitialCart: {'p1': 2, 'p2': 1, 'p3': 1},

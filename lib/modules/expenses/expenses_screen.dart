@@ -6,6 +6,9 @@ import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/database_provider.dart';
+import '../../data/local/app_database.dart';
+import '../../data/repositories/drift_branch_repository.dart';
 import '../../shared/widgets/taj_filters.dart';
 import '../../shared/widgets/taj_table.dart';
 import '../../shared/widgets/taj_ui.dart';
@@ -75,6 +78,23 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   String _formCategory = 'إيجار';
+  List<Branch> _branches = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final db = DatabaseProvider.of(context);
+      final branches = await DriftBranchRepository(db).getAll();
+      if (!mounted) return;
+      setState(() => _branches = branches);
+    });
+  }
 
   // Static prototype filter, kept as state so the phone "filter" button can
   // surface an active-count badge and a bottom sheet reflecting it.
@@ -85,7 +105,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   List<_Expense> get _storeExpenses {
     final store = DemoStoreProvider.of(context);
     return store.expenses.map((e) {
-      final matches = store.branches.where((b) => b.id == e.branchId).toList();
+      final matches = _branches.where((b) => b.id == e.branchId).toList();
       return _Expense(
         e.category,
         e.amount,
@@ -189,7 +209,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         // viewport, keeping the fields single-column and full-width.
         width: drawerWidth(context, desired: 520),
         backgroundColor: taj.paper,
-        child: _ExpenseForm(category: _formCategory),
+        child: _ExpenseForm(category: _formCategory, branches: _branches),
       ),
       body: LayoutBuilder(
         builder: (context, c) {
@@ -232,6 +252,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       child: _SidePanelFrame(
                         child: _ExpenseForm(
                           category: _formCategory,
+                          branches: _branches,
                           embedded: true,
                         ),
                       ),
@@ -609,8 +630,13 @@ class _SidePanelFrame extends StatelessWidget {
 }
 
 class _ExpenseForm extends StatefulWidget {
-  const _ExpenseForm({required this.category, this.embedded = false});
+  const _ExpenseForm({
+    required this.category,
+    required this.branches,
+    this.embedded = false,
+  });
   final String category;
+  final List<Branch> branches;
 
   /// When embedded as a persistent side panel there is no drawer to pop: the
   /// header shows no close button and saving keeps the panel open.
@@ -675,7 +701,16 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final successColor = taj.success.dark;
     final amount = double.tryParse(_amountController.text) ?? 0;
     if (amount > 0) {
-      final branch = store.branches.first;
+      if (widget.branches.isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('جاري تحميل البيانات، حاول بعد قليل'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+      final branch = widget.branches.first;
       await store.addExpense(
         DemoExpense(
           id: 'EXP-${store.expenses.length + 1}',
@@ -775,7 +810,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final categoryField = _fieldBlock(
       'البند',
       DropdownButtonFormField<String>(
-        value: _category,
+        value: _category, // ignore: deprecated_member_use
         isExpanded: true,
         items: [
           for (final c in _categories)
@@ -800,7 +835,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final branchField = _fieldBlock(
       'الفرع',
       DropdownButtonFormField<String>(
-        value: _branch,
+        value: _branch, // ignore: deprecated_member_use
         isExpanded: true,
         items: const [
           DropdownMenuItem(value: 'طرابلس', child: Text('طرابلس')),
@@ -813,7 +848,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final methodField = _fieldBlock(
       'طريقة الدفع',
       DropdownButtonFormField<String>(
-        value: _method,
+        value: _method, // ignore: deprecated_member_use
         isExpanded: true,
         items: const [
           DropdownMenuItem(value: 'نقدي', child: Text('نقدي')),
@@ -840,7 +875,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             return _fieldBlock(
               'الموظف',
               DropdownButtonFormField<String>(
-                value: value,
+                value: value, // ignore: deprecated_member_use
                 isExpanded: true,
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.person_outline_rounded),

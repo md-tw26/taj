@@ -7,7 +7,7 @@ import 'package:taj/main.dart';
 
 void main() {
   testWidgets('TAJ app renders the dashboard shell in RTL', (tester) async {
-    await tester.pumpWidget(const TajApp(testSignedIn: true));
+    await tester.pumpWidget(const TajApp(testSignedIn: true, testLicensed: true));
     await tester.pumpAndSettle();
 
     // Dashboard section heading is present.

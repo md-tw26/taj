@@ -228,7 +228,7 @@ class _PurchaseFormState extends State<_PurchaseForm> {
                         children: [
                           _label('المورد'),
                           DropdownButtonFormField<String>(
-                            value: _supplier,
+                            value: _supplier, // ignore: deprecated_member_use
                             isExpanded: true,
                             items: const [
                               DropdownMenuItem(
@@ -305,7 +305,7 @@ class _PurchaseFormState extends State<_PurchaseForm> {
                 const SizedBox(height: 16),
                 _label('السداد'),
                 DropdownButtonFormField<String>(
-                  value: _payment,
+                  value: _payment, // ignore: deprecated_member_use
                   items: const [
                     DropdownMenuItem(value: 'نقدي', child: Text('نقدي')),
                     DropdownMenuItem(value: 'آجل', child: Text('آجل')),
@@ -340,6 +340,7 @@ class _PurchaseFormState extends State<_PurchaseForm> {
                       paid: _payment == 'نقدي',
                     ),
                   );
+                  if (!mounted) return;
                   navigator.maybePop();
                   messenger.showSnackBar(
                     SnackBar(

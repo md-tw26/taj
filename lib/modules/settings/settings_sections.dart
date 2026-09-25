@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:taj_license_core/taj_license_core.dart';
 
 import '../../core/chart_style.dart';
+import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/database_provider.dart';
 import '../../shared/widgets/taj_ui.dart';
+import '../activation/license_scope.dart';
+import '../activation/license_service.dart';
 import 'settings_models.dart';
 import 'settings_previews.dart';
 import 'settings_widgets.dart';
@@ -57,6 +63,8 @@ class SettingsSectionContent extends StatelessWidget {
         return _DayClosingSection(draft: draft, onDraft: onDraft);
       case SettingsSectionId.sync:
         return _SyncSection(draft: draft, onDraft: onDraft);
+      case SettingsSectionId.license:
+        return const _LicenseSection();
     }
   }
 }
@@ -848,5 +856,245 @@ class _BackupHistoryTable extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+// ===========================================================================
+// License & activation
+// ===========================================================================
+
+/// Live view of the offline license: status, plan, dates, fingerprint and the
+/// (destructive) deactivate action.
+///
+/// Reads the gate through [LicenseScope] — when the section is mounted outside
+/// the app gate (standalone Settings hosts) it renders the unlicensed state
+/// with no action, so it is always safe to build.
+class _LicenseSection extends StatefulWidget {
+  const _LicenseSection();
+
+  @override
+  State<_LicenseSection> createState() => _LicenseSectionState();
+}
+
+class _LicenseSectionState extends State<_LicenseSection> {
+  bool _working = false;
+
+  Future<void> _confirmDeactivate(LicenseScope scope) async {
+    final taj = context.taj;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تأكيد الإجراء'),
+        content: const Text(
+          'سيُزيل هذا الإجراء ترخيص هذا الجهاز، ويعود النظام إلى شاشة '
+          'التفعيل. ستحتاج كود الترخيص مرة أخرى لاستعادة الوصول.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('تراجع'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: taj.error.main,
+              foregroundColor: taj.error.contrastText,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('نعم، إلغاء التفعيل'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final db = DatabaseProvider.of(context);
+    setState(() => _working = true);
+    try {
+      await LicenseService.deactivate(db);
+      await scope.refresh();
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = LicenseScope.maybeOf(context);
+    if (scope == null) {
+      return _content(const LicenseGateState.unlicensed(), null);
+    }
+    return ValueListenableBuilder<LicenseGateState>(
+      valueListenable: scope.state,
+      builder: (context, gate, _) => _content(gate, scope),
+    );
+  }
+
+  Widget _content(LicenseGateState gate, LicenseScope? scope) {
+    final payload = gate.payload;
+    final licensed = gate.isLicensed;
+    final days =
+        payload == null ? null : TajLicenseValidator.daysRemaining(payload);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsGroup(
+          title: 'حالة الترخيص',
+          icon: Icons.verified_user_outlined,
+          subtitle: 'يُعاد التحقق من الترخيص محلياً عند كل تشغيل للنظام.',
+          children: [
+            SettingRow(
+              title: 'حالة الترخيص',
+              subtitle: licensed
+                  ? 'هذا الجهاز مفعّل ويعمل بنظام تاج.'
+                  : 'النظام في وضع التفعيل حتى إدخال كود صالح.',
+              controlIsWide: true,
+              control: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: _statusBadge(gate, days),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: _gap),
+        SettingsGroup(
+          title: 'بيانات الترخيص',
+          icon: Icons.badge_outlined,
+          children: [
+            SettingRow(
+              title: 'اسم الزبون',
+              controlIsWide: true,
+              control: _value(payload?.customerName),
+            ),
+            SettingRow(
+              title: 'رقم الترخيص',
+              controlIsWide: true,
+              control: _value(payload?.licenseId),
+            ),
+            SettingRow(
+              title: 'الباقة',
+              controlIsWide: true,
+              control: _value(payload == null
+                  ? null
+                  : TajPlan.parse(payload.planCode).arabicLabel),
+            ),
+            SettingRow(
+              title: 'تاريخ الإصدار',
+              controlIsWide: true,
+              control: _value(payload == null
+                  ? null
+                  : arDate(payload.issuedAtDate.toLocal())),
+            ),
+            SettingRow(
+              title: 'تاريخ الانتهاء',
+              controlIsWide: true,
+              control: _value(payload == null
+                  ? null
+                  : arDate(payload.expiresAtDate.toLocal())),
+            ),
+            SettingRow(
+              title: 'الأيام المتبقية',
+              controlIsWide: true,
+              control: _value(days == null ? null : '${arNum(days)} يوم'),
+            ),
+            SettingsBlock(
+              title: 'بصمة الجهاز',
+              subtitle: 'هذا الرمز مرتبط بهذا الجهاز وحده.',
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      payload?.fingerprint ?? '—',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
+                    ),
+                  ),
+                  if (payload != null)
+                    IconButton(
+                      tooltip: 'نسخ البصمة',
+                      onPressed: _copyFingerprint(payload.fingerprint),
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      visualDensity: VisualDensity.compact,
+                      constraints:
+                          const BoxConstraints(minWidth: 44, minHeight: 44),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: _gap),
+        SettingsGroup(
+          title: 'إدارة الترخيص',
+          icon: Icons.settings_backup_restore_rounded,
+          children: [
+            SettingsBlock(
+              title: 'إلغاء التفعيل من هذا الجهاز',
+              subtitle: 'يزيل الترخيص محلياً ويعيد النظام إلى شاشة التفعيل.',
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton.icon(
+                  onPressed: licensed && scope != null && !_working
+                      ? () => _confirmDeactivate(scope)
+                      : null,
+                  icon: const Icon(Icons.power_settings_new_rounded, size: 18),
+                  label: Text(_working ? 'جارٍ الإلغاء…' : 'إلغاء تفعيل الجهاز'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _value(String? v) => Text(
+        v ?? '—',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyMedium,
+      );
+
+  StatusBadge _statusBadge(LicenseGateState gate, int? days) {
+    if (gate.isLicensed) {
+      if (days == null) {
+        return const StatusBadge(label: 'ترخيص ساري', status: TajStatus.success);
+      }
+      if (days <= 0) {
+        return const StatusBadge(label: 'منتهٍ', status: TajStatus.error);
+      }
+      if (days <= 30) {
+        return StatusBadge(
+          label: 'ينتهي خلال ${arNum(days)} يوم',
+          status: TajStatus.warning,
+        );
+      }
+      return const StatusBadge(label: 'ترخيص ساري', status: TajStatus.success);
+    }
+    if (days != null && days <= 0 && gate.payload != null) {
+      return const StatusBadge(label: 'منتهٍ', status: TajStatus.error);
+    }
+    return const StatusBadge(label: 'غير مفعّل', status: TajStatus.error);
+  }
+
+  VoidCallback _copyFingerprint(String fp) {
+    return () async {
+      try {
+        await Clipboard.setData(ClipboardData(text: fp));
+      } catch (_) {
+        // Clipboard may be unavailable — the value is still on screen.
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('تم نسخ البصمة')));
+    };
   }
 }

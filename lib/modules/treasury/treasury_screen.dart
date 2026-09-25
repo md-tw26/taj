@@ -9,6 +9,9 @@ import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/database_provider.dart';
+import '../../data/local/app_database.dart';
+import '../../data/repositories/drift_branch_repository.dart';
 import '../../shared/widgets/taj_ui.dart';
 
 /// Treasury & Banks — cash boxes and bank accounts, their daily movements
@@ -39,6 +42,9 @@ class _TreasuryScreenState extends State<TreasuryScreen> {
   String? _selectedAccountId;
   bool _summaryCollapsed = false;
 
+  // Branches loaded from the local Drift repository.
+  List<Branch> _branches = [];
+
   // Movement table horizontal scroll: the body drives, the pinned header
   // follows (one-way sync), so the header stays put on vertical scroll while
   // the first column stays frozen during horizontal scroll.
@@ -49,6 +55,17 @@ class _TreasuryScreenState extends State<TreasuryScreen> {
   void initState() {
     super.initState();
     _bodyH.addListener(_syncHeader);
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final db = DatabaseProvider.of(context);
+      final branches = await DriftBranchRepository(db).getAll();
+      if (!mounted) return;
+      setState(() => _branches = branches);
+    });
   }
 
   void _syncHeader() {
@@ -130,11 +147,18 @@ class _TreasuryScreenState extends State<TreasuryScreen> {
           orElse: () => const DemoAccount(
               id: '', name: '—', type: DemoAccountType.cash, branchId: '')).name;
 
-  String _branchCity(String id) => _store.branches
+  String _branchCity(String id) => _branches
       .firstWhere((b) => b.id == id,
-          orElse: () => _store.branches.isEmpty
-              ? const DemoBranch(id: '', name: '—', city: '—')
-              : _store.branches.first)
+          orElse: () => _branches.isEmpty
+              ? Branch(
+                  id: '',
+                  name: '—',
+                  city: '—',
+                  active: false,
+                  createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+                  updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
+                )
+              : _branches.first)
       .city;
 
   /// City of the branch that owns [accountId] (for the movement table's branch
@@ -300,7 +324,7 @@ class _TreasuryScreenState extends State<TreasuryScreen> {
                     typeFilter: _typeFilter,
                     branchFilter: _branchFilter,
                     periodFilter: _periodFilter,
-                    branches: _store.branches,
+                    branches: _branches,
                     stacked: true,
                     onType: (v) {
                       setState(() => _typeFilter = v);
@@ -609,7 +633,7 @@ class _TreasuryScreenState extends State<TreasuryScreen> {
       typeFilter: _typeFilter,
       branchFilter: _branchFilter,
       periodFilter: _periodFilter,
-      branches: _store.branches,
+      branches: _branches,
       stacked: false,
       onType: (v) => setState(() => _typeFilter = v),
       onBranch: (v) => setState(() => _branchFilter = v),
@@ -1715,7 +1739,7 @@ class _FilterControls extends StatelessWidget {
   final String? typeFilter;
   final String? branchFilter;
   final String periodFilter;
-  final List<DemoBranch> branches;
+  final List<Branch> branches;
   final bool stacked;
   final ValueChanged<String?> onType;
   final ValueChanged<String?> onBranch;
@@ -2188,6 +2212,7 @@ Future<void> showTreasuryTransferDialog(
                 content: Text(e.message)));
             return;
           }
+          if (!ctx.mounted) return;
           navigator.pop();
           messenger.showSnackBar(SnackBar(
             behavior: SnackBarBehavior.floating,
@@ -2608,7 +2633,7 @@ class _AccountDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      value: value, // ignore: deprecated_member_use
       isExpanded: true,
       items: [
         for (final a in accounts)

@@ -54,6 +54,7 @@ const _sectionTitles = <(SettingsSectionId, String)>[
   (SettingsSectionId.discount, 'سياسة الخصم'),
   (SettingsSectionId.dayClosing, 'سياسة الإقفال اليومي'),
   (SettingsSectionId.sync, 'المزامنة والنسخ الاحتياطي'),
+  (SettingsSectionId.license, 'الترخيص والتفعيل'),
 ];
 
 Widget _host(

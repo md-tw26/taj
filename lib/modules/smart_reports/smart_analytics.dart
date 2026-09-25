@@ -4,6 +4,7 @@ import '../../core/demo/demo_models.dart';
 import '../../core/demo/demo_store.dart';
 import '../../core/format.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/local/app_database.dart';
 import 'smart_models.dart';
 
 // ---------------------------------------------------------------------------
@@ -12,8 +13,8 @@ import 'smart_models.dart';
 
 DateTime _now() => DateTime.now();
 
-String _branchName(DemoStore s, String id) {
-  for (final b in s.branches) {
+String _branchName(List<Branch> branches, String id) {
+  for (final b in branches) {
     if (b.id == id) return b.name;
   }
   return id;
@@ -149,7 +150,7 @@ QuestionDef questionById(String id) =>
 // Builders
 // ---------------------------------------------------------------------------
 
-AnalyticsResult _moneyFlow(BuildContext c, DemoStore s, SmartSlicers f) {
+AnalyticsResult _moneyFlow(BuildContext c, DemoStore s, SmartSlicers f, List<Branch> branches) {
   final now = _now();
   final list = s.expenses
       .where((e) => _branchOk(e.branchId, f) && f.includes(e.date, now))
@@ -158,7 +159,7 @@ AnalyticsResult _moneyFlow(BuildContext c, DemoStore s, SmartSlicers f) {
   final byBranch = <String, double>{};
   for (final e in list) {
     byCat[e.category] = (byCat[e.category] ?? 0) + e.amount;
-    byBranch[_branchName(s, e.branchId)] = (byBranch[_branchName(s, e.branchId)] ?? 0) + e.amount;
+    byBranch[_branchName(branches, e.branchId)] = (byBranch[_branchName(branches, e.branchId)] ?? 0) + e.amount;
   }
   final total = list.fold<double>(0, (s2, e) => s2 + e.amount);
   final catRank = _rank(byCat);
@@ -195,7 +196,7 @@ AnalyticsResult _moneyFlow(BuildContext c, DemoStore s, SmartSlicers f) {
   );
 }
 
-AnalyticsResult _profitableProducts(BuildContext c, DemoStore s, SmartSlicers f) {
+AnalyticsResult _profitableProducts(BuildContext c, DemoStore s, SmartSlicers f, List<Branch> branches) {
   final now = _now();
   final costs = _productCost(s);
   final names = _productName(s);
@@ -243,7 +244,7 @@ AnalyticsResult _profitableProducts(BuildContext c, DemoStore s, SmartSlicers f)
   );
 }
 
-AnalyticsResult _salesTrend(BuildContext c, DemoStore s, SmartSlicers f) {
+AnalyticsResult _salesTrend(BuildContext c, DemoStore s, SmartSlicers f, List<Branch> branches) {
   final now = _now();
   final days = _dayWindow(f, now);
   final sales = _sales(s, f, now);
@@ -284,7 +285,7 @@ AnalyticsResult _salesTrend(BuildContext c, DemoStore s, SmartSlicers f) {
   );
 }
 
-AnalyticsResult _topCustomers(BuildContext c, DemoStore s, SmartSlicers f) {
+AnalyticsResult _topCustomers(BuildContext c, DemoStore s, SmartSlicers f, List<Branch> branches) {
   final now = _now();
   final byCustomer = <String, double>{};
   for (final sale in _sales(s, f, now)) {
@@ -321,7 +322,7 @@ AnalyticsResult _topCustomers(BuildContext c, DemoStore s, SmartSlicers f) {
   );
 }
 
-AnalyticsResult _branchPerformance(BuildContext c, DemoStore s, SmartSlicers f) {
+AnalyticsResult _branchPerformance(BuildContext c, DemoStore s, SmartSlicers f, List<Branch> branches) {
   final now = _now();
   final byBranch = <String, double>{};
   // Branch slice is intentionally ignored here — the point is to compare
@@ -330,7 +331,7 @@ AnalyticsResult _branchPerformance(BuildContext c, DemoStore s, SmartSlicers f) 
       x.status != DemoSaleStatus.cancelled &&
       x.status != DemoSaleStatus.returned &&
       f.includes(x.date, now))) {
-    byBranch[_branchName(s, sale.branchId)] = (byBranch[_branchName(s, sale.branchId)] ?? 0) + sale.total;
+    byBranch[_branchName(branches, sale.branchId)] = (byBranch[_branchName(branches, sale.branchId)] ?? 0) + sale.total;
   }
   final ranked = _rank(byBranch);
   final total = ranked.values.fold<double>(0, (a, b) => a + b);
@@ -366,7 +367,7 @@ AnalyticsResult _branchPerformance(BuildContext c, DemoStore s, SmartSlicers f) 
   );
 }
 
-AnalyticsResult _paymentMix(BuildContext c, DemoStore s, SmartSlicers f) {
+AnalyticsResult _paymentMix(BuildContext c, DemoStore s, SmartSlicers f, List<Branch> branches) {
   final now = _now();
   final byMethod = <String, double>{};
   for (final sale in _sales(s, f, now)) {
@@ -400,7 +401,7 @@ AnalyticsResult _paymentMix(BuildContext c, DemoStore s, SmartSlicers f) {
   );
 }
 
-AnalyticsResult _bestSellers(BuildContext c, DemoStore s, SmartSlicers f) {
+AnalyticsResult _bestSellers(BuildContext c, DemoStore s, SmartSlicers f, List<Branch> branches) {
   final now = _now();
   final names = _productName(s);
   final cats = _productCat(s);
@@ -452,7 +453,7 @@ AnalyticsResult _bestSellers(BuildContext c, DemoStore s, SmartSlicers f) {
   );
 }
 
-AnalyticsResult _revenueVsExpense(BuildContext c, DemoStore s, SmartSlicers f) {
+AnalyticsResult _revenueVsExpense(BuildContext c, DemoStore s, SmartSlicers f, List<Branch> branches) {
   final now = _now();
   // Last 6 months (honours branch; period range narrows the window if set).
   final months = <DateTime>[];

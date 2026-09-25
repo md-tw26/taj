@@ -5,6 +5,9 @@ import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/database_provider.dart';
+import '../../data/local/app_database.dart';
+import '../../data/repositories/drift_branch_repository.dart';
 import '../../shared/widgets/taj_filters.dart';
 import '../../shared/widgets/taj_table.dart';
 import '../../shared/widgets/taj_ui.dart';
@@ -30,11 +33,28 @@ class _PosManagementScreenState extends State<PosManagementScreen> {
   _Section _section = _Section.overview;
   _Period _period = _Period.today;
   String? _branchId; // null → all branches
+  List<Branch> _branches = [];
 
   @override
   void initState() {
     super.initState();
     _branchId = widget.branchId;
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final db = DatabaseProvider.of(context);
+      var branches = await DriftBranchRepository(db).getAll();
+      // The terminal board below still reads the mock model, so on a fresh
+      // install (empty branch table) the filter falls back to the branches the
+      // mock terminals reference — otherwise the picker would offer nothing to
+      // filter by while the board shows eleven terminals.
+      if (branches.isEmpty) branches = _branchesFromMockTerminals();
+      if (!mounted) return;
+      setState(() => _branches = branches);
+    });
   }
 
   @override
@@ -50,10 +70,10 @@ class _PosManagementScreenState extends State<PosManagementScreen> {
           ? _mockTerminals
           : _mockTerminals.where((t) => t.branchId == _branchId).toList();
 
-  List<_Branch> get _branchesInScope =>
+  List<Branch> get _branchesInScope =>
       _branchId == null
-          ? _mockBranches
-          : _mockBranches.where((b) => b.id == _branchId).toList();
+          ? _branches
+          : _branches.where((b) => b.id == _branchId).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -79,13 +99,20 @@ class _PosManagementScreenState extends State<PosManagementScreen> {
                       _PickerPill<String?>(
                         icon: Icons.store_mall_directory_outlined,
                         value: _branchId,
-                        items: [null, for (final b in _mockBranches) b.id],
+                        items: [null, for (final b in _branches) b.id],
                         labelOf:
                             (id) =>
                                 id == null
                                     ? 'كل الفروع'
-                                    : _mockBranches
-                                        .firstWhere((b) => b.id == id)
+                                    : _branches
+                                        .firstWhere((b) => b.id == id,
+                                            orElse: () => Branch(
+                                                id: '',
+                                                name: '—',
+                                                city: '—',
+                                                active: false,
+                                                createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+                                                updatedAt: DateTime.fromMillisecondsSinceEpoch(0)))
                                         .name,
                         onChanged: (v) => setState(() => _branchId = v),
                       ),
@@ -263,7 +290,7 @@ class _OverviewSection extends StatelessWidget {
   });
 
   final List<_Terminal> terminals;
-  final List<_Branch> branches;
+  final List<Branch> branches;
   final _Period period;
   final double pad;
 
@@ -1026,7 +1053,7 @@ class _KvRow extends StatelessWidget {
 
 class _BranchesSection extends StatelessWidget {
   const _BranchesSection({required this.branches, required this.pad});
-  final List<_Branch> branches;
+  final List<Branch> branches;
   final double pad;
 
   @override
@@ -1073,7 +1100,7 @@ class _BranchCard extends StatelessWidget {
     required this.agg,
     required this.share,
   });
-  final _Branch branch;
+  final Branch branch;
   final _Agg agg;
   final double share;
 
@@ -2018,12 +2045,7 @@ class _TerminalDetailSheet extends StatelessWidget {
 /// Real-time terminal / cashier status. 🟢 active · ⚪ offline · 🟠 break · 🔴 closed
 enum PosStatus { active, offline, onBreak, closed }
 
-class _Branch {
-  const _Branch(this.id, this.name, this.city);
-  final String id;
-  final String name;
-  final String city;
-}
+
 
 class _Terminal {
   const _Terminal({
@@ -2192,11 +2214,28 @@ enum _Period {
   );
 }
 
-const _mockBranches = <_Branch>[
-  _Branch('b1', 'طرابلس - المركز', 'طرابلس'),
-  _Branch('b2', 'بنغازي - الفرع', 'بنغازي'),
-  _Branch('b3', 'مصراتة - السوق', 'مصراتة'),
-];
+
+
+/// Branches implied by [_mockTerminals], derived so the branch filter and the
+/// terminal board can never disagree about which branches exist.
+List<Branch> _branchesFromMockTerminals() {
+  final seen = <String>{};
+  final out = <Branch>[];
+  for (final t in _mockTerminals) {
+    if (!seen.add(t.branchId)) continue;
+    out.add(
+      Branch(
+        id: t.branchId,
+        name: t.branchName,
+        city: t.branchName.split(' - ').first,
+        active: true,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
+      ),
+    );
+  }
+  return out;
+}
 
 const _mockTerminals = <_Terminal>[
   // ── Branch 1 — طرابلس (4 terminals) ──

@@ -37,7 +37,7 @@ void main() {
       testUserName: user,
       initialDark: dark,
       testInitialCart: initialCart,
-      testOpenReports: screen == 'cashier' && p['reports'] == '1',
+      testLicensed: true,
     ),
   );
 }

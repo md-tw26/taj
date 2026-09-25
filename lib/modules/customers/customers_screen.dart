@@ -191,11 +191,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
               ),
               FilledButton(
                 onPressed: () {
-                  if (name.text.trim().isNotEmpty)
+                  if (name.text.trim().isNotEmpty) {
                     Navigator.pop(dialogContext, (
                       name.text.trim(),
                       phone.text.trim(),
                     ));
+                  }
                 },
                 child: const Text('حفظ'),
               ),

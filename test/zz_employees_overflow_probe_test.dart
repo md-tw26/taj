@@ -140,7 +140,9 @@ void main() {
       }
     }
     debugPrint('MATRIX_FAILURES=${failures.length}');
-    for (final f in failures.take(40)) debugPrint('MATRIX_ERR>>> $f');
+    for (final f in failures.take(40)) {
+      debugPrint('MATRIX_ERR>>> $f');
+    }
     expect(failures, isEmpty, reason: failures.take(20).join('\n'));
   });
 
@@ -166,7 +168,9 @@ void main() {
       }
     }
     debugPrint('DIALOG_FAILURES=${failures.length}');
-    for (final f in failures.take(30)) debugPrint('DIALOG_ERR>>> $f');
+    for (final f in failures.take(30)) {
+      debugPrint('DIALOG_ERR>>> $f');
+    }
     expect(failures, isEmpty, reason: failures.take(20).join('\n'));
   });
 }

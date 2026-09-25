@@ -58,3 +58,8 @@ String arDinarFit(num v, {int maxChars = 16}) {
   final full = arDinar(v);
   return full.length <= maxChars ? full : arDinarCompact(v);
 }
+
+/// «YYYY/MM/DD» — the app's date shape (zero-padded, Western digits).
+/// Used for licence issue/expiry dates and any other calendar value.
+String arDate(DateTime d) =>
+    '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';

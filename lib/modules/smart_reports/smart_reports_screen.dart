@@ -4,6 +4,9 @@ import '../../core/demo/demo_provider.dart';
 import '../../core/demo/demo_store.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/taj_colors.dart';
+import '../../data/database_provider.dart';
+import '../../data/local/app_database.dart';
+import '../../data/repositories/drift_branch_repository.dart';
 import '../../shared/widgets/taj_ui.dart';
 import 'responsive_chart_card.dart';
 import 'smart_analytics.dart';
@@ -30,11 +33,27 @@ class SmartReportsScreen extends StatefulWidget {
 class _SmartReportsScreenState extends State<SmartReportsScreen> {
   String? _selectedId;
   SmartSlicers _slicers = const SmartSlicers();
+  List<Branch> _branches = [];
+  bool _branchesLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _selectedId = widget.testInitialQuestionId;
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final db = DatabaseProvider.of(context);
+      final branches = await DriftBranchRepository(db).getAll();
+      if (!mounted) return;
+      setState(() {
+        _branches = branches;
+        _branchesLoaded = true;
+      });
+    });
   }
 
   DemoStore get _store => DemoStoreProvider.of(context);
@@ -46,6 +65,11 @@ class _SmartReportsScreenState extends State<SmartReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_branchesLoaded) {
+      return const PageContainer(
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
     return AnimatedBuilder(
       animation: _store,
       builder: (context, _) => PageContainer(
@@ -56,6 +80,7 @@ class _SmartReportsScreenState extends State<SmartReportsScreen> {
                 key: ValueKey(_selectedId),
                 question: questionById(_selectedId!),
                 store: _store,
+                branches: _branches,
                 slicers: _slicers,
                 onSlicers: (s) => setState(() => _slicers = s),
                 onBack: () => setState(() => _selectedId = null),
@@ -166,6 +191,7 @@ class _AnswerView extends StatelessWidget {
     super.key,
     required this.question,
     required this.store,
+    required this.branches,
     required this.slicers,
     required this.onSlicers,
     required this.onBack,
@@ -173,6 +199,7 @@ class _AnswerView extends StatelessWidget {
 
   final QuestionDef question;
   final DemoStore store;
+  final List<Branch> branches;
   final SmartSlicers slicers;
   final ValueChanged<SmartSlicers> onSlicers;
   final VoidCallback onBack;
@@ -184,7 +211,7 @@ class _AnswerView extends StatelessWidget {
     AnalyticsResult? result;
     Object? error;
     try {
-      result = question.build(context, store, slicers);
+      result = question.build(context, store, slicers, branches);
     } catch (e) {
       error = e;
     }
@@ -204,6 +231,7 @@ class _AnswerView extends StatelessWidget {
               _SlicerBar(
                 question: question,
                 store: store,
+                branches: branches,
                 slicers: slicers,
                 onSlicers: onSlicers,
                 width: w,
@@ -281,6 +309,7 @@ class _SlicerBar extends StatelessWidget {
   const _SlicerBar({
     required this.question,
     required this.store,
+    required this.branches,
     required this.slicers,
     required this.onSlicers,
     required this.width,
@@ -288,6 +317,7 @@ class _SlicerBar extends StatelessWidget {
 
   final QuestionDef question;
   final DemoStore store;
+  final List<Branch> branches;
   final SmartSlicers slicers;
   final ValueChanged<SmartSlicers> onSlicers;
   final double width;
@@ -296,7 +326,7 @@ class _SlicerBar extends StatelessWidget {
 
   String _branchLabel(String? id) {
     if (id == null) return 'كل الفروع';
-    for (final b in store.branches) {
+    for (final b in branches) {
       if (b.id == id) return b.name;
     }
     return id;
@@ -421,7 +451,7 @@ class _SlicerBar extends StatelessWidget {
       title: 'الفرع',
       options: [
         (null, 'كل الفروع'),
-        for (final b in store.branches) (b.id, b.name),
+        for (final b in branches) (b.id, b.name),
       ],
       selected: slicers.branchId,
     );
@@ -450,6 +480,7 @@ class _SlicerBar extends StatelessWidget {
       builder: (_) => _MoreSlicersSheet(
         question: question,
         store: store,
+        branches: branches,
         slicers: slicers,
         onApply: (s) {
           onSlicers(s);
@@ -625,11 +656,13 @@ class _MoreSlicersSheet extends StatefulWidget {
   const _MoreSlicersSheet({
     required this.question,
     required this.store,
+    required this.branches,
     required this.slicers,
     required this.onApply,
   });
   final QuestionDef question;
   final DemoStore store;
+  final List<Branch> branches;
   final SmartSlicers slicers;
   final ValueChanged<SmartSlicers> onApply;
 
@@ -642,7 +675,7 @@ class _MoreSlicersSheetState extends State<_MoreSlicersSheet> {
 
   String _branchLabel(String? id) {
     if (id == null) return 'كل الفروع';
-    for (final b in widget.store.branches) {
+    for (final b in widget.branches) {
       if (b.id == id) return b.name;
     }
     return id;
@@ -734,7 +767,7 @@ class _MoreSlicersSheetState extends State<_MoreSlicersSheet> {
       title: 'الفرع',
       options: [
         (null, 'كل الفروع'),
-        for (final b in widget.store.branches) (b.id, b.name),
+        for (final b in widget.branches) (b.id, b.name),
       ],
       selected: _s.branchId,
     );

@@ -2,7 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Identity of each Settings section, in sub-navigation order.
-enum SettingsSectionId { appearance, localization, invoice, discount, dayClosing, sync }
+enum SettingsSectionId {
+  appearance,
+  localization,
+  invoice,
+  discount,
+  dayClosing,
+  sync,
+  license,
+}
 
 /// Metadata for a section as shown in the sub-navigation (list / sidebar).
 @immutable
@@ -29,6 +37,8 @@ const List<SettingsSectionMeta> settingsSections = [
       'وقت الإقفال، المراجعة، القفل', Icons.event_available_outlined),
   SettingsSectionMeta(SettingsSectionId.sync, 'المزامنة والنسخ الاحتياطي',
       'أوف‑لاين، آخر نسخة احتياطية', Icons.sync_rounded),
+  SettingsSectionMeta(SettingsSectionId.license, 'الترخيص والتفعيل',
+      'حالة الترخيص، الباقة، تاريخ الانتهاء', Icons.verified_user_outlined),
 ];
 
 SettingsSectionMeta settingsSectionMeta(SettingsSectionId id) =>
