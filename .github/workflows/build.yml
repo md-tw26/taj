@@ -141,7 +141,10 @@ jobs:
           fi
           echo "Installer version: $VERSION"
           echo "Source dir: $SRC"
-          "$ISCC" "/DAppVersion=${VERSION}" "/DSourceDir=${SRC}" windows/installer.iss
+          # MSYS2 (Git Bash) rewrites argv entries that look like POSIX paths, so a
+          # "/DName=value" define can arrive at ISCC mangled and get treated as a
+          # second script filename. Use the "-D" form and disable argv conversion.
+          MSYS2_ARG_CONV_EXCL='*' "$ISCC" -DAppVersion="${VERSION}" -DSourceDir="${SRC}" windows/installer.iss
       - uses: actions/upload-artifact@v4
         with:
           name: taj-windows-setup
