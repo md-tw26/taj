@@ -44,15 +44,14 @@ jobs:
             echo "::error::expected exactly one APK, found ${#apks[@]}"
             exit 1
           fi
-          if [ ! -d dist/taj-windows-release ]; then
-            echo "::error::windows artifact missing"
+          setups=(dist/taj-windows-setup/*.exe)
+          if [ "${#setups[@]}" -ne 1 ]; then
+            echo "::error::expected exactly one Windows installer, found ${#setups[@]}"
             exit 1
           fi
           cp "${apks[0]}" "taj-${TAG}-android.apk"
-          mkdir "taj-${TAG}-windows-x64"
-          cp -a dist/taj-windows-release/. "taj-${TAG}-windows-x64/"
-          zip -qr "taj-${TAG}-windows-x64.zip" "taj-${TAG}-windows-x64"
-          ls -l "taj-${TAG}-android.apk" "taj-${TAG}-windows-x64.zip"
+          cp "${setups[0]}" "taj-${TAG}-windows-setup.exe"
+          ls -l "taj-${TAG}-android.apk" "taj-${TAG}-windows-setup.exe"
       - name: Create pre-release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -61,7 +60,7 @@ jobs:
           set -euo pipefail
           gh release create "$TAG" \
             "taj-${TAG}-android.apk" \
-            "taj-${TAG}-windows-x64.zip" \
+            "taj-${TAG}-windows-setup.exe" \
             --prerelease \
             --title "taj ${TAG} Beta" \
             --generate-notes \

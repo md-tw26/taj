@@ -236,5 +236,7 @@ Flutter · Dart · **Almarai** (خط النظام الوحيد: عربي + لا�
 1. حدّث `version` في `pubspec.yaml` (مثل `1.2.0-beta.2+4` مع رقم بناء متصاعد) ثم `git commit`.
 2. أنشئ وادفع الوديعة والوسم: `git tag v1.2.0-beta.2 && git push origin main && git push origin v1.2.0-beta.2`.
 3. يبدأ سير العمل `release.yml` تلقائياً: بناء Android APK + Windows على GitHub Actions.
-4. عند نجاح البناء تُنشر **Pre-release** على صفحة الإصدارات تحوي `taj-<tag>-android.apk` و`taj-<tag>-windows-x64.zip`.
+4. عند نجاح البناء تُنشر **Pre-release** على صفحة الإصدارات تحوي أصلين فقط: `taj-<tag>-android.apk` (تطبيق أندرويد) و`taj-<tag>-windows-setup.exe` (مُثبِّت ويندوز بـ Inno Setup يحلّ محلّ `taj-<tag>-windows-x64.zip` القديم). المُثبِّت يُبنى في CI من سيناريو `windows/installer.iss` عبر `ISCC /DAppVersion=<الوسم> /DSourceDir=<مجلد Release>`.
+   - **تنبيه:** المُثبِّت **غير موقّع رقمياً**، لذا قد يتحذّر Windows SmartScreen عند تنزيله أو تشغيله — اضغط «مزيد من المعلومات» ثم «تشغيل على أي حال».
+   - يتطلب المُثبِّت صلاحية **مدير (admin)** ويستهدف ويندوز **x64** فقط (ويندوز 10 فأحدث).
 5. لتجربة خط الأنابيب بدون إصدار: شغّل `release.yml` يدوياً من تبويب Actions (يبني ويرفع المخرجات فقط بلا إصدار).

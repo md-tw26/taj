@@ -115,3 +115,37 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 9
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+      - name: Build installer
+        working-directory: taj
+        run: |
+          set -euo pipefail
+          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          if [ ! -f "$ISCC" ] && [ -f "${LOCALAPPDATA:-}/Programs/Inno Setup 6/ISCC.exe" ]; then
+            ISCC="$LOCALAPPDATA/Programs/Inno Setup 6/ISCC.exe"
+          fi
+          if [ ! -f "$ISCC" ]; then
+            echo "::error::ISCC.exe not found after 'choco install innosetup'"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(awk '/^version:/ { print $2; exit }' pubspec.yaml)"
+          fi
+          if command -v cygpath >/dev/null 2>&1; then
+            SRC="$(cygpath -w "$PWD/build/windows/x64/runner/Release")"
+          else
+            SRC="$(pwd -W)/build/windows/x64/runner/Release"
+          fi
+          echo "Installer version: $VERSION"
+          echo "Source dir: $SRC"
+          "$ISCC" "/DAppVersion=${VERSION}" "/DSourceDir=${SRC}" windows/installer.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: taj-windows-setup
+          path: taj/windows/Output/*.exe
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
