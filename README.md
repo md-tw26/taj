@@ -2,7 +2,22 @@
 
 نظام نقاط بيع (POS) و ERP عربي بالكامل يعمل **أوفلاين** لأسواق ليبيا (ملابس، عطور، هدايا)، مبني بـ Flutter. يجمع بين واجهة كاشير سريعة بوضعين (بسيط / محترف) ومزايا مستوحاة من برامج POS الليبية (مثل المحاسب 3)، مع **بوابة تفعيل ترخيص أوفلاين** تعمل قبل شاشة تسجيل الدخول.
 
-> **حالة المشروع:** نسخة `1.1.0+2` — تطبيق أوفلاين بالكامل (لا خادم)، تخزين محلي بـ Drift/SQLite، وتفعيل بترخيص موقّع HMAC‑SHA256 مربوط ببصمة الجهاز. خطط الباك اند والمزامنة موثقة في `TAJ-Backend-Plan.md` ولم تُنفَّذ بعد.
+[![النسخة التجريبية](https://img.shields.io/github/v/release/md-tw26/taj?include_prereleases&label=beta)](https://github.com/md-tw26/taj/releases)
+[![إجمالي التنزيلات](https://img.shields.io/github/downloads/md-tw26/taj/total)](https://github.com/md-tw26/taj/releases)
+
+> **حالة المشروع:** نسخة `1.2.0-beta.2+4` — تطبيق أوفلاين بالكامل (لا خادم)، تخزين محلي بـ Drift/SQLite، وتفعيل بترخيص موقّع HMAC‑SHA256 مربوط ببصمة الجهاز. خطط الباك اند والمزامنة موثقة في `TAJ-Backend-Plan.md` ولم تُنفَّذ بعد.
+
+## ⬇️ التحميل — النسخة التجريبية `v1.2.0-beta.2`
+
+| الأصل | المنصّة | الحجم | رابط مباشر |
+|---|---|---|---|
+| `taj-v1.2.0-beta.2-windows-setup.exe` | ويندوز x64 (مُثبِّت Inno Setup) | ‎13.0 MB‎ | [تحميل المُثبِّت](https://github.com/md-tw26/taj/releases/download/v1.2.0-beta.2/taj-v1.2.0-beta.2-windows-setup.exe) |
+| `taj-v1.2.0-beta.2-android.apk` | أندرويد (APK) | ‎65.6 MB‎ | [تحميل التطبيق](https://github.com/md-tw26/taj/releases/download/v1.2.0-beta.2/taj-v1.2.0-beta.2-android.apk) |
+
+كل الإصدارات: **[صفحة الإصدارات](https://github.com/md-tw26/taj/releases)**.
+
+> **ملاحظة:** رابط `/releases/latest` يعرض الإصدار المستقر فقط — البيتا على وسم Pre-release.
+> كما أن المُثبِّت **غير موقّع رقمياً**، فقد يعرض Windows SmartScreen تحذيراً («مزيد منعلومات» ← «تشغيل على أي حال»). ويتطلب صلاحية **مدير (admin)**.
 
 ## 1. ✨ المزايا
 
