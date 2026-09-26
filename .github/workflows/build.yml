@@ -1,0 +1,116 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: taj
+          token: ${{ secrets.MD_TW26_PAT }}
+      - uses: actions/checkout@v4
+        with:
+          repository: md-tw26/taj_license_core
+          path: taj_license_core
+          token: ${{ secrets.MD_TW26_PAT }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.6'
+          channel: stable
+          cache: true
+      - name: Install Android SDK components
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          sdkmanager=""
+          if command -v sdkmanager >/dev/null 2>&1; then
+            sdkmanager="$(command -v sdkmanager)"
+          elif [ -n "${sdk_root}" ] && [ -x "${sdk_root}/cmdline-tools/latest/bin/sdkmanager" ]; then
+            sdkmanager="${sdk_root}/cmdline-tools/latest/bin/sdkmanager"
+          elif [ -n "${sdk_root}" ]; then
+            sdkmanager="$(ls -d "${sdk_root}"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n1 || true)"
+          fi
+          if [ -z "${sdkmanager}" ] || [ ! -x "${sdkmanager}" ]; then
+            echo "::error::sdkmanager not found (ANDROID_SDK_ROOT='${sdk_root}')"
+            exit 1
+          fi
+          echo "Using ${sdkmanager}"
+          yes | "${sdkmanager}" --licenses >/dev/null || true
+          "${sdkmanager}" "platforms;android-36" "build-tools;36.1.0" "ndk;28.2.13676358"
+      - name: Flutter pub get
+        working-directory: taj
+        run: flutter pub get
+      - name: Regenerate Drift codegen
+        working-directory: taj
+        run: dart run build_runner build --delete-conflicting-outputs
+      - name: Analyze
+        working-directory: taj
+        run: flutter analyze --no-fatal-infos
+      - name: Test
+        working-directory: taj
+        run: flutter test
+      - name: Build Android release APK
+        working-directory: taj
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: taj-android-apk
+          path: taj/build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: taj
+          token: ${{ secrets.MD_TW26_PAT }}
+      - uses: actions/checkout@v4
+        with:
+          repository: md-tw26/taj_license_core
+          path: taj_license_core
+          token: ${{ secrets.MD_TW26_PAT }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.6'
+          channel: stable
+          cache: true
+      - name: Flutter pub get
+        working-directory: taj
+        run: flutter pub get
+      - name: Regenerate Drift codegen
+        working-directory: taj
+        run: dart run build_runner build --delete-conflicting-outputs
+      - name: Build Windows release
+        working-directory: taj
+        run: flutter build windows --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: taj-windows-release
+          path: taj/build/windows/x64/runner/Release/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 9
