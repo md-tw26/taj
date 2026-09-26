@@ -1,0 +1,67 @@
+name: release
+
+on:
+  push:
+    tags: ['v*-beta*', 'v*-alpha*', 'v*-rc*']
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  release:
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Package release assets
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(dist/taj-android-apk/*.apk)
+          if [ "${#apks[@]}" -ne 1 ]; then
+            echo "::error::expected exactly one APK, found ${#apks[@]}"
+            exit 1
+          fi
+          if [ ! -d dist/taj-windows-release ]; then
+            echo "::error::windows artifact missing"
+            exit 1
+          fi
+          cp "${apks[0]}" "taj-${TAG}-android.apk"
+          mkdir "taj-${TAG}-windows-x64"
+          cp -a dist/taj-windows-release/. "taj-${TAG}-windows-x64/"
+          zip -qr "taj-${TAG}-windows-x64.zip" "taj-${TAG}-windows-x64"
+          ls -l "taj-${TAG}-android.apk" "taj-${TAG}-windows-x64.zip"
+      - name: Create pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            "taj-${TAG}-android.apk" \
+            "taj-${TAG}-windows-x64.zip" \
+            --prerelease \
+            --title "taj ${TAG} Beta" \
+            --generate-notes \
+            --verify-tag

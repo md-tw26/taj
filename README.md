@@ -230,3 +230,11 @@ lib/
 ## 10. 🧰 التقنيات
 
 Flutter · Dart · **Almarai** (خط النظام الوحيد: عربي + لاتيني، أوزان 300/400/700/800) عبر حزمة `google_fonts` · Drift + SQLite (`drift`, `sqlite3_flutter_libs`) · `crypto` (HMAC‑SHA256) · `audioplayers` (صوت البيع) · `shared_preferences` · `file_selector` (تصدير `.tajlic`) · `intl` · `path_provider` · RTL عربي كامل.
+
+## 11. 📦 إصدار نسخة تجريبية (Beta)
+
+1. حدّث `version` في `pubspec.yaml` (مثل `1.2.0-beta.2+4` مع رقم بناء متصاعد) ثم `git commit`.
+2. أنشئ وادفع الوديعة والوسم: `git tag v1.2.0-beta.2 && git push origin main && git push origin v1.2.0-beta.2`.
+3. يبدأ سير العمل `release.yml` تلقائياً: بناء Android APK + Windows على GitHub Actions.
+4. عند نجاح البناء تُنشر **Pre-release** على صفحة الإصدارات تحوي `taj-<tag>-android.apk` و`taj-<tag>-windows-x64.zip`.
+5. لتجربة خط الأنابيب بدون إصدار: شغّل `release.yml` يدوياً من تبويب Actions (يبني ويرفع المخرجات فقط بلا إصدار).
