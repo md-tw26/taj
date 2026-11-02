@@ -995,12 +995,77 @@ void applySampleData(DemoStore store) {
     ),
   ];
 
+  DateTime ago({int d = 0, int h = 0, int m = 0}) =>
+      now.subtract(Duration(days: d, hours: h, minutes: m));
   store.notifications = [
     DemoNotification(
       id: 'n1',
-      title: 'مخزون منخفض',
-      message: 'عدة أصناف تحتاج إلى إعادة طلب.',
-      date: now,
+      type: 'inventory',
+      priority: 'high',
+      title: 'مخزون منخفض: عود ملكي',
+      message:
+          'صنف «عود ملكي» وصل إلى 3 وحدات في فرع طرابلس الرئيسي، أقل من حد إعادة الطلب (5). يُنصح بإصدار أمر شراء.',
+      date: ago(m: 3),
+    ),
+    DemoNotification(
+      id: 'n2',
+      type: 'approval',
+      priority: 'high',
+      title: 'طلب خصم بانتظار الموافقة',
+      message:
+          'طلب الكاشير نادية عبد السلام خصمًا يدويًا بنسبة 15% على الفاتورة #ش٢٣٠ ويتجاوز حدّ صلاحيتها.',
+      date: ago(m: 21),
+    ),
+    DemoNotification(
+      id: 'n3',
+      type: 'sales',
+      priority: 'normal',
+      title: 'تم إغلاق وردية الصباح',
+      message: 'أُغلقت وردية الصباح في فرع بنغازي بإجمالي مبيعات 4,820 د.ل.',
+      date: ago(h: 2),
+    ),
+    DemoNotification(
+      id: 'n4',
+      type: 'finance',
+      priority: 'normal',
+      title: 'قيد محاسبي بانتظار الترحيل',
+      message: 'قيد مصروفات الإيجار لشهر سبتمبر في حالة مسودة ولم يُرحَّل بعد.',
+      date: ago(h: 5),
+    ),
+    DemoNotification(
+      id: 'n5',
+      type: 'system',
+      priority: 'normal',
+      title: 'اكتملت المزامنة',
+      message: 'تمت مزامنة بيانات الفروع الثلاثة بنجاح.',
+      date: ago(h: 8),
+      read: true,
+    ),
+    DemoNotification(
+      id: 'n6',
+      type: 'sales',
+      priority: 'normal',
+      title: 'فاتورة آجلة مستحقة',
+      message:
+          'فاتورة العميل محمد الترهوني #ش١٩٨ بقيمة 1,250 د.ل تستحق السداد خلال يومين.',
+      date: ago(d: 1, h: 1),
+    ),
+    DemoNotification(
+      id: 'n7',
+      type: 'inventory',
+      priority: 'normal',
+      title: 'انتهت تسوية الجرد',
+      message: 'اعتُمدت تسوية جرد مستودع مصراتة مع فروقات طفيفة بقيمة 70 د.ل.',
+      date: ago(d: 1, h: 4),
+      read: true,
+    ),
+    DemoNotification(
+      id: 'n8',
+      type: 'approval',
+      priority: 'normal',
+      title: 'طلب استرداد مرتجع',
+      message: 'طلب مرتجع لصنفين على الفاتورة #ش١٧٧ بانتظار موافقة المشرف.',
+      date: ago(d: 2, h: 3),
     ),
   ];
 

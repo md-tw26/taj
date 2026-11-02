@@ -361,18 +361,40 @@ class DemoNotification {
     required this.message,
     required this.date,
     this.read = false,
+    this.type = 'system',
+    this.priority = 'normal',
   });
   final String id;
   final String title;
   final String message;
   final DateTime date;
   final bool read;
+
+  /// Category key: inventory | sales | finance | approval | system. Kept as a
+  /// string so older persisted blobs (which had none) decode with a default.
+  final String type;
+
+  /// Priority key: high | normal.
+  final String priority;
+
+  DemoNotification copyWith({bool? read}) => DemoNotification(
+    id: id,
+    title: title,
+    message: message,
+    date: date,
+    read: read ?? this.read,
+    type: type,
+    priority: priority,
+  );
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
     'message': message,
     'date': date.toIso8601String(),
     'read': read,
+    'type': type,
+    'priority': priority,
   };
   factory DemoNotification.fromJson(Map<String, dynamic> j) => DemoNotification(
     id: j['id'] as String,
@@ -380,6 +402,8 @@ class DemoNotification {
     message: j['message'] as String,
     date: DateTime.parse(j['date'] as String),
     read: j['read'] as bool? ?? false,
+    type: j['type'] as String? ?? 'system',
+    priority: j['priority'] as String? ?? 'normal',
   );
 }
 
@@ -749,16 +773,21 @@ class DemoJournalEntry {
     number: j['number'] as String,
     date: DateTime.parse(j['date'] as String),
     description: j['description'] as String? ?? '',
-    lines: (j['lines'] as List)
-        .map((e) => DemoJournalLine.fromJson(Map<String, dynamic>.from(e as Map)))
-        .toList(),
+    lines:
+        (j['lines'] as List)
+            .map(
+              (e) =>
+                  DemoJournalLine.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
+            .toList(),
     status: DemoEntryStatus.values.byName(j['status'] as String? ?? 'draft'),
     reviewed: j['reviewed'] as bool? ?? false,
     approved: j['approved'] as bool? ?? false,
     branchId: j['branchId'] as String? ?? 'b1',
     reference: j['reference'] as String? ?? '',
     attachments:
-        (j['attachments'] as List?)?.map((e) => e as String).toList() ?? const [],
+        (j['attachments'] as List?)?.map((e) => e as String).toList() ??
+        const [],
     reversalOfId: j['reversalOfId'] as String?,
     createdBy: j['createdBy'] as String? ?? '',
   );
@@ -847,8 +876,7 @@ class DemoEmployee {
       baseSalary + allowances + bonuses + commissions + overtime;
 
   /// First character of the name, for an avatar fallback.
-  String get initial =>
-      name.trim().isEmpty ? '؟' : name.trim().substring(0, 1);
+  String get initial => name.trim().isEmpty ? '؟' : name.trim().substring(0, 1);
 
   DemoEmployee copyWith({
     String? name,

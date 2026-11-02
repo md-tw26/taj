@@ -75,6 +75,34 @@ class DemoStore extends ChangeNotifier {
       .fold(0, (sum, s) => sum + s.total);
   int get orderCount => sales.length;
   int get unreadNotifications => notifications.where((n) => !n.read).length;
+
+  Future<void> markNotificationRead(String id) async {
+    final target = notifications.where((n) => n.id == id && !n.read);
+    if (target.isEmpty) return;
+    notifications = [
+      for (final n in notifications)
+        if (n.id == id) n.copyWith(read: true) else n,
+    ];
+    await _save();
+    notifyListeners();
+  }
+
+  Future<void> toggleNotificationRead(String id) async {
+    notifications = [
+      for (final n in notifications)
+        if (n.id == id) n.copyWith(read: !n.read) else n,
+    ];
+    await _save();
+    notifyListeners();
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    if (notifications.every((n) => n.read)) return;
+    notifications = [for (final n in notifications) n.copyWith(read: true)];
+    await _save();
+    notifyListeners();
+  }
+
   List<double> get lastSevenDaySales {
     final today = DateTime.now();
     return List.generate(7, (index) {
@@ -346,8 +374,9 @@ class DemoStore extends ChangeNotifier {
     final lines = <DemoSaleLine>[];
     for (final entry in quantities.entries) {
       final p = products.firstWhere((item) => item.id == entry.key);
-      if (entry.value <= 0 || p.stock < entry.value)
+      if (entry.value <= 0 || p.stock < entry.value) {
         throw StateError('المخزون غير كافٍ للصنف ${p.name}');
+      }
       lines.add(
         DemoSaleLine(
           productId: p.id,

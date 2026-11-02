@@ -36,35 +36,44 @@ const _sizes = <(String, double, double)>[
   ('4k', 3840, 2160),
 ];
 
-Widget _host(Widget child, TextDirection dir) => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppThemes.light(),
-      locale: Locale(dir == TextDirection.rtl ? 'ar' : 'en'),
-      supportedLocales: const [Locale('ar'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: withStore(Directionality(textDirection: dir, child: child)),
-    );
+// The store wraps the whole MaterialApp (as the real app does) so overlay
+// entries — the bell's popover / bottom sheet — can still find the provider.
+Widget _host(Widget child, TextDirection dir) => withStore(
+  MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: AppThemes.light(),
+    locale: Locale(dir == TextDirection.rtl ? 'ar' : 'en'),
+    supportedLocales: const [Locale('ar'), Locale('en')],
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    home: Directionality(textDirection: dir, child: child),
+  ),
+);
 
 // A bell hosted at the top-trailing corner, i.e. the worst case for a popover
 // clamping against the screen edge (mirrors in RTL).
 Widget _bellHost(TextDirection dir, VoidCallback onFull) => _host(
-      Scaffold(
-        body: Align(
-          alignment: AlignmentDirectional.topEnd,
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: NotificationBell(onOpenFull: onFull),
-          ),
-        ),
+  Scaffold(
+    body: Align(
+      alignment: AlignmentDirectional.topEnd,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: NotificationBell(onOpenFull: onFull),
       ),
-      dir,
-    );
+    ),
+  ),
+  dir,
+);
 
-Future<void> _pumpAt(WidgetTester tester, double w, double h, Widget child) async {
+Future<void> _pumpAt(
+  WidgetTester tester,
+  double w,
+  double h,
+  Widget child,
+) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = Size(w, h);
   addTearDown(tester.view.resetPhysicalSize);
@@ -114,14 +123,26 @@ void main() {
           final box = tester.renderObject<RenderBox>(panel);
           final tl = box.localToGlobal(Offset.zero);
           final rect = tl & box.size;
-          expect(rect.left, greaterThanOrEqualTo(-0.5),
-              reason: 'left edge in-bounds @ $label $dl');
-          expect(rect.top, greaterThanOrEqualTo(-0.5),
-              reason: 'top edge in-bounds @ $label $dl');
-          expect(rect.right, lessThanOrEqualTo(w + 0.5),
-              reason: 'right edge in-bounds @ $label $dl');
-          expect(rect.bottom, lessThanOrEqualTo(h + 0.5),
-              reason: 'bottom edge in-bounds @ $label $dl');
+          expect(
+            rect.left,
+            greaterThanOrEqualTo(-0.5),
+            reason: 'left edge in-bounds @ $label $dl',
+          );
+          expect(
+            rect.top,
+            greaterThanOrEqualTo(-0.5),
+            reason: 'top edge in-bounds @ $label $dl',
+          );
+          expect(
+            rect.right,
+            lessThanOrEqualTo(w + 0.5),
+            reason: 'right edge in-bounds @ $label $dl',
+          );
+          expect(
+            rect.bottom,
+            lessThanOrEqualTo(h + 0.5),
+            reason: 'bottom edge in-bounds @ $label $dl',
+          );
         });
       }
     }
@@ -129,17 +150,23 @@ void main() {
 
   testWidgets('phone width opens the full page, not a popover', (tester) async {
     var openedFull = false;
-    await _pumpAt(tester, 360, 740, _bellHost(TextDirection.rtl, () {
-      openedFull = true;
-    }));
+    await _pumpAt(
+      tester,
+      360,
+      740,
+      _bellHost(TextDirection.rtl, () {
+        openedFull = true;
+      }),
+    );
     await tester.tap(find.byIcon(Icons.notifications_none_rounded));
     await tester.pumpAndSettle();
     expect(openedFull, isTrue, reason: 'bell delegates to full page on phone');
     expect(find.byKey(const Key('notif-popover')), findsNothing);
   });
 
-  testWidgets('short viewport opens a bottom sheet, not a hanging popover',
-      (tester) async {
+  testWidgets('short viewport opens a bottom sheet, not a hanging popover', (
+    tester,
+  ) async {
     // 1280×720: width ≥ 600 but height < notifPopoverMinHeight (760).
     await _pumpAt(tester, 1280, 720, _bellHost(TextDirection.rtl, () {}));
     await tester.tap(find.byIcon(Icons.notifications_none_rounded));
@@ -150,8 +177,9 @@ void main() {
     expect(find.text('عرض كل الإشعارات'), findsOneWidget);
   });
 
-  testWidgets('tapping a notification in two-pane shows the detail pane',
-      (tester) async {
+  testWidgets('tapping a notification in two-pane shows the detail pane', (
+    tester,
+  ) async {
     await _pumpAt(
       tester,
       1200,

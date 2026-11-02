@@ -2,6 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/demo/demo_models.dart';
+import '../../core/demo/demo_provider.dart';
+import '../../core/demo/demo_store.dart';
 import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
@@ -12,7 +15,7 @@ import '../../shared/widgets/taj_ui.dart';
 // Notifications (الإشعارات)
 // ---------------------------------------------------------------------------
 //
-// The module lives in two places that share ONE state source (_hub):
+// The module lives in two places that share ONE state source (DemoStore.notifications):
 //   • NotificationsScreen — the full notification centre (nav id `inbox`).
 //       < inboxSplit → full-width list; tapping pushes a detail page.
 //       ≥ inboxSplit → two panes (list + detail), capped + centred at
@@ -21,9 +24,9 @@ import '../../shared/widgets/taj_ui.dart';
 //       phone width → opens the full page · short viewport → bottom sheet ·
 //       otherwise → an anchored popover clamped inside the window.
 //
-// Presentation-only: it seeds its own richer model (the shared DemoStore
-// notification model has no type/priority) and manages read-state locally —
-// it never changes notification sources, logic or navigation targets.
+// Presentation-only: it maps the shared DemoStore notifications into a richer
+// view model (typed icon/tint + priority) and routes read-state changes back
+// to the store — it never invents notifications of its own.
 
 // ===========================================================================
 // Model + shared state hub
@@ -58,186 +61,55 @@ class _Notif {
 typedef _TypeMeta = ({IconData icon, TajStatus tint, String label});
 
 _TypeMeta _typeMeta(_NType t) => switch (t) {
-      _NType.inventory => (
-          icon: Icons.inventory_2_outlined,
-          tint: TajStatus.warning,
-          label: 'المخزون'
-        ),
-      _NType.sales => (
-          icon: Icons.point_of_sale_outlined,
-          tint: TajStatus.success,
-          label: 'المبيعات'
-        ),
-      _NType.finance => (
-          icon: Icons.account_balance_outlined,
-          tint: TajStatus.info,
-          label: 'المالية'
-        ),
-      _NType.approval => (
-          icon: Icons.verified_outlined,
-          tint: TajStatus.primary,
-          label: 'موافقات'
-        ),
-      _NType.system => (
-          icon: Icons.settings_suggest_outlined,
-          tint: TajStatus.secondary,
-          label: 'النظام'
-        ),
-    };
+  _NType.inventory => (
+    icon: Icons.inventory_2_outlined,
+    tint: TajStatus.warning,
+    label: 'المخزون',
+  ),
+  _NType.sales => (
+    icon: Icons.point_of_sale_outlined,
+    tint: TajStatus.success,
+    label: 'المبيعات',
+  ),
+  _NType.finance => (
+    icon: Icons.account_balance_outlined,
+    tint: TajStatus.info,
+    label: 'المالية',
+  ),
+  _NType.approval => (
+    icon: Icons.verified_outlined,
+    tint: TajStatus.primary,
+    label: 'موافقات',
+  ),
+  _NType.system => (
+    icon: Icons.settings_suggest_outlined,
+    tint: TajStatus.secondary,
+    label: 'النظام',
+  ),
+};
 
-/// Shared, in-memory notification state. Both the bell and the centre listen to
-/// it, so marking read anywhere updates everywhere. Seeded with demo data.
-class _NotifHub extends ChangeNotifier {
-  final List<_Notif> items = _seed();
+_NType _typeFromKey(String key) => switch (key) {
+  'inventory' => _NType.inventory,
+  'sales' => _NType.sales,
+  'finance' => _NType.finance,
+  'approval' => _NType.approval,
+  _ => _NType.system,
+};
 
-  int get unread => items.where((n) => !n.read).length;
+_NPrio _prioFromKey(String key) => key == 'high' ? _NPrio.high : _NPrio.normal;
 
-  void markRead(String id) {
-    for (final n in items) {
-      if (n.id == id && !n.read) {
-        n.read = true;
-        notifyListeners();
-        return;
-      }
-    }
-  }
-
-  void toggleRead(String id) {
-    for (final n in items) {
-      if (n.id == id) {
-        n.read = !n.read;
-        notifyListeners();
-        return;
-      }
-    }
-  }
-
-  void markAllRead() {
-    var changed = false;
-    for (final n in items) {
-      if (!n.read) {
-        n.read = true;
-        changed = true;
-      }
-    }
-    if (changed) notifyListeners();
-  }
-}
-
-final _NotifHub _hub = _NotifHub();
-
-List<_Notif> _seed() {
-  final now = DateTime.now();
-  DateTime ago({int d = 0, int h = 0, int m = 0}) =>
-      now.subtract(Duration(days: d, hours: h, minutes: m));
-  return [
-    _Notif(
-      id: 'n1',
-      type: _NType.inventory,
-      prio: _NPrio.high,
-      title: 'مخزون منخفض: عود ملكي',
-      body:
-          'صنف «عود ملكي» وصل إلى 3 وحدات في فرع طرابلس الرئيسي، أقل من حد إعادة الطلب (5). يُنصح بإصدار أمر شراء.',
-      time: ago(m: 3),
-    ),
-    _Notif(
-      id: 'n2',
-      type: _NType.approval,
-      prio: _NPrio.high,
-      title: 'طلب خصم بانتظار الموافقة',
-      body:
-          'طلب الكاشير نادية عبد السلام خصمًا يدويًا بنسبة 15% على الفاتورة #ش٢٣٠ ويتجاوز حدّ صلاحيتها.',
-      time: ago(m: 21),
-    ),
-    _Notif(
-      id: 'n3',
-      type: _NType.sales,
-      prio: _NPrio.normal,
-      title: 'تم إغلاق وردية الصباح',
-      body: 'أُغلقت وردية الصباح في فرع بنغازي بإجمالي مبيعات 4,820 د.ل.',
-      time: ago(h: 2),
-    ),
-    _Notif(
-      id: 'n4',
-      type: _NType.finance,
-      prio: _NPrio.normal,
-      title: 'قيد محاسبي بانتظار الترحيل',
-      body: 'قيد مصروفات الإيجار لشهر سبتمبر في حالة مسودة ولم يُرحَّل بعد.',
-      time: ago(h: 5),
-    ),
-    _Notif(
-      id: 'n5',
-      type: _NType.system,
-      prio: _NPrio.normal,
-      title: 'اكتملت المزامنة',
-      body: 'تمت مزامنة بيانات الفروع الثلاثة بنجاح.',
-      time: ago(h: 8),
-      read: true,
-    ),
-    _Notif(
-      id: 'n6',
-      type: _NType.sales,
-      prio: _NPrio.normal,
-      title: 'فاتورة آجلة مستحقة',
-      body:
-          'فاتورة العميل محمد الترهوني #ش١٩٨ بقيمة 1,250 د.ل تستحق السداد خلال يومين.',
-      time: ago(d: 1, h: 1),
-    ),
-    _Notif(
-      id: 'n7',
-      type: _NType.inventory,
-      prio: _NPrio.normal,
-      title: 'انتهت تسوية الجرد',
-      body: 'اعتُمدت تسوية جرد مستودع مصراتة مع فروقات طفيفة بقيمة 70 د.ل.',
-      time: ago(d: 1, h: 4),
-      read: true,
-    ),
-    _Notif(
-      id: 'n8',
-      type: _NType.approval,
-      prio: _NPrio.normal,
-      title: 'طلب استرداد مرتجع',
-      body: 'طلب مرتجع لصنفين على الفاتورة #ش١٧٧ بانتظار موافقة المشرف.',
-      time: ago(d: 1, h: 6),
-    ),
-    _Notif(
-      id: 'n9',
-      type: _NType.finance,
-      prio: _NPrio.high,
-      title: 'تجاوز سقف المصروفات',
-      body:
-          'تجاوزت مصروفات التشغيل لفرع طرابلس سقف الميزانية الشهري بنسبة 8% قبل نهاية الشهر.',
-      time: ago(d: 3, h: 2),
-    ),
-    _Notif(
-      id: 'n10',
-      type: _NType.system,
-      prio: _NPrio.normal,
-      title: 'تحديث متوفّر',
-      body: 'يتوفّر تحديث جديد للنظام يتضمّن تحسينات على التقارير الذكية.',
-      time: ago(d: 4),
-      read: true,
-    ),
-    _Notif(
-      id: 'n11',
-      type: _NType.sales,
-      prio: _NPrio.normal,
-      title: 'هدف المبيعات اليومي تحقق',
-      body: 'بلغ فرع بنغازي هدف المبيعات اليومي قبل الساعة الخامسة مساءً.',
-      time: ago(d: 5, h: 3),
-      read: true,
-    ),
-    _Notif(
-      id: 'n12',
-      type: _NType.inventory,
-      prio: _NPrio.normal,
-      title: 'وصول شحنة موردين',
-      body: 'سُجّلت فاتورة شراء جديدة من مؤسسة العطور وتم تحديث المخزون.',
-      time: ago(d: 6, h: 2),
-      read: true,
-    ),
-  ];
-}
+/// Presentation view of a stored notification. The single source of truth is
+/// [DemoStore.notifications]; this just maps the model into the richer shape
+/// the UI renders (typed icon/tint, priority).
+_Notif _toNotif(DemoNotification n) => _Notif(
+  id: n.id,
+  type: _typeFromKey(n.type),
+  prio: _prioFromKey(n.priority),
+  title: n.title,
+  body: n.message,
+  time: n.date,
+  read: n.read,
+);
 
 // ===========================================================================
 // Notification centre
@@ -256,13 +128,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String? _selectedId;
 
   List<_Notif> get _filtered {
-    final items = _hub.items.where((n) {
-      if (_readFilter == _ReadFilter.unread && n.read) return false;
-      if (_readFilter == _ReadFilter.read && !n.read) return false;
-      if (_typeFilter != null && n.type != _typeFilter) return false;
-      return true;
-    }).toList()
-      ..sort((a, b) => b.time.compareTo(a.time));
+    final items =
+        DemoStoreProvider.of(
+            context,
+          ).notifications.map(_toNotif).toList().where((n) {
+            if (_readFilter == _ReadFilter.unread && n.read) return false;
+            if (_readFilter == _ReadFilter.read && !n.read) return false;
+            if (_typeFilter != null && n.type != _typeFilter) return false;
+            return true;
+          }).toList()
+          ..sort((a, b) => b.time.compareTo(a.time));
     return items;
   }
 
@@ -292,10 +167,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         }
       }
     } else {
-      for (final entry in [
-        ('عاجل', _NPrio.high),
-        ('عادي', _NPrio.normal),
-      ]) {
+      for (final entry in [('عاجل', _NPrio.high), ('عادي', _NPrio.normal)]) {
         final list = items.where((n) => n.prio == entry.$2).toList();
         if (list.isNotEmpty) {
           rows.add(_Header(entry.$1, list.length));
@@ -307,20 +179,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _openDetail(_Notif n, {required bool twoPane}) {
-    _hub.markRead(n.id);
+    DemoStoreProvider.of(context).markNotificationRead(n.id);
     if (twoPane) {
       setState(() => _selectedId = n.id);
     } else {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => _NotifDetailPage(id: n.id)),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => _NotifDetailPage(id: n.id)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _hub,
+      animation: DemoStoreProvider.of(context),
       builder: (context, _) {
         return LayoutBuilder(
           builder: (context, c) {
@@ -350,7 +222,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final text = Theme.of(context).textTheme;
     final pad = pagePaddingForWidth(w);
     final narrow = w < AppBreakpoints.phone;
-    final unread = _hub.unread;
+    final unread = DemoStoreProvider.of(context).unreadNotifications;
 
     final titleRow = Row(
       children: [
@@ -392,21 +264,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             tooltip: 'المزيد',
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (v) {
-              if (v == 'all') _hub.markAllRead();
+              if (v == 'all')
+                DemoStoreProvider.of(context).markAllNotificationsRead();
               if (v == 'filter') _openAdvancedFilters();
             },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'all',
-                enabled: unread > 0,
-                child: const Text('تحديد الكل كمقروء'),
-              ),
-              const PopupMenuItem(value: 'filter', child: Text('تصفية متقدّمة')),
-            ],
+            itemBuilder:
+                (_) => [
+                  PopupMenuItem(
+                    value: 'all',
+                    enabled: unread > 0,
+                    child: const Text('تحديد الكل كمقروء'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'filter',
+                    child: Text('تصفية متقدّمة'),
+                  ),
+                ],
           )
         else
           TextButton.icon(
-            onPressed: unread > 0 ? _hub.markAllRead : null,
+            onPressed:
+                unread > 0
+                    ? () =>
+                        DemoStoreProvider.of(context).markAllNotificationsRead()
+                    : null,
             icon: const Icon(Icons.done_all_rounded, size: 18),
             label: const Text('تحديد الكل كمقروء'),
           ),
@@ -421,11 +302,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: EdgeInsets.fromLTRB(pad, 14, pad, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          titleRow,
-          const SizedBox(height: 12),
-          _filters(w),
-        ],
+        children: [titleRow, const SizedBox(height: 12), _filters(w)],
       ),
     );
   }
@@ -434,19 +311,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final persistent = w >= AppBreakpoints.inboxSplit; // >=820
     final medium = w >= AppBreakpoints.phone; // 600-820 → wrap
     final readChips = [
-      _choice('الكل', _readFilter == _ReadFilter.all,
-          () => setState(() => _readFilter = _ReadFilter.all)),
-      _choice('غير مقروء', _readFilter == _ReadFilter.unread,
-          () => setState(() => _readFilter = _ReadFilter.unread)),
-      _choice('مقروء', _readFilter == _ReadFilter.read,
-          () => setState(() => _readFilter = _ReadFilter.read)),
+      _choice(
+        'الكل',
+        _readFilter == _ReadFilter.all,
+        () => setState(() => _readFilter = _ReadFilter.all),
+      ),
+      _choice(
+        'غير مقروء',
+        _readFilter == _ReadFilter.unread,
+        () => setState(() => _readFilter = _ReadFilter.unread),
+      ),
+      _choice(
+        'مقروء',
+        _readFilter == _ReadFilter.read,
+        () => setState(() => _readFilter = _ReadFilter.read),
+      ),
     ];
     final typeChips = [
-      _choice('كل الأنواع', _typeFilter == null,
-          () => setState(() => _typeFilter = null)),
+      _choice(
+        'كل الأنواع',
+        _typeFilter == null,
+        () => setState(() => _typeFilter = null),
+      ),
       for (final t in _NType.values)
-        _choice(_typeMeta(t).label, _typeFilter == t,
-            () => setState(() => _typeFilter = t)),
+        _choice(
+          _typeMeta(t).label,
+          _typeFilter == t,
+          () => setState(() => _typeFilter = t),
+        ),
     ];
 
     if (!medium) {
@@ -480,21 +372,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     Widget labelled(String label, List<Widget> chips) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('$label:',
-                style: text.bodySmall?.copyWith(
-                    color: taj.textSecondary, fontWeight: FontWeight.w600)),
-            const SizedBox(width: 8),
-            ...[
-              for (final c in chips)
-                Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 6),
-                  child: c,
-                ),
-            ],
-          ],
-        );
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label:',
+          style: text.bodySmall?.copyWith(
+            color: taj.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 8),
+        ...[
+          for (final c in chips)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 6),
+              child: c,
+            ),
+        ],
+      ],
+    );
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -510,27 +406,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   List<Widget> _groupChips() => [
-        _choice('حسب الوقت', _group == _GroupMode.time,
-            () => setState(() => _group = _GroupMode.time)),
-        _choice('حسب النوع', _group == _GroupMode.type,
-            () => setState(() => _group = _GroupMode.type)),
-        _choice('حسب الأولوية', _group == _GroupMode.prio,
-            () => setState(() => _group = _GroupMode.prio)),
-      ];
+    _choice(
+      'حسب الوقت',
+      _group == _GroupMode.time,
+      () => setState(() => _group = _GroupMode.time),
+    ),
+    _choice(
+      'حسب النوع',
+      _group == _GroupMode.type,
+      () => setState(() => _group = _GroupMode.type),
+    ),
+    _choice(
+      'حسب الأولوية',
+      _group == _GroupMode.prio,
+      () => setState(() => _group = _GroupMode.prio),
+    ),
+  ];
 
   Widget _vsep() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: SizedBox(
-          height: 24,
-          child: VerticalDivider(width: 1, color: context.taj.divider),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    child: SizedBox(
+      height: 24,
+      child: VerticalDivider(width: 1, color: context.taj.divider),
+    ),
+  );
 
   Widget _choice(String label, bool selected, VoidCallback onTap) => ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-      );
+    label: Text(label),
+    selected: selected,
+    onSelected: (_) => onTap(),
+  );
 
   Future<void> _openAdvancedFilters() async {
     await showModalBottomSheet<void>(
@@ -573,46 +478,89 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       const SizedBox(height: 16),
                       Text('تصفية متقدّمة', style: text.titleLarge),
                       const SizedBox(height: 16),
-                      Text('الحالة',
-                          style: text.titleSmall
-                              ?.copyWith(color: taj.textSecondary)),
+                      Text(
+                        'الحالة',
+                        style: text.titleSmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Wrap(spacing: 8, runSpacing: 8, children: [
-                        _choice('الكل', _readFilter == _ReadFilter.all,
-                            () => refresh(() => _readFilter = _ReadFilter.all)),
-                        _choice(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _choice(
+                            'الكل',
+                            _readFilter == _ReadFilter.all,
+                            () => refresh(() => _readFilter = _ReadFilter.all),
+                          ),
+                          _choice(
                             'غير مقروء',
                             _readFilter == _ReadFilter.unread,
-                            () => refresh(
-                                () => _readFilter = _ReadFilter.unread)),
-                        _choice('مقروء', _readFilter == _ReadFilter.read,
-                            () => refresh(() => _readFilter = _ReadFilter.read)),
-                      ]),
+                            () =>
+                                refresh(() => _readFilter = _ReadFilter.unread),
+                          ),
+                          _choice(
+                            'مقروء',
+                            _readFilter == _ReadFilter.read,
+                            () => refresh(() => _readFilter = _ReadFilter.read),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
-                      Text('النوع',
-                          style: text.titleSmall
-                              ?.copyWith(color: taj.textSecondary)),
+                      Text(
+                        'النوع',
+                        style: text.titleSmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Wrap(spacing: 8, runSpacing: 8, children: [
-                        _choice('كل الأنواع', _typeFilter == null,
-                            () => refresh(() => _typeFilter = null)),
-                        for (final t in _NType.values)
-                          _choice(_typeMeta(t).label, _typeFilter == t,
-                              () => refresh(() => _typeFilter = t)),
-                      ]),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _choice(
+                            'كل الأنواع',
+                            _typeFilter == null,
+                            () => refresh(() => _typeFilter = null),
+                          ),
+                          for (final t in _NType.values)
+                            _choice(
+                              _typeMeta(t).label,
+                              _typeFilter == t,
+                              () => refresh(() => _typeFilter = t),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
-                      Text('التجميع',
-                          style: text.titleSmall
-                              ?.copyWith(color: taj.textSecondary)),
+                      Text(
+                        'التجميع',
+                        style: text.titleSmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Wrap(spacing: 8, runSpacing: 8, children: [
-                        _choice('حسب الوقت', _group == _GroupMode.time,
-                            () => refresh(() => _group = _GroupMode.time)),
-                        _choice('حسب النوع', _group == _GroupMode.type,
-                            () => refresh(() => _group = _GroupMode.type)),
-                        _choice('حسب الأولوية', _group == _GroupMode.prio,
-                            () => refresh(() => _group = _GroupMode.prio)),
-                      ]),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _choice(
+                            'حسب الوقت',
+                            _group == _GroupMode.time,
+                            () => refresh(() => _group = _GroupMode.time),
+                          ),
+                          _choice(
+                            'حسب النوع',
+                            _group == _GroupMode.type,
+                            () => refresh(() => _group = _GroupMode.type),
+                          ),
+                          _choice(
+                            'حسب الأولوية',
+                            _group == _GroupMode.prio,
+                            () => refresh(() => _group = _GroupMode.prio),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 20),
                       FilledButton(
                         onPressed: () => Navigator.of(ctx).pop(),
@@ -657,7 +605,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           background: _swipeBg(AlignmentDirectional.centerStart),
           secondaryBackground: _swipeBg(AlignmentDirectional.centerEnd),
           confirmDismiss: (_) async {
-            _hub.markRead(n.id);
+            DemoStoreProvider.of(context).markNotificationRead(n.id);
             return false;
           },
           child: tile,
@@ -679,9 +627,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         SizedBox(width: listW.toDouble(), child: _listOnly(w, twoPane: true)),
         VerticalDivider(width: 1, color: taj.divider),
         Expanded(
-          child: _selectedId == null
-              ? const _EmptyDetail()
-              : _NotifDetail(id: _selectedId!),
+          child:
+              _selectedId == null
+                  ? const _EmptyDetail()
+                  : _NotifDetail(id: _selectedId!),
         ),
       ],
     );
@@ -696,15 +645,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.done_all_rounded,
-              size: 18, color: taj.accentFor(taj.success)),
+          Icon(
+            Icons.done_all_rounded,
+            size: 18,
+            color: taj.accentFor(taj.success),
+          ),
           const SizedBox(width: 6),
-          Text('تحديد كمقروء',
-              style: TextStyle(
-                color: taj.accentFor(taj.success),
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              )),
+          Text(
+            'تحديد كمقروء',
+            style: TextStyle(
+              color: taj.accentFor(taj.success),
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );
@@ -717,12 +671,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       child: Row(
         children: [
-          Text(h.label,
-              style: text.bodySmall?.copyWith(
-                  color: taj.textSecondary, fontWeight: FontWeight.w700)),
+          Text(
+            h.label,
+            style: text.bodySmall?.copyWith(
+              color: taj.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(width: 8),
-          Text('(${arNum(h.count)})',
-              style: text.bodySmall?.copyWith(color: taj.textDisabled)),
+          Text(
+            '(${arNum(h.count)})',
+            style: text.bodySmall?.copyWith(color: taj.textDisabled),
+          ),
         ],
       ),
     );
@@ -761,12 +721,14 @@ class _NotifTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        constraints:
-            BoxConstraints(minHeight: AppBreakpoints.notifRowMinHeight),
+        constraints: BoxConstraints(
+          minHeight: AppBreakpoints.notifRowMinHeight,
+        ),
         decoration: BoxDecoration(
-          color: selected
-              ? taj.primary.lighter
-              : (unread ? taj.hover : Colors.transparent),
+          color:
+              selected
+                  ? taj.primary.lighter
+                  : (unread ? taj.hover : Colors.transparent),
           border: Border(bottom: BorderSide(color: taj.divider)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -775,7 +737,11 @@ class _NotifTile extends StatelessWidget {
           children: [
             // Type icon — intrinsic width. High-priority carries a small flag
             // marker (shape, not colour-only).
-            _TypeAvatar(icon: meta.icon, swatch: swatch, high: notif.prio == _NPrio.high),
+            _TypeAvatar(
+              icon: meta.icon,
+              swatch: swatch,
+              high: notif.prio == _NPrio.high,
+            ),
             const SizedBox(width: 12),
             // Text column — flexes; title + time share a row, time never wraps.
             Expanded(
@@ -803,7 +769,9 @@ class _NotifTile extends StatelessWidget {
                         softWrap: false,
                         maxLines: 1,
                         overflow: TextOverflow.clip,
-                        style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                        style: text.bodySmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -823,19 +791,20 @@ class _NotifTile extends StatelessWidget {
               width: 10,
               child: Align(
                 alignment: AlignmentDirectional.topCenter,
-                child: unread
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: taj.primary.main,
-                            shape: BoxShape.circle,
+                child:
+                    unread
+                        ? Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: taj.primary.main,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                        )
+                        : const SizedBox.shrink(),
               ),
             ),
           ],
@@ -886,8 +855,11 @@ class _TypeAvatar extends StatelessWidget {
                   color: taj.paper,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.priority_high_rounded,
-                    size: 12, color: taj.accentFor(taj.error)),
+                child: Icon(
+                  Icons.priority_high_rounded,
+                  size: 12,
+                  color: taj.accentFor(taj.error),
+                ),
               ),
             ),
         ],
@@ -906,10 +878,13 @@ class _NotifDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _hub,
+      animation: DemoStoreProvider.of(context),
       builder: (context, _) {
         _Notif? n;
-        for (final e in _hub.items) {
+        for (final e
+            in DemoStoreProvider.of(
+              context,
+            ).notifications.map(_toNotif).toList()) {
           if (e.id == id) {
             n = e;
             break;
@@ -930,10 +905,11 @@ class _NotifDetail extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _TypeAvatar(
-                      icon: meta.icon,
-                      swatch: swatch,
-                      high: notif.prio == _NPrio.high,
-                      size: 52),
+                    icon: meta.icon,
+                    swatch: swatch,
+                    high: notif.prio == _NPrio.high,
+                    size: 52,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
@@ -947,17 +923,22 @@ class _NotifDetail extends StatelessWidget {
                             StatusBadge(label: meta.label, status: meta.tint),
                             if (notif.prio == _NPrio.high)
                               StatusBadge(
-                                  label: 'عاجل',
-                                  status: TajStatus.error,
-                                  icon: Icons.priority_high_rounded),
+                                label: 'عاجل',
+                                status: TajStatus.error,
+                                icon: Icons.priority_high_rounded,
+                              ),
                           ],
                         ),
                         const SizedBox(height: 10),
                         Text(notif.title, style: text.headlineSmall),
                         const SizedBox(height: 4),
-                        Text(_fullDateTime(notif.time),
-                            style: AppThemes.numeralStyle(context, fontSize: 13)
-                                .copyWith(color: taj.textSecondary)),
+                        Text(
+                          _fullDateTime(notif.time),
+                          style: AppThemes.numeralStyle(
+                            context,
+                            fontSize: 13,
+                          ).copyWith(color: taj.textSecondary),
+                        ),
                       ],
                     ),
                   ),
@@ -969,7 +950,10 @@ class _NotifDetail extends StatelessWidget {
               Row(
                 children: [
                   FilledButton.icon(
-                    onPressed: () => _hub.toggleRead(notif.id),
+                    onPressed:
+                        () => DemoStoreProvider.of(
+                          context,
+                        ).toggleNotificationRead(notif.id),
                     icon: Icon(
                       notif.read
                           ? Icons.mark_email_unread_outlined
@@ -977,7 +961,8 @@ class _NotifDetail extends StatelessWidget {
                       size: 18,
                     ),
                     label: Text(
-                        notif.read ? 'تعليم كغير مقروء' : 'تحديد كمقروء'),
+                      notif.read ? 'تعليم كغير مقروء' : 'تحديد كمقروء',
+                    ),
                   ),
                 ],
               ),
@@ -1019,21 +1004,22 @@ class _EmptyInbox extends StatelessWidget {
     // Centred with a minimum height but still scrollable so it never overflows
     // a very short viewport (e.g. 430px tall landscape phone).
     return LayoutBuilder(
-      builder: (context, c) => SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: c.maxHeight),
-          child: const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: TajEmptyState(
-                icon: Icons.notifications_off_outlined,
-                title: 'لا إشعارات',
-                message: 'لا توجد إشعارات مطابقة للتصفية الحالية.',
+      builder:
+          (context, c) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: c.maxHeight),
+              child: const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: TajEmptyState(
+                    icon: Icons.notifications_off_outlined,
+                    title: 'لا إشعارات',
+                    message: 'لا توجد إشعارات مطابقة للتصفية الحالية.',
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }
@@ -1050,8 +1036,10 @@ class _EmptyDetail extends StatelessWidget {
         children: [
           Icon(Icons.drafts_outlined, size: 40, color: taj.textDisabled),
           const SizedBox(height: 12),
-          Text('اختر إشعارًا لعرض تفاصيله',
-              style: text.bodyMedium?.copyWith(color: taj.textSecondary)),
+          Text(
+            'اختر إشعارًا لعرض تفاصيله',
+            style: text.bodyMedium?.copyWith(color: taj.textSecondary),
+          ),
         ],
       ),
     );
@@ -1091,9 +1079,9 @@ class _NotificationBellState extends State<NotificationBell> {
   Widget build(BuildContext context) {
     final taj = context.taj;
     return AnimatedBuilder(
-      animation: _hub,
+      animation: DemoStoreProvider.of(context),
       builder: (context, _) {
-        final count = _hub.unread;
+        final count = DemoStoreProvider.of(context).unreadNotifications;
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -1125,14 +1113,14 @@ class _NotificationBellState extends State<NotificationBell> {
     final anchor = topLeft & box.size;
     final size = MediaQuery.sizeOf(context);
 
-    final rawW = size.width < AppBreakpoints.inboxSplit
-        ? AppBreakpoints.notifPanelMin
-        : AppBreakpoints.notifPanelMax;
+    final rawW =
+        size.width < AppBreakpoints.inboxSplit
+            ? AppBreakpoints.notifPanelMin
+            : AppBreakpoints.notifPanelMax;
     final panelW = math.min(rawW, size.width - 16);
     final maxH = size.height * AppBreakpoints.notifPopoverMaxHeightFactor;
     // Clamp horizontally so the panel can never escape either edge (RTL/LTR).
-    final left =
-        (anchor.right - panelW).clamp(8.0, size.width - panelW - 8.0);
+    final left = (anchor.right - panelW).clamp(8.0, size.width - panelW - 8.0);
     final top = math.min(anchor.bottom + 6, size.height - 160);
 
     showGeneralDialog<void>(
@@ -1161,10 +1149,11 @@ class _NotificationBellState extends State<NotificationBell> {
           ],
         );
       },
-      transitionBuilder: (ctx, anim, _, child) => FadeTransition(
-        opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-        child: child,
-      ),
+      transitionBuilder:
+          (ctx, anim, _, child) => FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+            child: child,
+          ),
     );
   }
 
@@ -1204,9 +1193,15 @@ class _CountBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     final label =
-        count > AppBreakpoints.notifBadgeMax ? '${arNum(AppBreakpoints.notifBadgeMax)}+' : arNum(count);
+        count > AppBreakpoints.notifBadgeMax
+            ? '${arNum(AppBreakpoints.notifBadgeMax)}+'
+            : arNum(count);
     return Container(
-      constraints: const BoxConstraints(minWidth: 18, maxWidth: 34, minHeight: 18),
+      constraints: const BoxConstraints(
+        minWidth: 18,
+        maxWidth: 34,
+        minHeight: 18,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 5),
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -1242,11 +1237,12 @@ class _PopoverPanel extends StatelessWidget {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     return AnimatedBuilder(
-      animation: _hub,
+      animation: DemoStoreProvider.of(context),
       builder: (context, _) {
-        final items = List<_Notif>.of(_hub.items)
-          ..sort((a, b) => b.time.compareTo(a.time));
-        final unread = _hub.unread;
+        final items = List<_Notif>.of(
+          DemoStoreProvider.of(context).notifications.map(_toNotif).toList(),
+        )..sort((a, b) => b.time.compareTo(a.time));
+        final unread = DemoStoreProvider.of(context).unreadNotifications;
         final body = Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1268,13 +1264,20 @@ class _PopoverPanel extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('الإشعارات',
-                        style:
-                            text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    child: Text(
+                      'الإشعارات',
+                      style: text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                   if (unread > 0)
                     TextButton(
-                      onPressed: _hub.markAllRead,
+                      onPressed:
+                          () =>
+                              DemoStoreProvider.of(
+                                context,
+                              ).markAllNotificationsRead(),
                       child: const Text('تحديد الكل'),
                     ),
                 ],
@@ -1282,21 +1285,25 @@ class _PopoverPanel extends StatelessWidget {
             ),
             Divider(height: 1, color: taj.divider),
             Flexible(
-              child: items.isEmpty
-                  ? const _EmptyInbox()
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      itemCount: items.length,
-                      itemBuilder: (context, i) {
-                        final n = items[i];
-                        return _NotifTile(
-                          notif: n,
-                          compact: true,
-                          onTap: () => _hub.markRead(n.id),
-                        );
-                      },
-                    ),
+              child:
+                  items.isEmpty
+                      ? const _EmptyInbox()
+                      : ListView.builder(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        itemCount: items.length,
+                        itemBuilder: (context, i) {
+                          final n = items[i];
+                          return _NotifTile(
+                            notif: n,
+                            compact: true,
+                            onTap:
+                                () => DemoStoreProvider.of(
+                                  context,
+                                ).markNotificationRead(n.id),
+                          );
+                        },
+                      ),
             ),
             Divider(height: 1, color: taj.divider),
             InkWell(
@@ -1306,12 +1313,19 @@ class _PopoverPanel extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('عرض كل الإشعارات',
-                        style: text.bodyMedium?.copyWith(
-                            color: taj.accentText, fontWeight: FontWeight.w700)),
+                    Text(
+                      'عرض كل الإشعارات',
+                      style: text.bodyMedium?.copyWith(
+                        color: taj.accentText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 6),
-                    Icon(Icons.chevron_left_rounded,
-                        size: 18, color: taj.accentText),
+                    Icon(
+                      Icons.chevron_left_rounded,
+                      size: 18,
+                      color: taj.accentText,
+                    ),
                   ],
                 ),
               ),
@@ -1339,9 +1353,9 @@ class _ChipGap extends StatelessWidget {
   const _ChipGap();
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 28,
-        child: VerticalDivider(width: 12, color: context.taj.divider),
-      );
+    height: 28,
+    child: VerticalDivider(width: 12, color: context.taj.divider),
+  );
 }
 
 // ===========================================================================
