@@ -11,27 +11,15 @@ import '../../shared/widgets/taj_table.dart';
 import '../../shared/widgets/taj_ui.dart';
 
 class _Party {
-  const _Party(this.name, this.phone, this.balance, this.limit, this.last);
+  const _Party(this.name, this.phone, this.balance, this.limit, this.last,
+      {this.id = ''});
+  final String id;
   final String name;
   final String phone;
   final double balance; // >0 owes us (debt), <=0 settled
   final double limit;
   final String last;
 }
-
-const _customers = <_Party>[
-  _Party('سالم المبروك', '0912345678', 450, 2000, '2026/07/20'),
-  _Party('نور الهدى', '0923456789', 1200, 1500, '2026/07/20'),
-  _Party('خالد عمر', '0934567890', 0, 1000, '2026/07/19'),
-  _Party('ليان أحمد', '0945678901', -320, 1000, '2026/07/18'),
-  _Party('يوسف علي', '0956789012', 670, 3000, '2026/07/17'),
-];
-
-const _suppliers = <_Party>[
-  _Party('مؤسسة العطور', '0911122334', 5400, 20000, '2026/07/15'),
-  _Party('مستودع البخور', '0922233445', 0, 10000, '2026/07/14'),
-  _Party('شركة الزيوت', '0933344556', 2100, 15000, '2026/07/12'),
-];
 
 /// Customers & Suppliers (spec 7.8): segmented list + balance colouring + a
 /// peek profile with statement and records tabs.
@@ -49,18 +37,23 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   List<_Party> get _storeList =>
       (_suppliersTab
-              ? DemoStoreProvider.of(
-                context,
-              ).suppliers.map((s) => _Party(s.name, s.phone, s.balance, 0, ''))
+              ? DemoStoreProvider.of(context).suppliers.map(
+                (s) => _Party(s.name, s.phone, s.balance, 0, '', id: s.id),
+              )
               : DemoStoreProvider.of(context).customers.map(
-                (c) => _Party(c.name, c.phone, c.balance, c.creditLimit, ''),
+                (c) => _Party(
+                  c.name,
+                  c.phone,
+                  c.balance,
+                  c.creditLimit,
+                  '',
+                  id: c.id,
+                ),
               ))
           .toList();
 
   List<_Party> get _list =>
-      (_storeList.isEmpty
-              ? (_suppliersTab ? _suppliers : _customers)
-              : _storeList)
+      _storeList
           .where(
             (p) =>
                 _search.isEmpty ||
@@ -191,11 +184,12 @@ class _CustomersScreenState extends State<CustomersScreen> {
               ),
               FilledButton(
                 onPressed: () {
-                  if (name.text.trim().isNotEmpty)
+                  if (name.text.trim().isNotEmpty) {
                     Navigator.pop(dialogContext, (
                       name.text.trim(),
                       phone.text.trim(),
                     ));
+                  }
                 },
                 child: const Text('حفظ'),
               ),
@@ -471,8 +465,8 @@ class _PartyDetail extends StatelessWidget {
               child: TabBarView(
                 children: [
                   _OverviewTab(party: party, supplier: supplier),
-                  const _StatementTab(),
-                  const _RecordsTab(),
+                  _StatementTab(party: party, supplier: supplier),
+                  _RecordsTab(party: party, supplier: supplier),
                 ],
               ),
             ),
@@ -544,16 +538,42 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
+String _fmtDate(DateTime d) => '${d.year}/${d.month}/${d.day}';
+
 class _StatementTab extends StatelessWidget {
-  const _StatementTab();
+  const _StatementTab({required this.party, required this.supplier});
+  final _Party party;
+  final bool supplier;
   @override
   Widget build(BuildContext context) {
-    final rows = [
-      ('2026/07/20', 'فاتورة #1048', 450.0, 0.0, 450.0),
-      ('2026/07/16', 'تحصيل نقدي', 0.0, 300.0, 0.0),
-      ('2026/07/10', 'فاتورة #1030', 300.0, 0.0, 300.0),
-    ];
+    final store = DemoStoreProvider.of(context);
+    // Running statement built from real documents: the customer's invoices or
+    // the supplier's purchases. Collections/payments aren't modelled yet, so
+    // only the documents that exist are shown — no invented transactions.
+    final docs = supplier
+        ? (store.purchases.where((p) => p.supplierId == party.id).toList()
+          ..sort((a, b) => a.date.compareTo(b.date)))
+        : (store.sales.where((s) => s.customerId == party.id).toList()
+          ..sort((a, b) => a.date.compareTo(b.date)));
+    var running = 0.0;
+    final rows = <(String, String, double, double, double)>[];
+    for (final d in docs) {
+      if (d is DemoPurchase) {
+        running += d.total;
+        rows.add((_fmtDate(d.date), 'مشتريات #${d.id}', d.total, 0.0, running));
+      } else if (d is DemoSale) {
+        running += d.total;
+        rows.add((_fmtDate(d.date), 'فاتورة #${d.id}', d.total, 0.0, running));
+      }
+    }
     final taj = context.taj;
+    if (rows.isEmpty) {
+      return const TajEmptyState(
+        icon: Icons.receipt_long_outlined,
+        title: 'لا توجد حركات',
+        message: 'لم تُسجَّل أي فواتير أو مشتريات لهذا الطرف بعد.',
+      );
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: rows.length,
@@ -621,15 +641,43 @@ class _StatementTab extends StatelessWidget {
 }
 
 class _RecordsTab extends StatelessWidget {
-  const _RecordsTab();
+  const _RecordsTab({required this.party, required this.supplier});
+  final _Party party;
+  final bool supplier;
   @override
   Widget build(BuildContext context) {
-    final items = [
-      ('فاتورة #1048', 'مبيعات', TajStatus.success),
-      ('تحصيل نقدي', 'سداد', TajStatus.info),
-      ('مرتجع #1045', 'مرتجع', TajStatus.warning),
-    ];
+    final store = DemoStoreProvider.of(context);
+    // Real documents only: the customer's invoices (by status) or the
+    // supplier's purchases (paid / outstanding). Empty until something exists.
+    final items = <(String, String, TajStatus)>[];
+    if (supplier) {
+      for (final p in store.purchases.where((p) => p.supplierId == party.id)) {
+        items.add((
+          'مشتريات #${p.id}',
+          p.paid ? 'مسددة' : 'غير مسددة',
+          p.paid ? TajStatus.success : TajStatus.warning,
+        ));
+      }
+    } else {
+      for (final s in store.sales.where((s) => s.customerId == party.id)) {
+        final (type, status) = switch (s.status) {
+          DemoSaleStatus.paid => ('مبيعات', TajStatus.success),
+          DemoSaleStatus.credit => ('آجل', TajStatus.warning),
+          DemoSaleStatus.pending => ('قيد التنفيذ', TajStatus.warning),
+          DemoSaleStatus.cancelled => ('ملغاة', TajStatus.error),
+          DemoSaleStatus.returned => ('مرتجع', TajStatus.error),
+        };
+        items.add(('فاتورة #${s.id}', type, status));
+      }
+    }
     final text = Theme.of(context).textTheme;
+    if (items.isEmpty) {
+      return const TajEmptyState(
+        icon: Icons.history_rounded,
+        title: 'لا توجد سجلّات',
+        message: 'لم تُسجَّل أي عمليات لهذا الطرف بعد.',
+      );
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: items.length,

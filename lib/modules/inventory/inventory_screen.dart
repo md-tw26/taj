@@ -5,7 +5,6 @@ import '../../core/demo/demo_provider.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
-import '../../shared/widgets/taj_filters.dart';
 import '../../shared/widgets/taj_table.dart';
 import '../../shared/widgets/taj_ui.dart';
 
@@ -14,7 +13,6 @@ class _Item {
     this.name,
     this.price,
     this.book,
-    this.seeded,
     this.icon, [
     this.id = '',
   ]);
@@ -22,19 +20,8 @@ class _Item {
   final String name;
   final double price;
   final int book; // system / book quantity
-  final int seeded; // pre-counted actual (demo)
   final IconData icon;
 }
-
-const _items = <_Item>[
-  _Item('عود ملكي', 450, 24, 22, Icons.spa_outlined),
-  _Item('عطر المسك', 320, 3, 3, Icons.local_florist_outlined),
-  _Item('بخور فاخر', 180, 57, 60, Icons.local_fire_department_outlined),
-  _Item('دهن العود', 700, 12, 11, Icons.opacity_outlined),
-  _Item('عنبر', 540, 2, 2, Icons.diamond_outlined),
-  _Item('مبخرة نحاس', 240, 18, 20, Icons.card_giftcard_outlined),
-  _Item('زيت الصندل', 210, 5, 5, Icons.eco_outlined),
-];
 
 enum _Phase { scan, compare }
 
@@ -53,21 +40,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
   bool _initialized = false;
   Map<String, int> _counted = {};
 
-  List<_Item> get _storeItems =>
+  List<_Item> get _activeItems =>
       DemoStoreProvider.of(context).products
           .map(
             (p) => _Item(
               p.name,
               p.price,
               p.stock,
-              p.stock,
               demoIcon(p.iconCode),
               p.id,
             ),
           )
           .toList();
-
-  List<_Item> get _activeItems => _storeItems.isEmpty ? _items : _storeItems;
 
   int get _totalCounted => _counted.values.fold(0, (s, v) => s + v);
   int get _distinct => _counted.values.where((v) => v > 0).length;
@@ -85,7 +69,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {
-      _counted = {for (final i in _activeItems) i.name: i.seeded};
+      // Start the count at the system quantity (zero variance) — the user
+      // scans/edits from there. No pre-invented discrepancies.
+      _counted = {for (final i in _activeItems) i.name: i.book};
       _initialized = true;
     }
   }
@@ -117,8 +103,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final store = DemoStoreProvider.of(context);
     for (final item in _activeItems) {
       final delta = _diff(item);
-      if (delta != 0 && item.id.isNotEmpty)
+      if (delta != 0 && item.id.isNotEmpty) {
         await store.adjustStock(item.id, delta);
+      }
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -179,13 +166,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
   List<Widget> _scanView(BuildContext context) {
     final taj = context.taj;
     return [
-      const TajFilterBar(
-        filters: [
-          TajFilter(field: 'المستودع', operator: 'هو', value: 'الرئيسي'),
-          TajFilter(field: 'الفرع', operator: 'هو', value: 'طرابلس'),
-        ],
-      ),
-      const SizedBox(height: 16),
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

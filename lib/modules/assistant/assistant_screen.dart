@@ -41,7 +41,7 @@ class _AssistantScreenState extends State<AssistantScreen> with WidgetsBindingOb
   final _input = TextEditingController();
   final _focus = FocusNode();
   bool _atBottom = true;
-  bool _seeded = false;
+  bool _testConversationPrimed = false;
   late bool _connectionError = widget.testConnectionError;
 
   @override
@@ -85,9 +85,11 @@ class _AssistantScreenState extends State<AssistantScreen> with WidgetsBindingOb
     _atBottom = true;
   }
 
-  void _seedIfNeeded() {
-    if (_seeded) return;
-    _seeded = true;
+  /// Test hook: seed the conversation with [AssistantScreen.testInitialQuestionId]
+  /// so a test can assert a specific answer without typing. No-op in the app.
+  void _primeTestConversation() {
+    if (_testConversationPrimed) return;
+    _testConversationPrimed = true;
     final id = widget.testInitialQuestionId;
     if (id == null) return;
     final q = suggestedQuestions.firstWhere((x) => x.id == id,
@@ -139,7 +141,7 @@ class _AssistantScreenState extends State<AssistantScreen> with WidgetsBindingOb
     return AnimatedBuilder(
       animation: _store,
       builder: (context, _) {
-        _seedIfNeeded();
+        _primeTestConversation();
         final taj = context.taj;
         return Scaffold(
           backgroundColor: Colors.transparent,

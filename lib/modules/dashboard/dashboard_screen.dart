@@ -129,23 +129,22 @@ class _KpiGrid extends StatelessWidget {
         icon: Icons.payments_outlined,
         spark: store.lastSevenDaySales,
       ),
+      // Only "المبيعات" owns the 7-day sales series; the rest don't have their
+      // own series, so they show no sparkline rather than borrow this one.
       KpiCard(
         label: 'الطلبات',
         value: '${store.orderCount}',
         icon: Icons.receipt_long_outlined,
-        spark: store.lastSevenDaySales,
       ),
       KpiCard(
         label: 'العملاء',
         value: '${store.customers.length}',
         icon: Icons.groups_outlined,
-        spark: store.lastSevenDaySales,
       ),
       KpiCard(
         label: 'مخزون منخفض',
         value: '${store.lowStockCount}',
         icon: Icons.inventory_2_outlined,
-        spark: store.lastSevenDaySales,
       ),
     ];
     return LayoutBuilder(
@@ -343,9 +342,8 @@ class _Order {
   final String branch;
 }
 
-/// Available filter options (field → operator → values).
+/// Status labels the filter can match — a fixed reference set.
 const _statusValues = ['مكتمل', 'قيد التنفيذ', 'ملغى'];
-const _branchValues = ['طرابلس', 'بنغازي'];
 
 class _RecentOrdersCard extends StatefulWidget {
   const _RecentOrdersCard({required this.store});
@@ -385,6 +383,14 @@ class _RecentOrdersCardState extends State<_RecentOrdersCard> {
           branch,
         );
       }).toList();
+
+  /// Branch filter options derived from the orders actually present (distinct,
+  /// non-empty) — never a hard-coded city list.
+  List<String> get _branchValues => _orders
+      .map((o) => o.branch)
+      .where((b) => b.isNotEmpty && b != 'غير محدد')
+      .toSet()
+      .toList();
 
   Iterable<_Order> get _filtered => _orders.where((o) {
     for (final f in _filters) {
@@ -436,22 +442,24 @@ class _RecentOrdersCardState extends State<_RecentOrdersCard> {
                   onPressed: () => Navigator.pop(context, ('الحالة', v)),
                   child: Text(v),
                 ),
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 4,
+              if (_branchValues.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    'الفرع',
+                    style: text.labelSmall?.copyWith(color: taj.textDisabled),
+                  ),
                 ),
-                child: Text(
-                  'الفرع',
-                  style: text.labelSmall?.copyWith(color: taj.textDisabled),
-                ),
-              ),
-              for (final v in _branchValues)
-                SimpleDialogOption(
-                  onPressed: () => Navigator.pop(context, ('الفرع', v)),
-                  child: Text(v),
-                ),
+                for (final v in _branchValues)
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.pop(context, ('الفرع', v)),
+                    child: Text(v),
+                  ),
+              ],
             ],
           ),
     );

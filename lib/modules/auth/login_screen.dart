@@ -71,84 +71,38 @@ class _LoginScreenState extends State<LoginScreen>
     return UserRole.merchant;
   }
 
-  Future<void> _submit() async {
+  void _submit() {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
     final role = _determineRole(_usernameController.text);
     widget.onSignedIn(role, _usernameController.text.trim());
   }
 
-  /// Password-recovery flow: collect the account identifier and confirm a reset
-  /// link was sent. The confirmation is deliberately account-agnostic ("if the
-  /// account exists") so the screen never reveals whether a username is valid.
+  /// Password-recovery flow: there is no server to send a reset link, so the
+  /// app says so honestly and points the user to the system administrator
+  /// rather than pretending a link was sent.
   Future<void> _showForgotPassword() async {
-    final controller =
-        TextEditingController(text: _usernameController.text.trim());
-    final formKey = GlobalKey<FormState>();
-
-    final sent = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
       builder: (ctx) {
         final taj = ctx.taj;
-        void submit() {
-          if (formKey.currentState!.validate()) Navigator.pop(ctx, true);
-        }
-
         return AlertDialog(
           title: const Text('استعادة كلمة المرور'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'أدخل اسم المستخدم أو البريد الإلكتروني، وسنرسل لك رابط إعادة '
-                  'تعيين كلمة المرور.',
-                  style: TextStyle(
-                      fontSize: 13, color: taj.textSecondary, height: 1.6),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: controller,
-                  autofocus: true,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => submit(),
-                  decoration: const InputDecoration(
-                    labelText: 'اسم المستخدم أو البريد الإلكتروني',
-                    prefixIcon: Icon(Icons.alternate_email_rounded, size: 20),
-                  ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'هذا الحقل مطلوب' : null,
-                ),
-              ],
-            ),
+          content: Text(
+            'لا تتوفر استعادة كلمة المرور تلقائيًا في هذا الإصدار. '
+            'لإعادة تعيين كلمة المرور، تواصل مع مدير النظام.',
+            style:
+                TextStyle(fontSize: 13, color: taj.textSecondary, height: 1.6),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء'),
-            ),
             FilledButton(
-              onPressed: submit,
-              child: const Text('إرسال الرابط'),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('حسنًا'),
             ),
           ],
         );
       },
     );
-
-    controller.dispose();
-    if (sent == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'إن كان الحساب موجودًا، فقد أُرسل رابط استعادة كلمة المرور.'),
-        ),
-      );
-    }
   }
 
   @override

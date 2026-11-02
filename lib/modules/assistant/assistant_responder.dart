@@ -54,7 +54,7 @@ AssistantAnswer _sales7(DemoStore s) {
   ];
   return AssistantAnswer(
     text:
-        'بلغت مبيعات آخر ٧ أيام ${arDinar(total)} بمتوسط ${arDinar(avg)} يوميًا. مرجع الاستعلام: TAJ-AI-QUERY-20260911-000000000123456789.',
+        'بلغت مبيعات آخر ٧ أيام ${arDinar(total)} بمتوسط ${arDinar(avg)} يوميًا.',
     kpis: [
       AnswerKpi(label: 'إجمالي الأسبوع', value: arDinar(total), icon: Icons.receipt_long_outlined, spark: vals),
       AnswerKpi(label: 'المتوسط اليومي', value: arDinar(avg), icon: Icons.timeline_rounded),

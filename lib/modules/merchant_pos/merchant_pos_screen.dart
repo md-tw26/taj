@@ -1,45 +1,26 @@
 import 'package:flutter/material.dart';
 
+import '../../core/demo/demo_models.dart';
+import '../../core/demo/demo_provider.dart';
 import '../../core/theme/taj_colors.dart';
 import '../../core/responsive.dart';
 import '../../core/format.dart';
 import '../../core/user_role.dart';
 import '../../shared/widgets/taj_ui.dart';
 
-class MockProduct {
-  const MockProduct({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.price,
-    required this.icon,
-    required this.status,
-  });
-
-  final String id;
-  final String name;
-  final String category;
-  final double price;
-  final IconData icon;
-  final TajStatus status;
+/// Stable per-category colour so cards keep visual variety without inventing a
+/// business "status" the product model doesn't have.
+TajStatus _statusForCategory(String category) {
+  const palette = [
+    TajStatus.primary,
+    TajStatus.secondary,
+    TajStatus.warning,
+    TajStatus.info,
+    TajStatus.success,
+  ];
+  if (category.isEmpty) return TajStatus.primary;
+  return palette[category.hashCode.abs() % palette.length];
 }
-
-const _mockProducts = [
-  MockProduct(id: 'p1', name: 'عود ملكي', category: 'عطور', price: 450, icon: Icons.spa_outlined, status: TajStatus.primary),
-  MockProduct(id: 'p2', name: 'عطر المسك', category: 'عطور', price: 320, icon: Icons.local_florist_outlined, status: TajStatus.secondary),
-  MockProduct(id: 'p3', name: 'بخور فاخر', category: 'بخور', price: 180, icon: Icons.local_fire_department_outlined, status: TajStatus.warning),
-  MockProduct(id: 'p4', name: 'ماء الورد', category: 'زيوت', price: 60, icon: Icons.water_drop_outlined, status: TajStatus.info),
-  MockProduct(id: 'p5', name: 'دهن العود', category: 'زيوت', price: 700, icon: Icons.opacity_outlined, status: TajStatus.primary),
-  MockProduct(id: 'p6', name: 'عنبر', category: 'عطور', price: 540, icon: Icons.diamond_outlined, status: TajStatus.secondary),
-  MockProduct(id: 'p7', name: 'مبخرة نحاس', category: 'هدايا', price: 240, icon: Icons.card_giftcard_outlined, status: TajStatus.success),
-  MockProduct(id: 'p8', name: 'بخور معمول', category: 'بخور', price: 150, icon: Icons.grain_outlined, status: TajStatus.warning),
-  MockProduct(id: 'p9', name: 'زيت الصندل', category: 'زيوت', price: 210, icon: Icons.eco_outlined, status: TajStatus.info),
-  MockProduct(id: 'p10', name: 'طقم هدايا', category: 'هدايا', price: 380, icon: Icons.redeem_outlined, status: TajStatus.success),
-  MockProduct(id: 'p11', name: 'مسك أبيض', category: 'عطور', price: 260, icon: Icons.brightness_5_outlined, status: TajStatus.secondary),
-  MockProduct(id: 'p12', name: 'عود كمبودي', category: 'بخور', price: 820, icon: Icons.forest_outlined, status: TajStatus.warning),
-];
-
-const _categories = ['الكل', 'عطور', 'بخور', 'زيوت', 'هدايا'];
 
 class MerchantPosScreen extends StatelessWidget {
   const MerchantPosScreen({
@@ -171,7 +152,8 @@ class _ProductCatalogState extends State<_ProductCatalog> {
   String _category = 'الكل';
   String _search = '';
 
-  List<MockProduct> get _filtered => _mockProducts.where((p) {
+  List<DemoProduct> _filteredFrom(List<DemoProduct> products) =>
+      products.where((p) {
         final catOk = _category == 'الكل' || p.category == _category;
         final searchOk = _search.isEmpty || p.name.contains(_search.trim());
         return catOk && searchOk;
@@ -180,6 +162,15 @@ class _ProductCatalogState extends State<_ProductCatalog> {
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
+    final store = DemoStoreProvider.of(context);
+    // Categories are derived from the products the user actually has — never a
+    // fixed list.
+    final categories = <String>[
+      'الكل',
+      ...{for (final p in store.products) p.category},
+    ];
+    if (!categories.contains(_category)) _category = 'الكل';
+    final filtered = _filteredFrom(store.products);
 
     // Search, category chips and the grid live in a single scroll view so the
     // fixed-height chrome (search + chips) never forces a vertical overflow
@@ -225,10 +216,10 @@ class _ProductCatalogState extends State<_ProductCatalog> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _categories.length,
+              itemCount: categories.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
-                final cat = _categories[i];
+                final cat = categories[i];
                 final selected = cat == _category;
                 return GestureDetector(
                   onTap: () => setState(() => _category = cat),
@@ -257,13 +248,17 @@ class _ProductCatalogState extends State<_ProductCatalog> {
             ),
           ),
         ),
-        if (_filtered.isEmpty)
-          const SliverFillRemaining(
+        if (filtered.isEmpty)
+          SliverFillRemaining(
             hasScrollBody: false,
             child: TajEmptyState(
-              icon: Icons.search_off_rounded,
+              icon: store.products.isEmpty
+                  ? Icons.inventory_2_outlined
+                  : Icons.search_off_rounded,
               title: 'لا توجد منتجات',
-              message: 'جرّب تصنيفًا آخر أو غيّر كلمة البحث.',
+              message: store.products.isEmpty
+                  ? 'أضِف المنتجات من شاشة المنتجات لتظهر هنا.'
+                  : 'جرّب تصنيفًا آخر أو غيّر كلمة البحث.',
             ),
           )
         else
@@ -277,11 +272,11 @@ class _ProductCatalogState extends State<_ProductCatalog> {
                 mainAxisSpacing: 12,
               ),
               delegate: SliverChildBuilderDelegate(
-                (_, i) => _ProductCard(
-                  product: _filtered[i],
-                  onTap: () {},
-                ),
-                childCount: _filtered.length,
+                // Tapping a product doesn't build an invoice yet — the merchant
+                // payment flow is out of scope (decision 4). The catalog is
+                // real; the cart stays an honest empty state.
+                (_, i) => _ProductCard(product: filtered[i], onTap: () {}),
+                childCount: filtered.length,
               ),
             ),
           ),
@@ -293,13 +288,13 @@ class _ProductCatalogState extends State<_ProductCatalog> {
 class _ProductCard extends StatelessWidget {
   const _ProductCard({required this.product, required this.onTap});
 
-  final MockProduct product;
+  final DemoProduct product;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
-    final swatch = taj.swatch(product.status);
+    final swatch = taj.swatch(_statusForCategory(product.category));
 
     return GestureDetector(
       onTap: onTap,
@@ -326,7 +321,7 @@ class _ProductCard extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Icon(
-                  product.icon,
+                  demoIcon(product.iconCode),
                   size: 36,
                   color: swatch.dark,
                 ),

@@ -299,27 +299,28 @@ class _StatsRow extends StatelessWidget {
         final cols = c.maxWidth >= 560 ? 3 : 1;
         const gap = 16.0;
         final w = (c.maxWidth - gap * (cols - 1)) / cols;
+        // Shares of total — computed from the data, not fixed. No sparkline:
+        // these tiles don't own a time series of their own.
+        String? share(double part) =>
+            total > 0 ? '${(part / total * 100).round()}٪' : null;
         final tiles = [
           KpiCard(
             label: 'إجمالي المبيعات',
             value: arDinar(total),
             icon: Icons.payments_outlined,
-            spark: const [20, 26, 24, 32, 30, 40, 46],
           ),
           KpiCard(
             label: 'مدفوعة',
             value: arDinar(paid),
-            delta: '70٪',
+            delta: share(paid),
             icon: Icons.check_circle_outline,
-            spark: const [10, 14, 13, 18, 20, 24, 28],
           ),
           KpiCard(
             label: 'آجلة',
             value: arDinar(credit),
-            delta: '30٪',
+            delta: share(credit),
             deltaPositive: false,
             icon: Icons.schedule_outlined,
-            spark: const [8, 7, 9, 6, 7, 6, 5],
           ),
         ];
         return Wrap(

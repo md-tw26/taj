@@ -76,11 +76,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   String _formCategory = 'إيجار';
 
-  // Static prototype filter, kept as state so the phone "filter" button can
-  // surface an active-count badge and a bottom sheet reflecting it.
-  final List<TajFilter> _filters = const [
-    TajFilter(field: 'الفترة', operator: 'هي', value: 'يوليو'),
-  ];
+  // No active filters by default — filters appear only when the user adds one,
+  // never a pre-set (and unapplied) prototype filter.
+  final List<TajFilter> _filters = const [];
 
   List<_Expense> get _storeExpenses {
     final store = DemoStoreProvider.of(context);
@@ -90,7 +88,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         e.category,
         e.amount,
         '${e.date.year}/${e.date.month.toString().padLeft(2, '0')}/${e.date.day.toString().padLeft(2, '0')}',
-        matches.isEmpty ? 'طرابلس' : matches.first.city,
+        matches.isEmpty || matches.first.city.isEmpty
+            ? '—'
+            : matches.first.city,
         e.method.name == 'cash' ? 'نقدي' : 'تحويل',
       );
     }).toList();
@@ -622,7 +622,7 @@ class _ExpenseForm extends StatefulWidget {
 
 class _ExpenseFormState extends State<_ExpenseForm> {
   late String _category = widget.category;
-  String _branch = 'طرابلس';
+  String? _branchId;
   String _method = 'نقدي';
   String? _employeeId;
   final _amountController = TextEditingController();
@@ -674,15 +674,15 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final store = DemoStoreProvider.of(context);
     final successColor = taj.success.dark;
     final amount = double.tryParse(_amountController.text) ?? 0;
-    if (amount > 0) {
-      final branch = store.branches.first;
+    if (amount > 0 && store.branches.isNotEmpty) {
+      final branchId = _branchId ?? store.branches.first.id;
       await store.addExpense(
         DemoExpense(
           id: 'EXP-${store.expenses.length + 1}',
           category: _category,
           amount: amount,
           date: DateTime.now(),
-          branchId: branch.id,
+          branchId: branchId,
           method:
               _method == 'نقدي' ? DemoPaymentMethod.cash : DemoPaymentMethod.bank,
           // Salaries link the expense to the chosen employee's payroll profile
@@ -797,16 +797,19 @@ class _ExpenseFormState extends State<_ExpenseForm> {
       ),
     );
 
+    final branches = DemoStoreProvider.of(context).branches;
+    final selectedBranch = _branchId ??
+        (branches.isNotEmpty ? branches.first.id : null);
     final branchField = _fieldBlock(
       'الفرع',
       DropdownButtonFormField<String>(
-        value: _branch,
+        value: selectedBranch,
         isExpanded: true,
-        items: const [
-          DropdownMenuItem(value: 'طرابلس', child: Text('طرابلس')),
-          DropdownMenuItem(value: 'بنغازي', child: Text('بنغازي')),
+        items: [
+          for (final b in branches)
+            DropdownMenuItem(value: b.id, child: Text(b.name)),
         ],
-        onChanged: (v) => setState(() => _branch = v ?? _branch),
+        onChanged: (v) => setState(() => _branchId = v ?? _branchId),
       ),
     );
 

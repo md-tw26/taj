@@ -39,8 +39,6 @@ class Product {
           : ('متوفر', TajStatus.success);
 }
 
-const _categories = ['الكل', 'عطور', 'بخور', 'زيوت', 'هدايا'];
-
 /// Products / Items (spec 7.2): Stripe table ⇄ Notion grid, ClickUp filters,
 /// instant search, and a tabbed item detail that peeks in from the side.
 class ProductsScreen extends StatefulWidget {
@@ -148,6 +146,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 const SizedBox(height: 20),
                 _Toolbar(
                   category: _category,
+                  categories: <String>[
+                    'الكل',
+                    ...{for (final p in products) p.category},
+                  ],
                   onCategory: (v) => setState(() => _category = v),
                   onSearch: (v) => setState(() => _search = v),
                 ),
@@ -231,12 +233,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       double.tryParse(price.text) ?? existing?.price ?? 0;
                   final parsedStock =
                       int.tryParse(stock.text) ?? existing?.stock ?? 0;
-                  if (name.text.trim().isNotEmpty)
+                  if (name.text.trim().isNotEmpty) {
                     Navigator.pop(dialogContext, (
                       name.text.trim(),
                       parsedPrice,
                       parsedStock,
                     ));
+                  }
                 },
                 child: const Text('حفظ'),
               ),
@@ -254,7 +257,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ? DemoProduct(
               id: 'p${DateTime.now().millisecondsSinceEpoch}',
               name: result.$1,
-              barcode: 'demo-${DateTime.now().millisecondsSinceEpoch}',
+              barcode: 'BR-${DateTime.now().millisecondsSinceEpoch}',
               category: 'عام',
               price: result.$2,
               cost: result.$2 * .7,
@@ -365,10 +368,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.category,
+    required this.categories,
     required this.onCategory,
     required this.onSearch,
   });
   final String category;
+  final List<String> categories;
   final ValueChanged<String> onCategory;
   final ValueChanged<String> onSearch;
 
@@ -403,10 +408,10 @@ class _Toolbar extends StatelessWidget {
           height: 40,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _categories.length,
+            itemCount: categories.length,
             separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemBuilder: (_, i) {
-              final cat = _categories[i];
+              final cat = categories[i];
               final selected = cat == category;
               final taj = context.taj;
               return GestureDetector(
@@ -639,7 +644,7 @@ class _ItemDetail extends StatelessWidget {
                   _PricesTab(product: product),
                   _StockTab(product: product),
                   const _VariantsTab(),
-                  const _HistoryTab(),
+                  _HistoryTab(product: product),
                 ],
               ),
             ),
@@ -739,19 +744,22 @@ class _PricesTab extends StatelessWidget {
   final Product product;
   @override
   Widget build(BuildContext context) {
-    final tiers = [
-      ('تجزئة', product.price),
-      ('نصف جملة', product.price * 0.9),
-      ('جملة', product.price * 0.82),
-    ];
     final taj = context.taj;
+    final text = Theme.of(context).textTheme;
+    // The product model has a single selling price. Tiered/wholesale pricing
+    // isn't tracked yet, so we show the real price and say the rest is unset
+    // rather than invent fake tiers.
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
-        for (final (name, price) in tiers) ...[
-          _KeyVal(name, '${_n(price)} د.ل', numeric: true),
-          Divider(height: 1, color: taj.divider),
-        ],
+        _KeyVal('سعر البيع', '${_n(product.price)} د.ل', numeric: true),
+        Divider(height: 1, color: taj.divider),
+        _KeyVal('التكلفة', '${_n(product.cost)} د.ل', numeric: true),
+        const SizedBox(height: 16),
+        Text(
+          'لا توجد مستويات أسعار إضافية (جملة/نصف جملة) مُعرّفة لهذا الصنف.',
+          style: text.bodySmall?.copyWith(color: taj.textSecondary),
+        ),
       ],
     );
   }
@@ -762,24 +770,19 @@ class _StockTab extends StatelessWidget {
   final Product product;
   @override
   Widget build(BuildContext context) {
-    final wh = [
-      ('المستودع الرئيسي', (product.stock * 0.6).round()),
-      ('فرع طرابلس', (product.stock * 0.3).round()),
-      (
-        'فرع بنغازي',
-        product.stock -
-            (product.stock * 0.6).round() -
-            (product.stock * 0.3).round(),
-      ),
-    ];
     final taj = context.taj;
+    final text = Theme.of(context).textTheme;
+    // Stock is a single total — it isn't split per warehouse/branch yet, so we
+    // show the real total instead of inventing a distribution.
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
-        for (final (name, qty) in wh) ...[
-          _KeyVal(name, _n(qty.toDouble()), numeric: true),
-          Divider(height: 1, color: taj.divider),
-        ],
+        _KeyVal('المخزون الحالي', _n(product.stock.toDouble()), numeric: true),
+        const SizedBox(height: 16),
+        Text(
+          'لا يوجد توزيع للمخزون على المستودعات أو الفروع في هذا الإصدار.',
+          style: text.bodySmall?.copyWith(color: taj.textSecondary),
+        ),
       ],
     );
   }
@@ -789,63 +792,52 @@ class _VariantsTab extends StatelessWidget {
   const _VariantsTab();
   @override
   Widget build(BuildContext context) {
-    final taj = context.taj;
-    final text = Theme.of(context).textTheme;
-    Widget group(String title, List<String> values) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: text.titleSmall),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final v in values)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: taj.paper,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: taj.divider),
-                ),
-                child: Text(v, style: text.bodyMedium),
-              ),
-          ],
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        group('الحجم', ['30 مل', '50 مل', '100 مل']),
-        group('التعبئة', ['علبة', 'زجاجة', 'طقم']),
-      ],
+    // The product model has no variants (sizes/packaging) yet — honest empty
+    // state rather than invented attributes.
+    return const TajEmptyState(
+      icon: Icons.category_outlined,
+      title: 'لا توجد خصائص',
+      message: 'لم تُعرَّف أحجام أو تعبئة لهذا الصنف.',
     );
   }
 }
 
 class _HistoryTab extends StatelessWidget {
-  const _HistoryTab();
+  const _HistoryTab({required this.product});
+  final Product product;
   @override
   Widget build(BuildContext context) {
-    final moves = [
-      ('2026/07/18', 'بيع', -3, 24, TajStatus.error),
-      ('2026/07/16', 'شراء', 20, 27, TajStatus.success),
-      ('2026/07/12', 'تسوية جرد', -1, 7, TajStatus.warning),
-      ('2026/07/10', 'بيع', -5, 8, TajStatus.error),
-    ];
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
+    // Real movements: the sale lines that moved this product. Purchases and
+    // stock adjustments aren't timestamped per product, so only sales show.
+    final store = DemoStoreProvider.of(context);
+    final moves = <(DateTime, String, int, TajStatus)>[];
+    for (final sale in store.sales) {
+      if (sale.status == DemoSaleStatus.cancelled ||
+          sale.status == DemoSaleStatus.returned) {
+        continue;
+      }
+      for (final line in sale.lines) {
+        if (line.productId == product.id) {
+          moves.add((sale.date, 'بيع', -line.quantity, TajStatus.error));
+        }
+      }
+    }
+    moves.sort((a, b) => b.$1.compareTo(a.$1));
+    if (moves.isEmpty) {
+      return const TajEmptyState(
+        icon: Icons.history_rounded,
+        title: 'لا توجد حركات',
+        message: 'لم تُسجَّل أي حركة بيع لهذا الصنف بعد.',
+      );
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: moves.length,
       separatorBuilder: (_, __) => Divider(height: 16, color: taj.divider),
       itemBuilder: (_, i) {
-        final (date, type, delta, balance, status) = moves[i];
+        final (date, type, delta, status) = moves[i];
         final swatch = taj.swatch(status);
         return Row(
           children: [
@@ -876,7 +868,7 @@ class _HistoryTab extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    date,
+                    '${date.year}/${date.month}/${date.day}',
                     style: AppThemes.numeralStyle(
                       context,
                       fontSize: 12,
@@ -893,16 +885,6 @@ class _HistoryTab extends StatelessWidget {
                 context,
                 fontSize: 14,
                 color: swatch.dark,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              '=${_n(balance.toDouble())}',
-              style: AppThemes.numeralStyle(
-                context,
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-                color: taj.textSecondary,
               ),
             ),
           ],

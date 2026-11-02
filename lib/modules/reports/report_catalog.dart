@@ -11,8 +11,10 @@ import 'report_models.dart';
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-/// Demo, clearly-labelled tax rate — the tax report notes this assumption.
-const double _kSalesTaxRate = 0.04;
+/// Sales-tax rate. There is no settings field to configure it yet, so it is 0
+/// (no invented rate); the tax report says so. Wire this to settings when the
+/// tax-rate setting exists.
+const double _kSalesTaxRate = 0;
 
 /// Zakat rate (2.5%).
 const double _kZakatRate = 0.025;
@@ -702,7 +704,8 @@ ReportResult _salesTax(BuildContext c, DemoStore s, ReportFilters f) {
       labels: chartLabels,
       series: [ReportSeries(label: 'الضريبة', color: _palette(c)[2], values: chartVals)],
     ),
-    note: 'احتُسبت الضريبة بنسبة توضيحية ${(_kSalesTaxRate * 100).round()}% على صافي المبيعات (بيانات تجريبية).',
+    note: 'نسبة الضريبة غير مضبوطة بعد (${(_kSalesTaxRate * 100).round()}٪)؛ '
+        'تُضبط من الإعدادات عند توفّرها.',
   );
 }
 
