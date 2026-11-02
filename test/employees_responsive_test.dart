@@ -1,48 +1,56 @@
-// TEMPORARY diagnostic probe for the Employees module — deleted after verify.
+// Employees module: render the list, a profile's tabs, the payroll section and
+// the add/pay dialogs across the full size matrix (portrait + landscape, RTL +
+// LTR) and assert nothing overflows. Runs against the shared fixture store so
+// there are real employees (e.g. "طارق بن عمر") to open.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:taj/core/demo/demo_provider.dart';
 import 'package:taj/core/demo/demo_store.dart';
 import 'package:taj/core/theme/app_themes.dart';
 import 'package:taj/modules/employees/employees_screen.dart';
 
+import 'fixtures/sample_data.dart';
+
 Widget _host(DemoStore store, TextDirection dir) => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppThemes.light(),
-      locale: Locale(dir == TextDirection.rtl ? 'ar' : 'en'),
-      supportedLocales: const [Locale('ar'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: DemoStoreProvider(
-        store: store,
-        child: Directionality(
-          textDirection: dir,
-          child: const ColoredBox(
-            color: Color(0xFFF4F6F8),
-            child: EmployeesScreen(),
-          ),
-        ),
+  debugShowCheckedModeBanner: false,
+  theme: AppThemes.light(),
+  locale: Locale(dir == TextDirection.rtl ? 'ar' : 'en'),
+  supportedLocales: const [Locale('ar'), Locale('en')],
+  localizationsDelegates: const [
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  home: DemoStoreProvider(
+    store: store,
+    child: Directionality(
+      textDirection: dir,
+      child: const ColoredBox(
+        color: Color(0xFFF4F6F8),
+        child: EmployeesScreen(),
       ),
-    );
+    ),
+  ),
+);
 
 String _short(FlutterErrorDetails d) {
   final full = d.toString();
-  final over = RegExp(r'overflowed by [0-9.]+ pixels').firstMatch(full)?.group(0) ?? '';
-  final cons = RegExp(r'constraints: BoxConstraints\([^)]*\)').firstMatch(full)?.group(0) ?? '';
-  final stripped = full
-      .replaceAll('file:///C:/Users/MSI/Desktop/taj/lib/modules/employees/', '')
-      .replaceAll('file:///C:/Users/MSI/Desktop/taj/lib/', '');
-  final i = stripped.indexOf('The relevant error-causing widget was');
-  final w = i >= 0
-      ? stripped.substring(i, (i + 130).clamp(0, stripped.length))
-      : d.exceptionAsString();
+  final over =
+      RegExp(r'overflowed by [0-9.]+ pixels').firstMatch(full)?.group(0) ?? '';
+  final cons =
+      RegExp(
+        r'constraints: BoxConstraints\([^)]*\)',
+      ).firstMatch(full)?.group(0) ??
+      '';
+  final i = full.indexOf('The relevant error-causing widget was');
+  final w =
+      i >= 0
+          ? full.substring(i, (i + 130).clamp(0, full.length))
+          : d.exceptionAsString();
   return '$over | $cons | $w'.replaceAll('\n', ' ').trim();
 }
 
@@ -52,7 +60,6 @@ Future<List<String>> _run(
   TextDirection dir, {
   List<String> taps = const [],
 }) async {
-  SharedPreferences.setMockInitialValues({});
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
   addTearDown(tester.view.resetPhysicalSize);
@@ -63,7 +70,7 @@ Future<List<String>> _run(
   FlutterError.onError = (d) => captured.add(d);
 
   final failures = <String>[];
-  await tester.pumpWidget(_host(DemoStore(), dir));
+  await tester.pumpWidget(_host(buildSampleStore(), dir));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
   if (captured.isNotEmpty) {
@@ -118,29 +125,35 @@ void main() {
     Size(3840, 2160),
   ];
 
-  testWidgets('employees: list + profile tabs + payroll, all sizes RTL+LTR',
-      (t) async {
+  testWidgets('employees: list + profile tabs + payroll, all sizes RTL+LTR', (
+    t,
+  ) async {
     final failures = <String>[];
     for (final s in sizes) {
       for (final swap in [false, true]) {
         final size = swap ? Size(s.height, s.width) : s;
         for (final dir in [TextDirection.rtl, TextDirection.ltr]) {
-          final f = await _run(t, size, dir, taps: [
-            'طارق بن عمر', // open profile
-            'السلف والسحوبات', // tab 2
-            'المصروفات المرتبطة', // tab 3
-            'الراتب', // tab 1
-            'مسير الرواتب', // payroll section
-          ]);
+          final f = await _run(
+            t,
+            size,
+            dir,
+            taps: [
+              'طارق بن عمر', // open profile
+              'السلف والسحوبات', // tab 2
+              'المصروفات المرتبطة', // tab 3
+              'الراتب', // tab 1
+              'مسير الرواتب', // payroll section
+            ],
+          );
           for (final e in f) {
-            failures.add('${size.width.toInt()}x${size.height.toInt()} '
-                '${dir == TextDirection.rtl ? 'RTL' : 'LTR'} $e');
+            failures.add(
+              '${size.width.toInt()}x${size.height.toInt()} '
+              '${dir == TextDirection.rtl ? 'RTL' : 'LTR'} $e',
+            );
           }
         }
       }
     }
-    debugPrint('MATRIX_FAILURES=${failures.length}');
-    for (final f in failures.take(40)) debugPrint('MATRIX_ERR>>> $f');
     expect(failures, isEmpty, reason: failures.take(20).join('\n'));
   });
 
@@ -160,13 +173,13 @@ void main() {
         // Add-employee dialog.
         final f2 = await _run(t, s, dir, taps: ['موظف']);
         for (final e in [...f1, ...f2]) {
-          failures.add('${s.width.toInt()}x${s.height.toInt()} '
-              '${dir == TextDirection.rtl ? 'RTL' : 'LTR'} $e');
+          failures.add(
+            '${s.width.toInt()}x${s.height.toInt()} '
+            '${dir == TextDirection.rtl ? 'RTL' : 'LTR'} $e',
+          );
         }
       }
     }
-    debugPrint('DIALOG_FAILURES=${failures.length}');
-    for (final f in failures.take(30)) debugPrint('DIALOG_ERR>>> $f');
     expect(failures, isEmpty, reason: failures.take(20).join('\n'));
   });
 }

@@ -72,6 +72,7 @@ class _TajAppState extends State<TajApp> {
     _permissions = UserPermissions.forRole(_role);
     _ownsStore = widget.store == null;
     _demoStore = widget.store ?? DemoStore();
+    if (_signedIn) _demoStore.currentUser = _userName;
   }
 
   void _toggleTheme() => setState(
@@ -83,6 +84,7 @@ class _TajAppState extends State<TajApp> {
     _role = role;
     _userName = userName;
     _permissions = UserPermissions.forRole(role);
+    _demoStore.currentUser = userName;
   });
 
   @override

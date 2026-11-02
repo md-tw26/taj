@@ -65,8 +65,17 @@ class _AccountingScreenState extends State<AccountingScreen> {
   // Chart-of-accounts state. The deep 12→…→120301010101 branch is expanded so
   // its level-6 name exercises the capped-indent layout out of the box.
   final Set<String> _expanded = {
-    '1', '11', '12', '2', '3', '4', '5',
-    '1203', '120301', '12030101', '1203010101',
+    '1',
+    '11',
+    '12',
+    '2',
+    '3',
+    '4',
+    '5',
+    '1203',
+    '120301',
+    '12030101',
+    '1203010101',
   };
   String? _coaSelected;
   String? _coaDetailPushed; // phone: pushed detail account id
@@ -131,15 +140,17 @@ class _AccountingScreenState extends State<AccountingScreen> {
           expanded: _expanded,
           selected: _coaSelected,
           detailPushed: _coaDetailPushed,
-          onToggleExpand: (id) => setState(() {
-            _expanded.contains(id)
-                ? _expanded.remove(id)
-                : _expanded.add(id);
-          }),
-          onSelect: (id) => setState(() {
-            _coaSelected = id;
-            if (width < AppBreakpoints.coaSplit) _coaDetailPushed = id;
-          }),
+          onToggleExpand:
+              (id) => setState(() {
+                _expanded.contains(id)
+                    ? _expanded.remove(id)
+                    : _expanded.add(id);
+              }),
+          onSelect:
+              (id) => setState(() {
+                _coaSelected = id;
+                if (width < AppBreakpoints.coaSplit) _coaDetailPushed = id;
+              }),
           onBack: () => setState(() => _coaDetailPushed = null),
           onOpenEntry: (e) => _openEntryViewer(e),
         );
@@ -178,8 +189,7 @@ class _AccountingScreenState extends State<AccountingScreen> {
     }
   }
 
-  Future<void> _openEntryEditor() =>
-      showEntryEditorDialog(context, _store);
+  Future<void> _openEntryEditor() => showEntryEditorDialog(context, _store);
 
   Future<void> _openEntryViewer(DemoJournalEntry entry) =>
       showEntryViewerDialog(context, _store, entry.id);
@@ -244,19 +254,24 @@ class _SectionChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: selected ? taj.primary.light : taj.divider),
+              color: selected ? taj.primary.light : taj.divider,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon,
-                  size: 17,
-                  color: selected ? taj.primary.dark : taj.textSecondary),
+              Icon(
+                icon,
+                size: 17,
+                color: selected ? taj.primary.dark : taj.textSecondary,
+              ),
               const SizedBox(width: 7),
-              Text(label,
-                  style: text.labelLarge?.copyWith(
-                      color:
-                          selected ? taj.primary.dark : taj.textPrimary)),
+              Text(
+                label,
+                style: text.labelLarge?.copyWith(
+                  color: selected ? taj.primary.dark : taj.textPrimary,
+                ),
+              ),
             ],
           ),
         ),
@@ -297,7 +312,9 @@ class _CoaSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     final single = width < AppBreakpoints.coaSplit;
-    final threePane = width >= AppBreakpoints.threePane && height >= AppBreakpoints.threePaneMinHeight;
+    final threePane =
+        width >= AppBreakpoints.threePane &&
+        height >= AppBreakpoints.threePaneMinHeight;
 
     final tree = _CoaTree(
       store: store,
@@ -322,9 +339,10 @@ class _CoaSection extends StatelessWidget {
       return tree;
     }
 
-    final treePaneWidth = (width * 0.28)
-        .clamp(AppBreakpoints.coaTreePaneMin, AppBreakpoints.coaTreePaneMax)
-        .toDouble();
+    final treePaneWidth =
+        (width * 0.28)
+            .clamp(AppBreakpoints.coaTreePaneMin, AppBreakpoints.coaTreePaneMax)
+            .toDouble();
     final acc = selected == null ? null : store.ledgerAccountById(selected!);
 
     if (threePane) {
@@ -389,16 +407,18 @@ class _CoaTree extends StatelessWidget {
       for (final a in store.ledgerChildren(parentId)) {
         final hasChildren = !store.isLeafAccount(a.id);
         final isOpen = expanded.contains(a.id);
-        rows.add(_CoaTreeRow(
-          account: a,
-          depth: depth,
-          balance: store.ledgerBalance(a.id),
-          hasChildren: hasChildren,
-          expanded: isOpen,
-          selected: a.id == selected,
-          onToggle: () => onToggleExpand(a.id),
-          onTap: () => onSelect(a.id),
-        ));
+        rows.add(
+          _CoaTreeRow(
+            account: a,
+            depth: depth,
+            balance: store.ledgerBalance(a.id),
+            hasChildren: hasChildren,
+            expanded: isOpen,
+            selected: a.id == selected,
+            onToggle: () => onToggleExpand(a.id),
+            onTap: () => onSelect(a.id),
+          ),
+        );
         if (hasChildren && isOpen) walk(a.id, depth + 1);
       }
     }
@@ -443,7 +463,8 @@ class _CoaTreeRow extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: text.bodyMedium?.copyWith(
-          fontWeight: hasChildren ? FontWeight.w700 : FontWeight.w500),
+        fontWeight: hasChildren ? FontWeight.w700 : FontWeight.w500,
+      ),
     );
 
     return Material(
@@ -452,24 +473,30 @@ class _CoaTreeRow extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: EdgeInsetsDirectional.only(
-              start: 8 + indent, end: 10, top: 8, bottom: 8),
+            start: 8 + indent,
+            end: 10,
+            top: 8,
+            bottom: 8,
+          ),
           child: Row(
             children: [
               // Expand / collapse toggle (or a spacer for leaves).
               SizedBox(
                 width: 26,
-                child: hasChildren
-                    ? InkWell(
-                        onTap: onToggle,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Icon(
+                child:
+                    hasChildren
+                        ? InkWell(
+                          onTap: onToggle,
+                          borderRadius: BorderRadius.circular(6),
+                          child: Icon(
                             expanded
                                 ? Icons.expand_more_rounded
                                 : Icons.chevron_left_rounded,
                             size: 20,
-                            color: taj.textSecondary),
-                      )
-                    : const SizedBox.shrink(),
+                            color: taj.textSecondary,
+                          ),
+                        )
+                        : const SizedBox.shrink(),
               ),
               // Code + name. When the available width is tight (deep level in a
               // narrow pane, or a phone) the code drops onto a second line and
@@ -540,13 +567,17 @@ class _CodeChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: taj.divider),
         ),
-        child: Text(code,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppThemes.numeralStyle(context,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: taj.textSecondary)),
+        child: Text(
+          code,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppThemes.numeralStyle(
+            context,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: taj.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -601,10 +632,12 @@ class _AccountDetail extends StatelessWidget {
               _CodeChip(a.code),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(a.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.titleMedium),
+                child: Text(
+                  a.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium,
+                ),
               ),
               const SizedBox(width: 8),
               _AccountTypeChip(a.type),
@@ -620,10 +653,11 @@ class _AccountDetail extends StatelessWidget {
               _Kv(label: 'إجمالي مدين', value: debit, swatch: taj.success),
               _Kv(label: 'إجمالي دائن', value: credit, swatch: taj.info),
               _Kv(
-                  label: 'الرصيد',
-                  value: balance,
-                  swatch: balance < 0 ? taj.error : taj.primary,
-                  showSign: true),
+                label: 'الرصيد',
+                value: balance,
+                swatch: balance < 0 ? taj.error : taj.primary,
+                showSign: true,
+              ),
             ],
           ),
         ),
@@ -633,26 +667,29 @@ class _AccountDetail extends StatelessWidget {
           child: Text('الحركة (${entries.length})', style: text.titleSmall),
         ),
         Expanded(
-          child: entries.isEmpty
-              ? const TajEmptyState(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'لا حركة',
-                  message: 'لا توجد قيود مُرحّلة على هذا الحساب.')
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: entries.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final e = entries[i];
-                    final line =
-                        e.lines.firstWhere((l) => l.accountId == a.id);
-                    return _AccountMovementCard(
-                      entry: e,
-                      line: line,
-                      onTap: () => onOpenEntry(e),
-                    );
-                  },
-                ),
+          child:
+              entries.isEmpty
+                  ? const TajEmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'لا حركة',
+                    message: 'لا توجد قيود مُرحّلة على هذا الحساب.',
+                  )
+                  : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: entries.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final e = entries[i];
+                      final line = e.lines.firstWhere(
+                        (l) => l.accountId == a.id,
+                      );
+                      return _AccountMovementCard(
+                        entry: e,
+                        line: line,
+                        onTap: () => onOpenEntry(e),
+                      );
+                    },
+                  ),
         ),
       ],
     );
@@ -660,11 +697,12 @@ class _AccountDetail extends StatelessWidget {
 }
 
 class _Kv extends StatelessWidget {
-  const _Kv(
-      {required this.label,
-      required this.value,
-      required this.swatch,
-      this.showSign = false});
+  const _Kv({
+    required this.label,
+    required this.value,
+    required this.swatch,
+    this.showSign = false,
+  });
   final String label;
   final double value;
   final TajSwatch swatch;
@@ -676,27 +714,32 @@ class _Kv extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: taj.textSecondary)),
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: taj.textSecondary),
+        ),
         const SizedBox(height: 2),
         _Money(
-            value: value,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            maxLines: 2,
-            showSign: showSign,
-            color: taj.accentFor(swatch)),
+          value: value,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          maxLines: 2,
+          showSign: showSign,
+          color: taj.accentFor(swatch),
+        ),
       ],
     );
   }
 }
 
 class _AccountMovementCard extends StatelessWidget {
-  const _AccountMovementCard(
-      {required this.entry, required this.line, required this.onTap});
+  const _AccountMovementCard({
+    required this.entry,
+    required this.line,
+    required this.onTap,
+  });
   final DemoJournalEntry entry;
   final DemoJournalLine line;
   final VoidCallback onTap;
@@ -718,24 +761,35 @@ class _AccountMovementCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(entry.number,
-                        style: AppThemes.numeralStyle(context,
-                            fontSize: 13, fontWeight: FontWeight.w700)),
+                    Text(
+                      entry.number,
+                      style: AppThemes.numeralStyle(
+                        context,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     _EntryStatusBadge(entry: entry),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(entry.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+                Text(
+                  entry.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                ),
                 const SizedBox(height: 4),
-                Text(_fmtDate(entry.date),
-                    style: AppThemes.numeralStyle(context,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: taj.textDisabled)),
+                Text(
+                  _fmtDate(entry.date),
+                  style: AppThemes.numeralStyle(
+                    context,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: taj.textDisabled,
+                  ),
+                ),
               ],
             ),
           ),
@@ -744,19 +798,24 @@ class _AccountMovementCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(isDebit ? 'مدين' : 'دائن',
-                  style: text.bodySmall?.copyWith(
-                      color: isDebit
+              Text(
+                isDebit ? 'مدين' : 'دائن',
+                style: text.bodySmall?.copyWith(
+                  color:
+                      isDebit
                           ? taj.accentFor(taj.success)
-                          : taj.accentFor(taj.info))),
+                          : taj.accentFor(taj.info),
+                ),
+              ),
               const SizedBox(height: 2),
               _Money(
                 value: isDebit ? line.debit : line.credit,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: isDebit
-                    ? taj.accentFor(taj.success)
-                    : taj.accentFor(taj.info),
+                color:
+                    isDebit
+                        ? taj.accentFor(taj.success)
+                        : taj.accentFor(taj.info),
               ),
             ],
           ),
@@ -812,17 +871,18 @@ class _JournalSection extends StatelessWidget {
     }
 
     return store.journalEntries.where((e) {
-      if (statusFilter == 'draft' && e.status != DemoEntryStatus.draft) {
-        return false;
-      }
-      if (statusFilter == 'posted' && e.status != DemoEntryStatus.posted) {
-        return false;
-      }
-      if (statusFilter == 'reversed' && e.status != DemoEntryStatus.reversed) {
-        return false;
-      }
-      return inPeriod(e.date);
-    }).toList()
+        if (statusFilter == 'draft' && e.status != DemoEntryStatus.draft) {
+          return false;
+        }
+        if (statusFilter == 'posted' && e.status != DemoEntryStatus.posted) {
+          return false;
+        }
+        if (statusFilter == 'reversed' &&
+            e.status != DemoEntryStatus.reversed) {
+          return false;
+        }
+        return inPeriod(e.date);
+      }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
@@ -830,7 +890,9 @@ class _JournalSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     final entries = _filtered();
-    final threePane = width >= AppBreakpoints.threePane && height >= AppBreakpoints.threePaneMinHeight;
+    final threePane =
+        width >= AppBreakpoints.threePane &&
+        height >= AppBreakpoints.threePaneMinHeight;
 
     final list = _JournalList(
       store: store,
@@ -847,9 +909,10 @@ class _JournalSection extends StatelessWidget {
 
     if (!threePane) return list;
 
-    final sel = selected == null
-        ? null
-        : entries.where((e) => e.id == selected).isNotEmpty
+    final sel =
+        selected == null
+            ? null
+            : entries.where((e) => e.id == selected).isNotEmpty
             ? entries.firstWhere((e) => e.id == selected)
             : null;
     // Three panes: (filters+list) | entry preview. The tree lives in the COA
@@ -862,12 +925,14 @@ class _JournalSection extends StatelessWidget {
         Container(width: 1, color: taj.divider),
         Expanded(
           flex: 2,
-          child: sel == null
-              ? const TajEmptyState(
-                  icon: Icons.description_outlined,
-                  title: 'اختر قيدًا',
-                  message: 'اختر قيدًا من القائمة لمعاينته.')
-              : _EntryPreview(store: store, entry: sel),
+          child:
+              sel == null
+                  ? const TajEmptyState(
+                    icon: Icons.description_outlined,
+                    title: 'اختر قيدًا',
+                    message: 'اختر قيدًا من القائمة لمعاينته.',
+                  )
+                  : _EntryPreview(store: store, entry: sel),
         ),
       ],
     );
@@ -925,21 +990,25 @@ class _JournalList extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: entries.isEmpty
-              ? const TajEmptyState(
-                  icon: Icons.menu_book_outlined,
-                  title: 'لا قيود',
-                  message: 'لا توجد قيود مطابقة للفلاتر الحالية.')
-              : phone
+          child:
+              entries.isEmpty
+                  ? const TajEmptyState(
+                    icon: Icons.menu_book_outlined,
+                    title: 'لا قيود',
+                    message: 'لا توجد قيود مطابقة للفلاتر الحالية.',
+                  )
+                  : phone
                   ? _JournalCards(
-                      store: store,
-                      entries: entries,
-                      onOpenEntry: onOpenEntry)
+                    store: store,
+                    entries: entries,
+                    onOpenEntry: onOpenEntry,
+                  )
                   : _JournalTable(
-                      store: store,
-                      entries: entries,
-                      selected: selected,
-                      onOpenEntry: onOpenEntry),
+                    store: store,
+                    entries: entries,
+                    selected: selected,
+                    onOpenEntry: onOpenEntry,
+                  ),
         ),
       ],
     );
@@ -991,8 +1060,11 @@ class _JournalFilters extends StatelessWidget {
 }
 
 class _JournalCards extends StatelessWidget {
-  const _JournalCards(
-      {required this.store, required this.entries, required this.onOpenEntry});
+  const _JournalCards({
+    required this.store,
+    required this.entries,
+    required this.onOpenEntry,
+  });
   final DemoStore store;
   final List<DemoJournalEntry> entries;
   final ValueChanged<DemoJournalEntry> onOpenEntry;
@@ -1015,31 +1087,42 @@ class _JournalCards extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(e.number,
-                      style: AppThemes.numeralStyle(context,
-                          fontSize: 14, fontWeight: FontWeight.w700)),
+                  Text(
+                    e.number,
+                    style: AppThemes.numeralStyle(
+                      context,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   _EntryStatusBadge(entry: e),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Align(
                       alignment: AlignmentDirectional.centerEnd,
-                      child: Text(_fmtDate(e.date),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppThemes.numeralStyle(context,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                              color: taj.textSecondary)),
+                      child: Text(
+                        _fmtDate(e.date),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppThemes.numeralStyle(
+                          context,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: taj.textSecondary,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
-              Text(e.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodyMedium),
+              Text(
+                e.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodyMedium,
+              ),
               const SizedBox(height: 8),
               Divider(height: 1, color: taj.divider),
               const SizedBox(height: 8),
@@ -1049,9 +1132,15 @@ class _JournalCards extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   _MiniAmount(
-                      label: 'مدين', value: e.totalDebit, swatch: taj.success),
+                    label: 'مدين',
+                    value: e.totalDebit,
+                    swatch: taj.success,
+                  ),
                   _MiniAmount(
-                      label: 'دائن', value: e.totalCredit, swatch: taj.info),
+                    label: 'دائن',
+                    value: e.totalCredit,
+                    swatch: taj.info,
+                  ),
                   if (!e.isBalanced) _DiffBadge(diff: e.difference),
                 ],
               ),
@@ -1064,8 +1153,11 @@ class _JournalCards extends StatelessWidget {
 }
 
 class _MiniAmount extends StatelessWidget {
-  const _MiniAmount(
-      {required this.label, required this.value, required this.swatch});
+  const _MiniAmount({
+    required this.label,
+    required this.value,
+    required this.swatch,
+  });
   final String label;
   final double value;
   final TajSwatch swatch;
@@ -1075,16 +1167,18 @@ class _MiniAmount extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label: ',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: taj.textSecondary)),
+        Text(
+          '$label: ',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: taj.textSecondary),
+        ),
         _Money(
-            value: value,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: taj.accentFor(swatch)),
+          value: value,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: taj.accentFor(swatch),
+        ),
       ],
     );
   }
@@ -1121,34 +1215,47 @@ class _JournalTable extends StatelessWidget {
             _FinRow(
               onTap: () => onOpenEntry(e),
               selected: e.id == selected,
-              frozen: Text(e.number,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppThemes.numeralStyle(context,
-                      fontSize: 13, fontWeight: FontWeight.w700)),
+              frozen: Text(
+                e.number,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppThemes.numeralStyle(
+                  context,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               cells: [
-                Text(_fmtDate(e.date),
-                    style: AppThemes.numeralStyle(context,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: taj.textSecondary)),
-                Text(e.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall),
+                Text(
+                  _fmtDate(e.date),
+                  style: AppThemes.numeralStyle(
+                    context,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: taj.textSecondary,
+                  ),
+                ),
+                Text(
+                  e.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall,
+                ),
                 _EntryStatusBadge(entry: e),
                 _Money(
-                    value: e.totalDebit,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    maxChars: 12,
-                    color: taj.accentFor(taj.success)),
+                  value: e.totalDebit,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  maxChars: 12,
+                  color: taj.accentFor(taj.success),
+                ),
                 _Money(
-                    value: e.totalCredit,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    maxChars: 12,
-                    color: taj.accentFor(taj.info)),
+                  value: e.totalCredit,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  maxChars: 12,
+                  color: taj.accentFor(taj.info),
+                ),
               ],
             ),
         ],
@@ -1162,8 +1269,12 @@ class _JournalTable extends StatelessWidget {
 // ===========================================================================
 
 class _LedgerSection extends StatelessWidget {
-  const _LedgerSection(
-      {required this.store, required this.width, required this.account, required this.onAccount});
+  const _LedgerSection({
+    required this.store,
+    required this.width,
+    required this.account,
+    required this.onAccount,
+  });
   final DemoStore store;
   final double width;
   final String? account;
@@ -1173,14 +1284,18 @@ class _LedgerSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
-    final leaves = store.ledgerAccounts.where((a) => store.isLeafAccount(a.id)).toList()
-      ..sort((a, b) => a.code.compareTo(b.code));
-    final accId = (account != null && leaves.any((a) => a.id == account))
-        ? account!
-        : (leaves.isNotEmpty ? leaves.first.id : null);
+    final leaves =
+        store.ledgerAccounts.where((a) => store.isLeafAccount(a.id)).toList()
+          ..sort((a, b) => a.code.compareTo(b.code));
+    final accId =
+        (account != null && leaves.any((a) => a.id == account))
+            ? account!
+            : (leaves.isNotEmpty ? leaves.first.id : null);
     if (accId == null) {
       return const TajEmptyState(
-          icon: Icons.receipt_long_outlined, title: 'لا حسابات');
+        icon: Icons.receipt_long_outlined,
+        title: 'لا حسابات',
+      );
     }
     final acc = store.ledgerAccountById(accId)!;
     final entries = store.entriesTouching(accId);
@@ -1190,45 +1305,63 @@ class _LedgerSection extends StatelessWidget {
     for (final e in entries) {
       for (final l in e.lines.where((l) => l.accountId == accId)) {
         running += l.debit - l.credit;
-        rows.add(_FinRow(
-          frozen: Text(e.number,
+        rows.add(
+          _FinRow(
+            frozen: Text(
+              e.number,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppThemes.numeralStyle(context,
-                  fontSize: 13, fontWeight: FontWeight.w700)),
-          cells: [
-            Text(_fmtDate(e.date),
-                style: AppThemes.numeralStyle(context,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: taj.textSecondary)),
-            Text(l.description.isEmpty ? e.description : l.description,
-                maxLines: 2, overflow: TextOverflow.ellipsis, style: text.bodySmall),
-            l.debit > 0
-                ? _Money(
+              style: AppThemes.numeralStyle(
+                context,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            cells: [
+              Text(
+                _fmtDate(e.date),
+                style: AppThemes.numeralStyle(
+                  context,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: taj.textSecondary,
+                ),
+              ),
+              Text(
+                l.description.isEmpty ? e.description : l.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodySmall,
+              ),
+              l.debit > 0
+                  ? _Money(
                     value: l.debit,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     maxChars: 12,
-                    color: taj.accentFor(taj.success))
-                : const _Dash(),
-            l.credit > 0
-                ? _Money(
+                    color: taj.accentFor(taj.success),
+                  )
+                  : const _Dash(),
+              l.credit > 0
+                  ? _Money(
                     value: l.credit,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     maxChars: 12,
-                    color: taj.accentFor(taj.info))
-                : const _Dash(),
-            _Money(
+                    color: taj.accentFor(taj.info),
+                  )
+                  : const _Dash(),
+              _Money(
                 value: running,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 maxChars: 12,
                 showSign: running < 0,
-                color: running < 0 ? taj.accentFor(taj.error) : taj.textPrimary),
-          ],
-        ));
+                color: running < 0 ? taj.accentFor(taj.error) : taj.textPrimary,
+              ),
+            ],
+          ),
+        );
       }
     }
     final (td, tc) = store.ledgerDebitCredit(accId);
@@ -1241,10 +1374,12 @@ class _LedgerSection extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('دفتر الأستاذ',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.titleMedium),
+                child: Text(
+                  'دفتر الأستاذ',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium,
+                ),
               ),
               const SizedBox(width: 8),
               _AccountPickerButton(
@@ -1262,10 +1397,12 @@ class _LedgerSection extends StatelessWidget {
               _CodeChip(acc.code),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(acc.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.titleSmall),
+                child: Text(
+                  acc.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleSmall,
+                ),
               ),
             ],
           ),
@@ -1273,53 +1410,62 @@ class _LedgerSection extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: rows.isEmpty
-                ? const TajEmptyState(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'لا حركة',
-                    message: 'لا توجد قيود على هذا الحساب.')
-                : _FinTable(
-                    frozenCol: const _FinCol('رقم القيد', 116),
-                    restCols: const [
-                      _FinCol('التاريخ', 104),
-                      _FinCol('البيان', 200),
-                      _FinCol('مدين', 128, numeric: true),
-                      _FinCol('دائن', 128, numeric: true),
-                      _FinCol('الرصيد الجاري', 140, numeric: true),
-                    ],
-                    rows: rows,
-                    totals: _FinRow(
-                      emphasize: true,
-                      frozen: Text('الإجمالي',
-                          style: text.labelLarge
-                              ?.copyWith(fontWeight: FontWeight.w800)),
-                      cells: [
-                        const SizedBox.shrink(),
-                        const SizedBox.shrink(),
-                        _Money(
+            child:
+                rows.isEmpty
+                    ? const TajEmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'لا حركة',
+                      message: 'لا توجد قيود على هذا الحساب.',
+                    )
+                    : _FinTable(
+                      frozenCol: const _FinCol('رقم القيد', 116),
+                      restCols: const [
+                        _FinCol('التاريخ', 104),
+                        _FinCol('البيان', 200),
+                        _FinCol('مدين', 128, numeric: true),
+                        _FinCol('دائن', 128, numeric: true),
+                        _FinCol('الرصيد الجاري', 140, numeric: true),
+                      ],
+                      rows: rows,
+                      totals: _FinRow(
+                        emphasize: true,
+                        frozen: Text(
+                          'الإجمالي',
+                          style: text.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        cells: [
+                          const SizedBox.shrink(),
+                          const SizedBox.shrink(),
+                          _Money(
                             value: td,
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
                             maxChars: 12,
-                            color: taj.accentFor(taj.success)),
-                        _Money(
+                            color: taj.accentFor(taj.success),
+                          ),
+                          _Money(
                             value: tc,
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
                             maxChars: 12,
-                            color: taj.accentFor(taj.info)),
-                        _Money(
+                            color: taj.accentFor(taj.info),
+                          ),
+                          _Money(
                             value: td - tc,
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
                             maxChars: 12,
                             showSign: (td - tc) < 0,
-                            color: (td - tc) < 0
-                                ? taj.accentFor(taj.error)
-                                : taj.textPrimary),
-                      ],
+                            color:
+                                (td - tc) < 0
+                                    ? taj.accentFor(taj.error)
+                                    : taj.textPrimary,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
           ),
         ),
       ],
@@ -1339,8 +1485,9 @@ class _TrialBalanceSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
-    final leaves = store.ledgerAccounts.where((a) => store.isLeafAccount(a.id)).toList()
-      ..sort((a, b) => a.code.compareTo(b.code));
+    final leaves =
+        store.ledgerAccounts.where((a) => store.isLeafAccount(a.id)).toList()
+          ..sort((a, b) => a.code.compareTo(b.code));
     var totalDebit = 0.0, totalCredit = 0.0;
     final rows = <_FinRow>[];
     for (final a in leaves) {
@@ -1351,38 +1498,44 @@ class _TrialBalanceSection extends StatelessWidget {
       final creditBal = bal < 0 ? -bal : 0.0;
       totalDebit += debitBal;
       totalCredit += creditBal;
-      rows.add(_FinRow(
-        frozen: Row(
-          children: [
-            _CodeChip(a.code),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(a.name,
+      rows.add(
+        _FinRow(
+          frozen: Row(
+            children: [
+              _CodeChip(a.code),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  a.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: text.bodyMedium),
-            ),
-          ],
-        ),
-        cells: [
-          debitBal > 0
-              ? _Money(
+                  style: text.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+          cells: [
+            debitBal > 0
+                ? _Money(
                   value: debitBal,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   maxChars: 12,
-                  color: taj.accentFor(taj.success))
-              : const _Dash(),
-          creditBal > 0
-              ? _Money(
+                  color: taj.accentFor(taj.success),
+                )
+                : const _Dash(),
+            creditBal > 0
+                ? _Money(
                   value: creditBal,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   maxChars: 12,
-                  color: taj.accentFor(taj.info))
-              : const _Dash(),
-        ],
-      ));
+                  color: taj.accentFor(taj.info),
+                )
+                : const _Dash(),
+          ],
+        ),
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1392,10 +1545,12 @@ class _TrialBalanceSection extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('ميزان المراجعة',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.titleMedium),
+                child: Text(
+                  'ميزان المراجعة',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium,
+                ),
               ),
               const SizedBox(width: 8),
               _MiniIconButton(icon: Icons.print_outlined, onTap: () {}),
@@ -1416,22 +1571,25 @@ class _TrialBalanceSection extends StatelessWidget {
               rows: rows,
               totals: _FinRow(
                 emphasize: true,
-                frozen: Text('الإجمالي',
-                    style:
-                        text.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+                frozen: Text(
+                  'الإجمالي',
+                  style: text.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
                 cells: [
                   _Money(
-                      value: totalDebit,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      maxChars: 12,
-                      color: taj.accentFor(taj.success)),
+                    value: totalDebit,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    maxChars: 12,
+                    color: taj.accentFor(taj.success),
+                  ),
                   _Money(
-                      value: totalCredit,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      maxChars: 12,
-                      color: taj.accentFor(taj.info)),
+                    value: totalCredit,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    maxChars: 12,
+                    color: taj.accentFor(taj.info),
+                  ),
                 ],
               ),
             ),
@@ -1447,11 +1605,12 @@ class _TrialBalanceSection extends StatelessWidget {
 // ===========================================================================
 
 class _StatementsSection extends StatelessWidget {
-  const _StatementsSection(
-      {required this.store,
-      required this.width,
-      required this.tab,
-      required this.onTab});
+  const _StatementsSection({
+    required this.store,
+    required this.width,
+    required this.tab,
+    required this.onTab,
+  });
   final DemoStore store;
   final double width;
   final int tab;
@@ -1468,7 +1627,12 @@ class _StatementsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    const tabs = ['قائمة الدخل', 'المركز المالي', 'التدفقات النقدية', 'الأرباح والخسائر'];
+    const tabs = [
+      'قائمة الدخل',
+      'المركز المالي',
+      'التدفقات النقدية',
+      'الأرباح والخسائر',
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1482,7 +1646,11 @@ class _StatementsSection extends StatelessWidget {
           child: Row(
             children: [
               for (var i = 0; i < tabs.length; i++) ...[
-                _SubTab(label: tabs[i], selected: i == tab, onTap: () => onTab(i)),
+                _SubTab(
+                  label: tabs[i],
+                  selected: i == tab,
+                  onTap: () => onTab(i),
+                ),
                 const SizedBox(width: 8),
               ],
             ],
@@ -1516,15 +1684,17 @@ class _StatementsSection extends StatelessWidget {
     final revenue = _typeTotal(DemoLedgerAccountType.revenue).abs();
     final expenses = _typeTotal(DemoLedgerAccountType.expense).abs();
     final net = revenue - expenses;
-    return _StatementList(rows: [
-      _StmtRow('الإيرادات', null, header: true),
-      ..._leafRows(context, DemoLedgerAccountType.revenue),
-      _StmtRow('إجمالي الإيرادات', revenue, total: true),
-      _StmtRow('المصروفات', null, header: true),
-      ..._leafRows(context, DemoLedgerAccountType.expense),
-      _StmtRow('إجمالي المصروفات', expenses, total: true),
-      _StmtRow('صافي الربح', net, grand: true),
-    ]);
+    return _StatementList(
+      rows: [
+        _StmtRow('الإيرادات', null, header: true),
+        ..._leafRows(context, DemoLedgerAccountType.revenue),
+        _StmtRow('إجمالي الإيرادات', revenue, total: true),
+        _StmtRow('المصروفات', null, header: true),
+        ..._leafRows(context, DemoLedgerAccountType.expense),
+        _StmtRow('إجمالي المصروفات', expenses, total: true),
+        _StmtRow('صافي الربح', net, grand: true),
+      ],
+    );
   }
 
   Widget _balanceSheet(BuildContext context) {
@@ -1534,31 +1704,39 @@ class _StatementsSection extends StatelessWidget {
     final revenue = _typeTotal(DemoLedgerAccountType.revenue).abs();
     final expenses = _typeTotal(DemoLedgerAccountType.expense).abs();
     final netIncome = revenue - expenses;
-    return _StatementList(rows: [
-      _StmtRow('الأصول', null, header: true),
-      ..._leafRows(context, DemoLedgerAccountType.asset),
-      _StmtRow('إجمالي الأصول', assets, total: true),
-      _StmtRow('الخصوم', null, header: true),
-      ..._leafRows(context, DemoLedgerAccountType.liability),
-      _StmtRow('إجمالي الخصوم', liabilities, total: true),
-      _StmtRow('حقوق الملكية', null, header: true),
-      ..._leafRows(context, DemoLedgerAccountType.equity),
-      _StmtRow('صافي ربح الفترة', netIncome),
-      _StmtRow('إجمالي حقوق الملكية', equity + netIncome, total: true),
-      _StmtRow('إجمالي الخصوم وحقوق الملكية', liabilities + equity + netIncome,
-          grand: true),
-    ]);
+    return _StatementList(
+      rows: [
+        _StmtRow('الأصول', null, header: true),
+        ..._leafRows(context, DemoLedgerAccountType.asset),
+        _StmtRow('إجمالي الأصول', assets, total: true),
+        _StmtRow('الخصوم', null, header: true),
+        ..._leafRows(context, DemoLedgerAccountType.liability),
+        _StmtRow('إجمالي الخصوم', liabilities, total: true),
+        _StmtRow('حقوق الملكية', null, header: true),
+        ..._leafRows(context, DemoLedgerAccountType.equity),
+        _StmtRow('صافي ربح الفترة', netIncome),
+        _StmtRow('إجمالي حقوق الملكية', equity + netIncome, total: true),
+        _StmtRow(
+          'إجمالي الخصوم وحقوق الملكية',
+          liabilities + equity + netIncome,
+          grand: true,
+        ),
+      ],
+    );
   }
 
   Widget _cashFlow(BuildContext context) {
     // Simplified: net change in cash/bank leaf accounts, categorised by the
     // counterparty account type on the other lines of each entry.
-    final cashIds = store.ledgerAccounts
-        .where((a) =>
-            store.isLeafAccount(a.id) &&
-            (a.code == '1101' || a.code.startsWith('1102')))
-        .map((a) => a.id)
-        .toSet();
+    final cashIds =
+        store.ledgerAccounts
+            .where(
+              (a) =>
+                  store.isLeafAccount(a.id) &&
+                  (a.code == '1101' || a.code.startsWith('1102')),
+            )
+            .map((a) => a.id)
+            .toSet();
     var operating = 0.0, investing = 0.0, financing = 0.0;
     for (final e in store.journalEntries) {
       if (e.status == DemoEntryStatus.draft) continue;
@@ -1586,15 +1764,26 @@ class _StatementsSection extends StatelessWidget {
       }
     }
     final net = operating + investing + financing;
-    return _StatementList(rows: [
-      _StmtRow('التدفقات من الأنشطة التشغيلية', operating,
-          showSign: operating < 0),
-      _StmtRow('التدفقات من الأنشطة الاستثمارية', investing,
-          showSign: investing < 0),
-      _StmtRow('التدفقات من الأنشطة التمويلية', financing,
-          showSign: financing < 0),
-      _StmtRow('صافي التغير في النقدية', net, grand: true, showSign: net < 0),
-    ]);
+    return _StatementList(
+      rows: [
+        _StmtRow(
+          'التدفقات من الأنشطة التشغيلية',
+          operating,
+          showSign: operating < 0,
+        ),
+        _StmtRow(
+          'التدفقات من الأنشطة الاستثمارية',
+          investing,
+          showSign: investing < 0,
+        ),
+        _StmtRow(
+          'التدفقات من الأنشطة التمويلية',
+          financing,
+          showSign: financing < 0,
+        ),
+        _StmtRow('صافي التغير في النقدية', net, grand: true, showSign: net < 0),
+      ],
+    );
   }
 
   Widget _profitAndLoss(BuildContext context) {
@@ -1602,13 +1791,18 @@ class _StatementsSection extends StatelessWidget {
     final expenses = _typeTotal(DemoLedgerAccountType.expense).abs();
     final net = revenue - expenses;
     final margin = revenue == 0 ? 0.0 : (net / revenue * 100);
-    return _StatementList(rows: [
-      _StmtRow('إجمالي الإيرادات', revenue, total: true),
-      _StmtRow('إجمالي المصروفات', expenses, total: true, showSign: false),
-      _StmtRow('صافي الربح', net, grand: true, showSign: net < 0),
-      _StmtRow('هامش الربح', null,
-          trailingText: '${margin.toStringAsFixed(1)}٪'),
-    ]);
+    return _StatementList(
+      rows: [
+        _StmtRow('إجمالي الإيرادات', revenue, total: true),
+        _StmtRow('إجمالي المصروفات', expenses, total: true, showSign: false),
+        _StmtRow('صافي الربح', net, grand: true, showSign: net < 0),
+        _StmtRow(
+          'هامش الربح',
+          null,
+          trailingText: '${margin.toStringAsFixed(1)}٪',
+        ),
+      ],
+    );
   }
 
   List<_StmtRow> _leafRows(BuildContext context, DemoLedgerAccountType t) {
@@ -1619,14 +1813,18 @@ class _StatementsSection extends StatelessWidget {
         final leaf = store.isLeafAccount(a.id);
         if (leaf) {
           final bal = store.ledgerBalance(a.id).abs();
-          if (bal != 0) rows.add(_StmtRow(a.name, bal, depth: depth, code: a.code));
+          if (bal != 0) {
+            rows.add(_StmtRow(a.name, bal, depth: depth, code: a.code));
+          }
         } else {
           walk(a.id, depth + 1);
         }
       }
     }
 
-    for (final root in store.ledgerAccounts.where((a) => a.parentId == null && a.type == t)) {
+    for (final root in store.ledgerAccounts.where(
+      (a) => a.parentId == null && a.type == t,
+    )) {
       walk(root.id, 1);
     }
     return rows;
@@ -1676,19 +1874,26 @@ class _StatementList extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: rows.length,
-        separatorBuilder: (_, i) => rows[i].grand || rows[i].total
-            ? Divider(height: 1, color: taj.divider)
-            : const SizedBox.shrink(),
+        separatorBuilder:
+            (_, i) =>
+                rows[i].grand || rows[i].total
+                    ? Divider(height: 1, color: taj.divider)
+                    : const SizedBox.shrink(),
         itemBuilder: (_, i) {
           final r = rows[i];
           final indent = math.min(r.depth * 16.0, 48.0);
-          final weight = r.grand
-              ? FontWeight.w800
-              : (r.header || r.total ? FontWeight.w700 : FontWeight.w400);
+          final weight =
+              r.grand
+                  ? FontWeight.w800
+                  : (r.header || r.total ? FontWeight.w700 : FontWeight.w400);
           return Container(
             color: r.grand ? taj.primary.lighter : Colors.transparent,
             padding: EdgeInsetsDirectional.only(
-                start: 16 + indent, end: 16, top: 10, bottom: 10),
+              start: 16 + indent,
+              end: 16,
+              top: 10,
+              bottom: 10,
+            ),
             child: Row(
               children: [
                 if (r.code != null) ...[
@@ -1696,16 +1901,23 @@ class _StatementList extends StatelessWidget {
                   const SizedBox(width: 8),
                 ],
                 Expanded(
-                  child: Text(r.label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodyMedium?.copyWith(fontWeight: weight)),
+                  child: Text(
+                    r.label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium?.copyWith(fontWeight: weight),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 if (r.trailingText != null)
-                  Text(r.trailingText!,
-                      style: AppThemes.numeralStyle(context,
-                          fontSize: 14, fontWeight: FontWeight.w800))
+                  Text(
+                    r.trailingText!,
+                    style: AppThemes.numeralStyle(
+                      context,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  )
                 else if (r.value != null)
                   _Money(
                     value: r.value!,
@@ -1725,7 +1937,11 @@ class _StatementList extends StatelessWidget {
 }
 
 class _SubTab extends StatelessWidget {
-  const _SubTab({required this.label, required this.selected, required this.onTap});
+  const _SubTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -1740,14 +1956,18 @@ class _SubTab extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-                color: selected ? taj.primary.main : Colors.transparent,
-                width: 2),
+              color: selected ? taj.primary.main : Colors.transparent,
+              width: 2,
+            ),
           ),
         ),
-        child: Text(label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: selected ? taj.primary.dark : taj.textSecondary,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: selected ? taj.primary.dark : taj.textSecondary,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
       ),
     );
   }
@@ -1775,61 +1995,79 @@ class _AuditSection extends StatelessWidget {
           child: Text('سجل التدقيق', style: text.titleMedium),
         ),
         Expanded(
-          child: log.isEmpty
-              ? const TajEmptyState(
-                  icon: Icons.history_outlined, title: 'لا سجل')
-              : phone
+          child:
+              log.isEmpty
+                  ? const TajEmptyState(
+                    icon: Icons.history_outlined,
+                    title: 'لا سجل',
+                  )
+                  : phone
                   ? ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      itemCount: log.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (_, i) => _AuditCard(entry: log[i]),
-                    )
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: log.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) => _AuditCard(entry: log[i]),
+                  )
                   : Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: _FinTable(
-                        frozenCol: const _FinCol('القيد', 110),
-                        restCols: const [
-                          _FinCol('التاريخ والوقت', 150),
-                          _FinCol('المستخدم', 130),
-                          _FinCol('الإجراء', 110),
-                          _FinCol('قبل', 200),
-                          _FinCol('بعد', 240),
-                        ],
-                        rows: [
-                          for (final a in log)
-                            _FinRow(
-                              frozen: Text(a.entryNumber,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppThemes.numeralStyle(context,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700)),
-                              cells: [
-                                Text(_fmtDateTime(a.date),
-                                    style: AppThemes.numeralStyle(context,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w400,
-                                        color: taj.textSecondary)),
-                                Text(a.user,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: text.bodySmall),
-                                _AuditActionBadge(action: a.action),
-                                Text(a.before,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: text.bodySmall
-                                        ?.copyWith(color: taj.textSecondary)),
-                                Text(a.after,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: text.bodySmall),
-                              ],
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: _FinTable(
+                      frozenCol: const _FinCol('القيد', 110),
+                      restCols: const [
+                        _FinCol('التاريخ والوقت', 150),
+                        _FinCol('المستخدم', 130),
+                        _FinCol('الإجراء', 110),
+                        _FinCol('قبل', 200),
+                        _FinCol('بعد', 240),
+                      ],
+                      rows: [
+                        for (final a in log)
+                          _FinRow(
+                            frozen: Text(
+                              a.entryNumber,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppThemes.numeralStyle(
+                                context,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                        ],
-                      ),
+                            cells: [
+                              Text(
+                                _fmtDateTime(a.date),
+                                style: AppThemes.numeralStyle(
+                                  context,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: taj.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                a.user,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodySmall,
+                              ),
+                              _AuditActionBadge(action: a.action),
+                              Text(
+                                a.before,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodySmall?.copyWith(
+                                  color: taj.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                a.after,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodySmall,
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
+                  ),
         ),
       ],
     );
@@ -1858,45 +2096,61 @@ class _AuditCardState extends State<_AuditCard> {
         children: [
           Row(
             children: [
-              Text(a.entryNumber,
-                  style: AppThemes.numeralStyle(context,
-                      fontSize: 13, fontWeight: FontWeight.w700)),
+              Text(
+                a.entryNumber,
+                style: AppThemes.numeralStyle(
+                  context,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(width: 8),
               _AuditActionBadge(action: a.action),
               const Spacer(),
               Flexible(
-                child: Text(_fmtDateTime(a.date),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppThemes.numeralStyle(context,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: taj.textSecondary)),
+                child: Text(
+                  _fmtDateTime(a.date),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppThemes.numeralStyle(
+                    context,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: taj.textSecondary,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text('المستخدم: ${a.user}',
-              style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+          Text(
+            'المستخدم: ${a.user}',
+            style: text.bodySmall?.copyWith(color: taj.textSecondary),
+          ),
           const SizedBox(height: 6),
-          Text('قبل: ${a.before}',
-              maxLines: _expanded ? null : 2,
-              overflow: _expanded ? null : TextOverflow.ellipsis,
-              style: text.bodySmall),
+          Text(
+            'قبل: ${a.before}',
+            maxLines: _expanded ? null : 2,
+            overflow: _expanded ? null : TextOverflow.ellipsis,
+            style: text.bodySmall,
+          ),
           const SizedBox(height: 2),
-          Text('بعد: ${a.after}',
-              maxLines: _expanded ? null : 2,
-              overflow: _expanded ? null : TextOverflow.ellipsis,
-              style: text.bodySmall),
+          Text(
+            'بعد: ${a.after}',
+            maxLines: _expanded ? null : 2,
+            overflow: _expanded ? null : TextOverflow.ellipsis,
+            style: text.bodySmall,
+          ),
           if ((a.before.length + a.after.length) > _auditExpandThreshold)
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: TextButton(
                 onPressed: () => setState(() => _expanded = !_expanded),
                 style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 32),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: Text(_expanded ? 'إخفاء' : 'عرض المزيد'),
               ),
             ),
@@ -1959,8 +2213,12 @@ class _Money extends StatelessWidget {
         maxLines: maxLines,
         softWrap: maxLines > 1,
         overflow: maxLines > 1 ? TextOverflow.clip : TextOverflow.ellipsis,
-        style: AppThemes.numeralStyle(context,
-            fontSize: fontSize, fontWeight: fontWeight, color: color),
+        style: AppThemes.numeralStyle(
+          context,
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          color: color,
+        ),
       ),
     );
   }
@@ -1969,11 +2227,12 @@ class _Money extends StatelessWidget {
 class _Dash extends StatelessWidget {
   const _Dash();
   @override
-  Widget build(BuildContext context) => Text('—',
-      style: Theme.of(context)
-          .textTheme
-          .bodySmall
-          ?.copyWith(color: context.taj.textDisabled));
+  Widget build(BuildContext context) => Text(
+    '—',
+    style: Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: context.taj.textDisabled),
+  );
 }
 
 class _FinCol {
@@ -2071,33 +2330,39 @@ class _FinTableState extends State<_FinTable> {
         final restWidth = rawRest + slack;
 
         Widget headerCell(_FinCol col) => Align(
-              alignment: col.numeric
+          alignment:
+              col.numeric
                   ? AlignmentDirectional.centerEnd
                   : AlignmentDirectional.centerStart,
-              child: Text(col.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(
-                      color: taj.textSecondary, fontWeight: FontWeight.w600)),
-            );
+          child: Text(
+            col.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall?.copyWith(
+              color: taj.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
 
         Widget restRow(List<Widget> cells) => Row(
-              children: [
-                for (var i = 0; i < widget.restCols.length; i++)
-                  SizedBox(
-                    width: effWidths[i],
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(end: 12),
-                      child: Align(
-                        alignment: widget.restCols[i].numeric
+          children: [
+            for (var i = 0; i < widget.restCols.length; i++)
+              SizedBox(
+                width: effWidths[i],
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 12),
+                  child: Align(
+                    alignment:
+                        widget.restCols[i].numeric
                             ? AlignmentDirectional.centerEnd
                             : AlignmentDirectional.centerStart,
-                        child: i < cells.length ? cells[i] : const SizedBox(),
-                      ),
-                    ),
+                    child: i < cells.length ? cells[i] : const SizedBox(),
                   ),
-              ],
-            );
+                ),
+              ),
+          ],
+        );
 
         final header = DecoratedBox(
           decoration: BoxDecoration(
@@ -2111,8 +2376,10 @@ class _FinTableState extends State<_FinTable> {
                 SizedBox(
                   width: frozenW,
                   child: Padding(
-                    padding:
-                        const EdgeInsetsDirectional.only(start: 12, end: 12),
+                    padding: const EdgeInsetsDirectional.only(
+                      start: 12,
+                      end: 12,
+                    ),
                     child: headerCell(widget.frozenCol),
                   ),
                 ),
@@ -2130,7 +2397,8 @@ class _FinTableState extends State<_FinTable> {
                               width: effWidths[i],
                               child: Padding(
                                 padding: const EdgeInsetsDirectional.only(
-                                    end: 12),
+                                  end: 12,
+                                ),
                                 child: headerCell(widget.restCols[i]),
                               ),
                             ),
@@ -2161,7 +2429,9 @@ class _FinTableState extends State<_FinTable> {
                         onTap: r.onTap,
                         child: Padding(
                           padding: const EdgeInsetsDirectional.only(
-                              start: 12, end: 12),
+                            start: 12,
+                            end: 12,
+                          ),
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,
                             child: r.frozen,
@@ -2213,7 +2483,9 @@ class _FinTableState extends State<_FinTable> {
                         width: frozenW,
                         child: Padding(
                           padding: const EdgeInsetsDirectional.only(
-                              start: 12, end: 12),
+                            start: 12,
+                            end: 12,
+                          ),
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,
                             child: t.frozen,
@@ -2342,13 +2614,17 @@ class _DiffBadge extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 160),
             child: Tooltip(
               message: 'الفرق: ${arDinar(diff)}',
-              child: Text('فرق ${arDinarFit(diff.abs(), maxChars: 12)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppThemes.numeralStyle(context,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: taj.error.dark)),
+              child: Text(
+                'فرق ${arDinarFit(diff.abs(), maxChars: 12)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppThemes.numeralStyle(
+                  context,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: taj.error.dark,
+                ),
+              ),
             ),
           ),
         ],
@@ -2369,8 +2645,11 @@ class _ActionSpec {
 }
 
 class _PrimaryAction {
-  const _PrimaryAction(
-      {required this.icon, required this.label, required this.onTap});
+  const _PrimaryAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -2412,11 +2691,12 @@ class _SectionHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(title, style: text.titleMedium),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodySmall
-                            ?.copyWith(color: taj.textSecondary)),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                    ),
                   ],
                 ),
               ),
@@ -2426,19 +2706,20 @@ class _SectionHeader extends StatelessWidget {
                   PopupMenuButton<int>(
                     icon: const Icon(Icons.more_vert_rounded),
                     onSelected: (i) => actions[i].onTap(),
-                    itemBuilder: (_) => [
-                      for (var i = 0; i < actions.length; i++)
-                        PopupMenuItem<int>(
-                          value: i,
-                          child: Row(
-                            children: [
-                              Icon(actions[i].icon, size: 18),
-                              const SizedBox(width: 10),
-                              Text(actions[i].label),
-                            ],
-                          ),
-                        ),
-                    ],
+                    itemBuilder:
+                        (_) => [
+                          for (var i = 0; i < actions.length; i++)
+                            PopupMenuItem<int>(
+                              value: i,
+                              child: Row(
+                                children: [
+                                  Icon(actions[i].icon, size: 18),
+                                  const SizedBox(width: 10),
+                                  Text(actions[i].label),
+                                ],
+                              ),
+                            ),
+                        ],
                   ),
                 FilledButton.icon(
                   onPressed: primary.onTap,
@@ -2508,14 +2789,17 @@ class _FilterPill<T> extends StatelessWidget {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     final current =
-        options.firstWhere((o) => o.$1 == value, orElse: () => options.first).$2;
+        options
+            .firstWhere((o) => o.$1 == value, orElse: () => options.first)
+            .$2;
     return PopupMenuButton<T>(
       onSelected: onSelected,
       position: PopupMenuPosition.under,
-      itemBuilder: (_) => [
-        for (final o in options)
-          PopupMenuItem<T>(value: o.$1, child: Text(o.$2)),
-      ],
+      itemBuilder:
+          (_) => [
+            for (final o in options)
+              PopupMenuItem<T>(value: o.$1, child: Text(o.$2)),
+          ],
       child: Container(
         height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -2530,14 +2814,19 @@ class _FilterPill<T> extends StatelessWidget {
             Icon(icon, size: 16, color: taj.textSecondary),
             const SizedBox(width: 6),
             Flexible(
-              child: Text(current,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.labelMedium?.copyWith(color: taj.textPrimary)),
+              child: Text(
+                current,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.labelMedium?.copyWith(color: taj.textPrimary),
+              ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down_rounded,
-                size: 18, color: taj.textSecondary),
+            Icon(
+              Icons.arrow_drop_down_rounded,
+              size: 18,
+              color: taj.textSecondary,
+            ),
           ],
         ),
       ),
@@ -2546,8 +2835,11 @@ class _FilterPill<T> extends StatelessWidget {
 }
 
 class _AccountPickerButton extends StatelessWidget {
-  const _AccountPickerButton(
-      {required this.store, required this.selectedId, required this.onPick});
+  const _AccountPickerButton({
+    required this.store,
+    required this.selectedId,
+    required this.onPick,
+  });
   final DemoStore store;
   final String selectedId;
   final ValueChanged<String> onPick;
@@ -2562,8 +2854,11 @@ class _AccountPickerButton extends StatelessWidget {
       icon: const Icon(Icons.search_rounded, size: 18),
       label: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 130),
-        child: Text(acc?.name ?? 'اختر حسابًا',
-            maxLines: 1, overflow: TextOverflow.ellipsis),
+        child: Text(
+          acc?.name ?? 'اختر حسابًا',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
@@ -2601,26 +2896,34 @@ Future<T?> _acctDialog<T>(
           final insets = MediaQuery.viewInsetsOf(ctx).bottom;
           final maxH = (size.height - insets) * 0.92;
           return Dialog(
-            insetPadding:
-                EdgeInsets.symmetric(horizontal: phone ? 8 : 24, vertical: 24),
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: phone ? 8 : 24,
+              vertical: 24,
+            ),
             backgroundColor: taj.paper,
             child: Padding(
               padding: EdgeInsets.only(bottom: insets),
               child: ConstrainedBox(
-                constraints:
-                    BoxConstraints(maxWidth: dialogW, maxHeight: maxH),
+                constraints: BoxConstraints(maxWidth: dialogW, maxHeight: maxH),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(20, 14, 8, 8),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        20,
+                        14,
+                        8,
+                        8,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
-                              child: Text(title,
-                                  style: Theme.of(ctx).textTheme.titleLarge)),
+                            child: Text(
+                              title,
+                              style: Theme.of(ctx).textTheme.titleLarge,
+                            ),
+                          ),
                           IconButton(
                             onPressed: () => Navigator.of(ctx).pop(),
                             icon: const Icon(Icons.close_rounded),
@@ -2653,19 +2956,27 @@ Future<T?> _acctDialog<T>(
 /// Picks a posting (leaf) account. Full-width search sheet on phone; a capped
 /// (≤480) search dialog on wider screens that never escapes the window.
 Future<String?> pickLedgerAccount(BuildContext context, DemoStore store) {
-  final leaves = store.ledgerAccounts
-      .where((a) => store.isLeafAccount(a.id))
-      .toList()
-    ..sort((a, b) => a.code.compareTo(b.code));
+  final leaves =
+      store.ledgerAccounts.where((a) => store.isLeafAccount(a.id)).toList()
+        ..sort((a, b) => a.code.compareTo(b.code));
   final phone = MediaQuery.sizeOf(context).width < AppBreakpoints.phone;
 
   Widget listBody(
-      BuildContext ctx, String query, ValueChanged<String> onQuery) {
+    BuildContext ctx,
+    String query,
+    ValueChanged<String> onQuery,
+  ) {
     final taj = ctx.taj;
     final text = Theme.of(ctx).textTheme;
-    final filtered = leaves
-        .where((a) => query.isEmpty || a.name.contains(query) || a.code.contains(query))
-        .toList();
+    final filtered =
+        leaves
+            .where(
+              (a) =>
+                  query.isEmpty ||
+                  a.name.contains(query) ||
+                  a.code.contains(query),
+            )
+            .toList();
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2690,10 +3001,15 @@ Future<String?> pickLedgerAccount(BuildContext context, DemoStore store) {
               final a = filtered[i];
               return ListTile(
                 leading: _CodeChip(a.code),
-                title: Text(a.name,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text(_accountTypeLabel(a.type),
-                    style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+                title: Text(
+                  a.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  _accountTypeLabel(a.type),
+                  style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                ),
                 onTap: () => Navigator.of(ctx).pop(a.id),
               );
             },
@@ -2714,31 +3030,38 @@ Future<String?> pickLedgerAccount(BuildContext context, DemoStore store) {
       builder: (ctx) {
         var query = '';
         return StatefulBuilder(
-          builder: (ctx, setSheet) => SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-              child: SizedBox(
-                height: MediaQuery.sizeOf(ctx).height * 0.85,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 10),
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: ctx.taj.divider,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+          builder:
+              (ctx, setSheet) => SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.viewInsetsOf(ctx).bottom,
+                  ),
+                  child: SizedBox(
+                    height: MediaQuery.sizeOf(ctx).height * 0.85,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 10),
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: ctx.taj.divider,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        Expanded(
+                          child: listBody(
+                            ctx,
+                            query,
+                            (q) => setSheet(() => query = q),
+                          ),
+                        ),
+                      ],
                     ),
-                    Expanded(
-                      child: listBody(ctx, query, (q) => setSheet(() => query = q)),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
         );
       },
     );
@@ -2750,32 +3073,40 @@ Future<String?> pickLedgerAccount(BuildContext context, DemoStore store) {
       var query = '';
       final size = MediaQuery.sizeOf(ctx);
       return StatefulBuilder(
-        builder: (ctx, setDlg) => Dialog(
-          backgroundColor: ctx.taj.paper,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-                maxWidth: 480, maxHeight: size.height * 0.8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Expanded(
-                    child: listBody(ctx, query, (q) => setDlg(() => query = q))),
-              ],
+        builder:
+            (ctx, setDlg) => Dialog(
+              backgroundColor: ctx.taj.paper,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 480,
+                  maxHeight: size.height * 0.8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Expanded(
+                      child: listBody(
+                        ctx,
+                        query,
+                        (q) => setDlg(() => query = q),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
       );
     },
   );
 }
 
 String _accountTypeLabel(DemoLedgerAccountType t) => switch (t) {
-      DemoLedgerAccountType.asset => 'أصول',
-      DemoLedgerAccountType.liability => 'خصوم',
-      DemoLedgerAccountType.equity => 'حقوق ملكية',
-      DemoLedgerAccountType.revenue => 'إيرادات',
-      DemoLedgerAccountType.expense => 'مصروفات',
-    };
+  DemoLedgerAccountType.asset => 'أصول',
+  DemoLedgerAccountType.liability => 'خصوم',
+  DemoLedgerAccountType.equity => 'حقوق ملكية',
+  DemoLedgerAccountType.revenue => 'إيرادات',
+  DemoLedgerAccountType.expense => 'مصروفات',
+};
 
 // ===========================================================================
 // Entry editor (new draft) — line cards/table + sticky totals bar
@@ -2794,7 +3125,10 @@ class _EditLine {
   }
 }
 
-Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async {
+Future<void> showEntryEditorDialog(
+  BuildContext context,
+  DemoStore store,
+) async {
   final lines = <_EditLine>[_EditLine(), _EditLine()];
   final descCtrl = TextEditingController();
   final refCtrl = TextEditingController();
@@ -2808,7 +3142,8 @@ Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async 
     context,
     title: 'قيد جديد — ${store.nextEntryNumber}',
     body: (ctx, setLocal) {
-      final table = MediaQuery.sizeOf(ctx).width >= AppBreakpoints.entryEditorTable;
+      final table =
+          MediaQuery.sizeOf(ctx).width >= AppBreakpoints.entryEditorTable;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2831,8 +3166,7 @@ Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async 
           const SizedBox(height: 16),
           Row(
             children: [
-              Text('سطور القيد',
-                  style: Theme.of(ctx).textTheme.titleSmall),
+              Text('سطور القيد', style: Theme.of(ctx).textTheme.titleSmall),
               const Spacer(),
               TextButton.icon(
                 onPressed: () => setLocal(() => lines.add(_EditLine())),
@@ -2847,24 +3181,26 @@ Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async 
               store: store,
               lines: lines,
               onChanged: () => setLocal(() {}),
-              onRemove: (l) => setLocal(() {
-                if (lines.length > 1) {
-                  lines.remove(l);
-                  l.dispose();
-                }
-              }),
+              onRemove:
+                  (l) => setLocal(() {
+                    if (lines.length > 1) {
+                      lines.remove(l);
+                      l.dispose();
+                    }
+                  }),
             )
           else
             _EditLinesCards(
               store: store,
               lines: lines,
               onChanged: () => setLocal(() {}),
-              onRemove: (l) => setLocal(() {
-                if (lines.length > 1) {
-                  lines.remove(l);
-                  l.dispose();
-                }
-              }),
+              onRemove:
+                  (l) => setLocal(() {
+                    if (lines.length > 1) {
+                      lines.remove(l);
+                      l.dispose();
+                    }
+                  }),
             ),
         ],
       );
@@ -2874,8 +3210,11 @@ Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async 
       final tc = totalCredit();
       final diff = td - tc;
       final balanced = diff.abs() < 0.005;
-      final hasLines =
-          lines.any((l) => l.accountId != null && (l.debit.text.isNotEmpty || l.credit.text.isNotEmpty));
+      final hasLines = lines.any(
+        (l) =>
+            l.accountId != null &&
+            (l.debit.text.isNotEmpty || l.credit.text.isNotEmpty),
+      );
       return _EntryTotalsBar(
         totalDebit: td,
         totalCredit: tc,
@@ -2885,27 +3224,48 @@ Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async 
         onSaveDraft: () async {
           final messenger = ScaffoldMessenger.of(ctx);
           final navigator = Navigator.of(ctx);
-          await store.addJournalEntry(_buildEntry(store, lines, descCtrl.text,
-              refCtrl.text, DemoEntryStatus.draft));
+          await store.addJournalEntry(
+            _buildEntry(
+              store,
+              lines,
+              descCtrl.text,
+              refCtrl.text,
+              DemoEntryStatus.draft,
+            ),
+          );
           navigator.pop();
-          messenger.showSnackBar(const SnackBar(
+          messenger.showSnackBar(
+            const SnackBar(
               behavior: SnackBarBehavior.floating,
-              content: Text('تم حفظ المسودة')));
+              content: Text('تم حفظ المسودة'),
+            ),
+          );
         },
-        onPrimary: balanced && hasLines
-            ? () async {
-                final messenger = ScaffoldMessenger.of(ctx);
-                final navigator = Navigator.of(ctx);
-                final success = ctx.taj.success.dark;
-                await store.addJournalEntry(_buildEntry(store, lines,
-                    descCtrl.text, refCtrl.text, DemoEntryStatus.posted));
-                navigator.pop();
-                messenger.showSnackBar(SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: success,
-                    content: const Text('تم ترحيل القيد')));
-              }
-            : null,
+        onPrimary:
+            balanced && hasLines
+                ? () async {
+                  final messenger = ScaffoldMessenger.of(ctx);
+                  final navigator = Navigator.of(ctx);
+                  final success = ctx.taj.success.dark;
+                  await store.addJournalEntry(
+                    _buildEntry(
+                      store,
+                      lines,
+                      descCtrl.text,
+                      refCtrl.text,
+                      DemoEntryStatus.posted,
+                    ),
+                  );
+                  navigator.pop();
+                  messenger.showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: success,
+                      content: const Text('تم ترحيل القيد'),
+                    ),
+                  );
+                }
+                : null,
       );
     },
   );
@@ -2917,8 +3277,13 @@ Future<void> showEntryEditorDialog(BuildContext context, DemoStore store) async 
   refCtrl.dispose();
 }
 
-DemoJournalEntry _buildEntry(DemoStore store, List<_EditLine> lines,
-    String desc, String ref, DemoEntryStatus status) {
+DemoJournalEntry _buildEntry(
+  DemoStore store,
+  List<_EditLine> lines,
+  String desc,
+  String ref,
+  DemoEntryStatus status,
+) {
   final number = store.nextEntryNumber;
   return DemoJournalEntry(
     id: number,
@@ -2926,7 +3291,7 @@ DemoJournalEntry _buildEntry(DemoStore store, List<_EditLine> lines,
     date: DateTime.now(),
     description: desc.trim(),
     status: status,
-    createdBy: 'المستخدم الحالي',
+    createdBy: store.currentUser,
     reference: ref.trim(),
     lines: [
       for (final l in lines)
@@ -2959,13 +3324,18 @@ class _EditLinesTable extends StatelessWidget {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     Widget head(String s, {bool numeric = false}) => Align(
-          alignment: numeric
+      alignment:
+          numeric
               ? AlignmentDirectional.centerEnd
               : AlignmentDirectional.centerStart,
-          child: Text(s,
-              style: text.bodySmall?.copyWith(
-                  color: taj.textSecondary, fontWeight: FontWeight.w600)),
-        );
+      child: Text(
+        s,
+        style: text.bodySmall?.copyWith(
+          color: taj.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
     return Column(
       children: [
         Row(
@@ -2988,7 +3358,10 @@ class _EditLinesTable extends StatelessWidget {
               Expanded(
                 flex: 4,
                 child: _AccountField(
-                    store: store, line: l, onChanged: onChanged),
+                  store: store,
+                  line: l,
+                  onChanged: onChanged,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -2996,7 +3369,9 @@ class _EditLinesTable extends StatelessWidget {
                 child: TextField(
                   controller: l.desc,
                   decoration: const InputDecoration(
-                      isDense: true, hintText: 'بيان السطر'),
+                    isDense: true,
+                    hintText: 'بيان السطر',
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -3013,8 +3388,11 @@ class _EditLinesTable extends StatelessWidget {
                 width: 40,
                 child: IconButton(
                   onPressed: () => onRemove(l),
-                  icon: Icon(Icons.delete_outline_rounded,
-                      size: 20, color: taj.error.main),
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 20,
+                    color: taj.error.main,
+                  ),
                 ),
               ),
             ],
@@ -3055,43 +3433,56 @@ class _EditLinesCards extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text('سطر ${i + 1}',
-                        style: Theme.of(context).textTheme.labelLarge),
+                    Text(
+                      'سطر ${i + 1}',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
                     const Spacer(),
                     InkWell(
                       onTap: () => onRemove(lines[i]),
                       borderRadius: BorderRadius.circular(6),
                       child: Padding(
                         padding: const EdgeInsets.all(4),
-                        child: Icon(Icons.delete_outline_rounded,
-                            size: 20, color: taj.error.main),
+                        child: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 20,
+                          color: taj.error.main,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                _AccountField(store: store, line: lines[i], onChanged: onChanged),
+                _AccountField(
+                  store: store,
+                  line: lines[i],
+                  onChanged: onChanged,
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: lines[i].desc,
                   decoration: const InputDecoration(
-                      isDense: true, hintText: 'بيان السطر'),
+                    isDense: true,
+                    hintText: 'بيان السطر',
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: _AmountField(
-                          controller: lines[i].debit,
-                          onChanged: onChanged,
-                          label: 'مدين'),
+                        controller: lines[i].debit,
+                        onChanged: onChanged,
+                        label: 'مدين',
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: _AmountField(
-                          controller: lines[i].credit,
-                          onChanged: onChanged,
-                          label: 'دائن'),
+                        controller: lines[i].credit,
+                        onChanged: onChanged,
+                        label: 'دائن',
+                      ),
                     ),
                   ],
                 ),
@@ -3106,8 +3497,11 @@ class _EditLinesCards extends StatelessWidget {
 }
 
 class _AccountField extends StatelessWidget {
-  const _AccountField(
-      {required this.store, required this.line, required this.onChanged});
+  const _AccountField({
+    required this.store,
+    required this.line,
+    required this.onChanged,
+  });
   final DemoStore store;
   final _EditLine line;
   final VoidCallback onChanged;
@@ -3115,7 +3509,9 @@ class _AccountField extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     final acc =
-        line.accountId == null ? null : store.ledgerAccountById(line.accountId!);
+        line.accountId == null
+            ? null
+            : store.ledgerAccountById(line.accountId!);
     return InkWell(
       onTap: () async {
         final id = await pickLedgerAccount(context, store);
@@ -3134,7 +3530,11 @@ class _AccountField extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.account_tree_outlined, size: 18, color: taj.textSecondary),
+            Icon(
+              Icons.account_tree_outlined,
+              size: 18,
+              color: taj.textSecondary,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -3142,7 +3542,8 @@ class _AccountField extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: acc == null ? taj.textDisabled : taj.textPrimary),
+                  color: acc == null ? taj.textDisabled : taj.textPrimary,
+                ),
               ),
             ),
             Icon(Icons.expand_more_rounded, size: 18, color: taj.textSecondary),
@@ -3154,8 +3555,11 @@ class _AccountField extends StatelessWidget {
 }
 
 class _AmountField extends StatelessWidget {
-  const _AmountField(
-      {required this.controller, required this.onChanged, this.label});
+  const _AmountField({
+    required this.controller,
+    required this.onChanged,
+    this.label,
+  });
   final TextEditingController controller;
   final VoidCallback onChanged;
   final String? label;
@@ -3216,7 +3620,10 @@ class _EntryTotalsBar extends StatelessWidget {
               _TotalChip(label: 'مدين', value: totalDebit, swatch: taj.success),
               _TotalChip(label: 'دائن', value: totalCredit, swatch: taj.info),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: balanced ? taj.success.lighter : taj.error.lighter,
                   borderRadius: BorderRadius.circular(8),
@@ -3225,18 +3632,23 @@ class _EntryTotalsBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                        balanced
-                            ? Icons.check_circle_rounded
-                            : Icons.error_outline_rounded,
-                        size: 16,
-                        color: balanced ? taj.success.dark : taj.error.dark),
+                      balanced
+                          ? Icons.check_circle_rounded
+                          : Icons.error_outline_rounded,
+                      size: 16,
+                      color: balanced ? taj.success.dark : taj.error.dark,
+                    ),
                     const SizedBox(width: 6),
                     Text(
-                      balanced ? 'متوازن' : 'فرق ${arDinarFit(difference.abs(), maxChars: 12)}',
-                      style: AppThemes.numeralStyle(context,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: balanced ? taj.success.dark : taj.error.dark),
+                      balanced
+                          ? 'متوازن'
+                          : 'فرق ${arDinarFit(difference.abs(), maxChars: 12)}',
+                      style: AppThemes.numeralStyle(
+                        context,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: balanced ? taj.success.dark : taj.error.dark,
+                      ),
                     ),
                   ],
                 ),
@@ -3271,8 +3683,11 @@ class _EntryTotalsBar extends StatelessWidget {
 }
 
 class _TotalChip extends StatelessWidget {
-  const _TotalChip(
-      {required this.label, required this.value, required this.swatch});
+  const _TotalChip({
+    required this.label,
+    required this.value,
+    required this.swatch,
+  });
   final String label;
   final double value;
   final TajSwatch swatch;
@@ -3282,16 +3697,18 @@ class _TotalChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label: ',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: taj.textSecondary)),
+        Text(
+          '$label: ',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: taj.textSecondary),
+        ),
         _Money(
-            value: value,
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: taj.accentFor(swatch)),
+          value: value,
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          color: taj.accentFor(swatch),
+        ),
       ],
     );
   }
@@ -3322,7 +3739,10 @@ class _LabeledField extends StatelessWidget {
 // ===========================================================================
 
 Future<void> showEntryViewerDialog(
-    BuildContext context, DemoStore store, String entryId) async {
+  BuildContext context,
+  DemoStore store,
+  String entryId,
+) async {
   await _acctDialog<void>(
     context,
     title: 'تفاصيل القيد',
@@ -3378,18 +3798,28 @@ class _EntryBody extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(entry.number,
-                style: AppThemes.numeralStyle(context,
-                    fontSize: 18, fontWeight: FontWeight.w800)),
+            Text(
+              entry.number,
+              style: AppThemes.numeralStyle(
+                context,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(width: 10),
             _EntryStatusBadge(entry: entry),
             const Spacer(),
             Flexible(
-              child: Text(_fmtDate(entry.date),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppThemes.numeralStyle(context,
-                      fontSize: 13, color: taj.textSecondary)),
+              child: Text(
+                _fmtDate(entry.date),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppThemes.numeralStyle(
+                  context,
+                  fontSize: 13,
+                  color: taj.textSecondary,
+                ),
+              ),
             ),
           ],
         ),
@@ -3404,7 +3834,8 @@ class _EntryBody extends StatelessWidget {
               _tag(context, Icons.tag_rounded, entry.reference),
             if (entry.createdBy.isNotEmpty)
               _tag(context, Icons.person_outline_rounded, entry.createdBy),
-            if (entry.reviewed) _tag(context, Icons.fact_check_outlined, 'مُراجَع'),
+            if (entry.reviewed)
+              _tag(context, Icons.fact_check_outlined, 'مُراجَع'),
             if (entry.approved) _tag(context, Icons.verified_outlined, 'معتمد'),
             if (entry.reversalOfId != null)
               _tag(context, Icons.undo_rounded, 'عكس ${entry.reversalOfId}'),
@@ -3440,11 +3871,12 @@ class _EntryBody extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: taj.textSecondary),
         const SizedBox(width: 4),
-        Text(label,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: taj.textSecondary)),
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: taj.textSecondary),
+        ),
       ],
     );
   }
@@ -3461,20 +3893,26 @@ class _EntryLinesTable extends StatelessWidget {
     // A simple internally-scrollable table: account (flexible) never truncates
     // amounts; debit/credit fixed ~120 with horizontal scroll on tight widths.
     Widget cellHead(String s, {bool numeric = false}) => Align(
-          alignment: numeric
+      alignment:
+          numeric
               ? AlignmentDirectional.centerEnd
               : AlignmentDirectional.centerStart,
-          child: Text(s,
-              style: text.bodySmall?.copyWith(
-                  color: taj.textSecondary, fontWeight: FontWeight.w600)),
-        );
+      child: Text(
+        s,
+        style: text.bodySmall?.copyWith(
+          color: taj.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
     return LayoutBuilder(
       builder: (context, c) {
         const debitW = 124.0, creditW = 124.0, gap = 12.0;
         final accMin = 180.0;
         final natural = accMin + debitW + creditW + gap * 2;
         final needScroll = c.maxWidth < natural;
-        final accW = needScroll ? accMin : c.maxWidth - debitW - creditW - gap * 2;
+        final accW =
+            needScroll ? accMin : c.maxWidth - debitW - creditW - gap * 2;
         final table = SizedBox(
           width: needScroll ? natural : c.maxWidth,
           child: Column(
@@ -3487,10 +3925,14 @@ class _EntryLinesTable extends StatelessWidget {
                     SizedBox(width: accW, child: cellHead('الحساب / البيان')),
                     const SizedBox(width: gap),
                     SizedBox(
-                        width: debitW, child: cellHead('مدين', numeric: true)),
+                      width: debitW,
+                      child: cellHead('مدين', numeric: true),
+                    ),
                     const SizedBox(width: gap),
                     SizedBox(
-                        width: creditW, child: cellHead('دائن', numeric: true)),
+                      width: creditW,
+                      child: cellHead('دائن', numeric: true),
+                    ),
                   ],
                 ),
               ),
@@ -3512,15 +3954,19 @@ class _EntryLinesTable extends StatelessWidget {
                                   l.accountId,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: text.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
+                              style: text.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             if (l.description.isNotEmpty)
-                              Text(l.description,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: text.bodySmall
-                                      ?.copyWith(color: taj.textSecondary)),
+                              Text(
+                                l.description,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodySmall?.copyWith(
+                                  color: taj.textSecondary,
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -3529,14 +3975,16 @@ class _EntryLinesTable extends StatelessWidget {
                         width: debitW,
                         child: Align(
                           alignment: AlignmentDirectional.centerEnd,
-                          child: l.debit > 0
-                              ? _Money(
-                                  value: l.debit,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  maxChars: 12,
-                                  color: taj.accentFor(taj.success))
-                              : const _Dash(),
+                          child:
+                              l.debit > 0
+                                  ? _Money(
+                                    value: l.debit,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    maxChars: 12,
+                                    color: taj.accentFor(taj.success),
+                                  )
+                                  : const _Dash(),
                         ),
                       ),
                       const SizedBox(width: gap),
@@ -3544,14 +3992,16 @@ class _EntryLinesTable extends StatelessWidget {
                         width: creditW,
                         child: Align(
                           alignment: AlignmentDirectional.centerEnd,
-                          child: l.credit > 0
-                              ? _Money(
-                                  value: l.credit,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  maxChars: 12,
-                                  color: taj.accentFor(taj.info))
-                              : const _Dash(),
+                          child:
+                              l.credit > 0
+                                  ? _Money(
+                                    value: l.credit,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    maxChars: 12,
+                                    color: taj.accentFor(taj.info),
+                                  )
+                                  : const _Dash(),
                         ),
                       ),
                     ],
@@ -3564,9 +4014,12 @@ class _EntryLinesTable extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: accW,
-                      child: Text('الإجمالي',
-                          style: text.labelLarge
-                              ?.copyWith(fontWeight: FontWeight.w800)),
+                      child: Text(
+                        'الإجمالي',
+                        style: text.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: gap),
                     SizedBox(
@@ -3574,11 +4027,12 @@ class _EntryLinesTable extends StatelessWidget {
                       child: Align(
                         alignment: AlignmentDirectional.centerEnd,
                         child: _Money(
-                            value: entry.totalDebit,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            maxChars: 12,
-                            color: taj.accentFor(taj.success)),
+                          value: entry.totalDebit,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          maxChars: 12,
+                          color: taj.accentFor(taj.success),
+                        ),
                       ),
                     ),
                     const SizedBox(width: gap),
@@ -3587,11 +4041,12 @@ class _EntryLinesTable extends StatelessWidget {
                       child: Align(
                         alignment: AlignmentDirectional.centerEnd,
                         child: _Money(
-                            value: entry.totalCredit,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            maxChars: 12,
-                            color: taj.accentFor(taj.info)),
+                          value: entry.totalCredit,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          maxChars: 12,
+                          color: taj.accentFor(taj.info),
+                        ),
                       ),
                     ),
                   ],
@@ -3602,15 +4057,20 @@ class _EntryLinesTable extends StatelessWidget {
         );
         if (!needScroll) return table;
         return SingleChildScrollView(
-            scrollDirection: Axis.horizontal, child: table);
+          scrollDirection: Axis.horizontal,
+          child: table,
+        );
       },
     );
   }
 }
 
 class _EntryActionsBar extends StatelessWidget {
-  const _EntryActionsBar(
-      {required this.store, required this.entry, required this.onChanged});
+  const _EntryActionsBar({
+    required this.store,
+    required this.entry,
+    required this.onChanged,
+  });
   final DemoStore store;
   final DemoJournalEntry entry;
   final VoidCallback onChanged;
@@ -3619,32 +4079,41 @@ class _EntryActionsBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final actions = <_ActionSpec>[];
     if (!entry.reviewed) {
-      actions.add(_ActionSpec(Icons.fact_check_outlined, 'مراجعة', () async {
-        await store.reviewEntry(entry.id);
-        onChanged();
-      }));
+      actions.add(
+        _ActionSpec(Icons.fact_check_outlined, 'مراجعة', () async {
+          await store.reviewEntry(entry.id);
+          onChanged();
+        }),
+      );
     }
     if (!entry.approved) {
-      actions.add(_ActionSpec(Icons.verified_outlined, 'اعتماد', () async {
-        final ok = await _confirm(context, store, entry, 'اعتماد القيد');
-        if (ok) {
-          await store.approveEntry(entry.id);
-          onChanged();
-        }
-      }));
+      actions.add(
+        _ActionSpec(Icons.verified_outlined, 'اعتماد', () async {
+          final ok = await _confirm(context, store, entry, 'اعتماد القيد');
+          if (ok) {
+            await store.approveEntry(entry.id);
+            onChanged();
+          }
+        }),
+      );
     }
     if (entry.status == DemoEntryStatus.posted) {
-      actions.add(_ActionSpec(Icons.undo_rounded, 'عكس القيد', () async {
-        final messenger = ScaffoldMessenger.of(context);
-        final ok = await _confirm(context, store, entry, 'عكس القيد');
-        if (ok) {
-          await store.reverseEntry(entry.id);
-          onChanged();
-          messenger.showSnackBar(const SnackBar(
-              behavior: SnackBarBehavior.floating,
-              content: Text('تم عكس القيد')));
-        }
-      }));
+      actions.add(
+        _ActionSpec(Icons.undo_rounded, 'عكس القيد', () async {
+          final messenger = ScaffoldMessenger.of(context);
+          final ok = await _confirm(context, store, entry, 'عكس القيد');
+          if (ok) {
+            await store.reverseEntry(entry.id);
+            onChanged();
+            messenger.showSnackBar(
+              const SnackBar(
+                behavior: SnackBarBehavior.floating,
+                content: Text('تم عكس القيد'),
+              ),
+            );
+          }
+        }),
+      );
     }
     actions.add(_ActionSpec(Icons.print_outlined, 'طباعة', () {}));
 
@@ -3654,16 +4123,20 @@ class _EntryActionsBar extends StatelessWidget {
       primary = _PrimaryAction(
         icon: Icons.publish_outlined,
         label: 'ترحيل',
-        onTap: entry.isBalanced
-            ? () async {
-                final messenger = ScaffoldMessenger.of(context);
-                await store.postEntry(entry.id);
-                onChanged();
-                messenger.showSnackBar(const SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    content: Text('تم ترحيل القيد')));
-              }
-            : () {},
+        onTap:
+            entry.isBalanced
+                ? () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  await store.postEntry(entry.id);
+                  onChanged();
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      content: Text('تم ترحيل القيد'),
+                    ),
+                  );
+                }
+                : () {},
       );
     }
 
@@ -3681,19 +4154,20 @@ class _EntryActionsBar extends StatelessWidget {
             PopupMenuButton<int>(
               icon: const Icon(Icons.more_vert_rounded),
               onSelected: (i) => actions[i].onTap(),
-              itemBuilder: (_) => [
-                for (var i = 0; i < actions.length; i++)
-                  PopupMenuItem<int>(
-                    value: i,
-                    child: Row(
-                      children: [
-                        Icon(actions[i].icon, size: 18),
-                        const SizedBox(width: 10),
-                        Text(actions[i].label),
-                      ],
-                    ),
-                  ),
-              ],
+              itemBuilder:
+                  (_) => [
+                    for (var i = 0; i < actions.length; i++)
+                      PopupMenuItem<int>(
+                        value: i,
+                        child: Row(
+                          children: [
+                            Icon(actions[i].icon, size: 18),
+                            const SizedBox(width: 10),
+                            Text(actions[i].label),
+                          ],
+                        ),
+                      ),
+                  ],
             ),
             if (primary != null) ...[
               const SizedBox(width: 8),
@@ -3709,40 +4183,50 @@ class _EntryActionsBar extends StatelessWidget {
     );
   }
 
-  Future<bool> _confirm(BuildContext context, DemoStore store,
-      DemoJournalEntry entry, String title) async {
+  Future<bool> _confirm(
+    BuildContext context,
+    DemoStore store,
+    DemoJournalEntry entry,
+    String title,
+  ) async {
     final result = await _acctDialog<bool>(
       context,
       title: title,
       maxWidth: 560,
-      body: (ctx, setLocal) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('هل أنت متأكد من $title رقم ${entry.number}؟',
-              style: Theme.of(ctx).textTheme.bodyLarge),
-          const SizedBox(height: 12),
-          _EntryLinesTable(store: store, entry: entry),
-        ],
-      ),
-      footer: (ctx, setLocal) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+      body:
+          (ctx, setLocal) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const Text('إلغاء')),
-              const SizedBox(width: 8),
-              FilledButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text('تأكيد')),
+              Text(
+                'هل أنت متأكد من $title رقم ${entry.number}؟',
+                style: Theme.of(ctx).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 12),
+              _EntryLinesTable(store: store, entry: entry),
             ],
           ),
-        ),
-      ),
+      footer:
+          (ctx, setLocal) => SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('إلغاء'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('تأكيد'),
+                  ),
+                ],
+              ),
+            ),
+          ),
     );
     return result ?? false;
   }

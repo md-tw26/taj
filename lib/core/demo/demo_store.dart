@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'default_data.dart';
 import 'demo_models.dart';
 
 class DemoStore extends ChangeNotifier {
@@ -13,7 +14,7 @@ class DemoStore extends ChangeNotifier {
   /// app never sets either, so its behavior is unchanged.
   DemoStore({bool autoLoad = true, bool enablePersistence = true})
     : _enablePersistence = enablePersistence {
-    _seed();
+    applyDefaultData(this);
     if (autoLoad) {
       load();
     } else {
@@ -23,7 +24,25 @@ class DemoStore extends ChangeNotifier {
 
   final bool _enablePersistence;
 
-  static const _storageKey = 'taj_demo_store_v1';
+  /// Name of the signed-in user, set by the app shell after login. Used as the
+  /// actor on audit/journal/status records instead of a hard-coded name. Not
+  /// persisted (it's session state, not business data).
+  String currentUser = '';
+
+  /// The actor to stamp on records: the signed-in user, or a neutral fallback
+  /// if the session hasn't set one (e.g. during tests).
+  String get _actor => currentUser.isEmpty ? 'مستخدم النظام' : currentUser;
+
+  static const _storageKey = 'taj_store_v2';
+
+  /// The pre-cleanup key. Its blob was demo data mixed with any real edits, so
+  /// on first run of this version we delete it rather than migrate (decision 1
+  /// in `TAJ-Remove-Demo-Data-Prompt.md`).
+  static const _legacyStorageKey = 'taj_demo_store_v1';
+
+  /// Where a blob we failed to decode is preserved, so a corrupt/incompatible
+  /// save is never silently discarded or overwritten.
+  static const _corruptBackupKey = 'taj_store_v2_corrupt_backup';
   bool isLoading = true;
   String? error;
   List<DemoBranch> branches = [];
@@ -103,987 +122,41 @@ class DemoStore extends ChangeNotifier {
       terminals.where((t) => t.branchId == branchId).length;
 
   Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // One-time cleanup: drop the old demo blob so its fake data never resurfaces.
+    if (prefs.containsKey(_legacyStorageKey)) {
+      await prefs.remove(_legacyStorageKey);
+    }
+
+    final raw = prefs.getString(_storageKey);
+    if (raw == null || raw.isEmpty) {
+      // Fresh install: keep the first-run defaults already applied.
+      isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     try {
-      await Future<void>.value();
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_storageKey);
-      if (raw != null && raw.isNotEmpty) {
-        _decode(jsonDecode(raw) as Map<String, dynamic>);
-      }
+      _decode(jsonDecode(raw) as Map<String, dynamic>);
     } catch (_) {
-      error = 'تعذر تحميل بيانات العرض، تم استخدام البيانات التجريبية.';
+      // Don't silently replace data we couldn't read. Preserve the raw blob
+      // under a backup key, surface the error, and block persistence so the
+      // next edit can't overwrite the user's saved (if unreadable) data.
+      await prefs.setString(_corruptBackupKey, raw);
+      _loadFailed = true;
+      error =
+          'تعذّر قراءة البيانات المحفوظة. حُفظت نسخة منها، ولن يُكتب فوقها. '
+          'راجع مدير النظام.';
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  void _seed() {
-    branches = const [
-      DemoBranch(id: 'b1', name: 'طرابلس - الفرع الرئيسي', city: 'طرابلس'),
-      DemoBranch(id: 'b2', name: 'بنغازي - الفرع الشرقي', city: 'بنغازي'),
-      DemoBranch(id: 'b3', name: 'مصراتة - السوق', city: 'مصراتة'),
-      DemoBranch(id: 'b4', name: 'الزاوية - الفرع الغربي', city: 'الزاوية'),
-    ];
-    products = const [
-      DemoProduct(
-        id: 'p1',
-        name: 'عود ملكي',
-        barcode: '6224000111',
-        category: 'عطور',
-        price: 450,
-        cost: 300,
-        stock: 24,
-        reorderLevel: 5,
-        iconCode: 'spa',
-      ),
-      DemoProduct(
-        id: 'p2',
-        name: 'عطر المسك',
-        barcode: '6224000112',
-        category: 'عطور',
-        price: 320,
-        cost: 210,
-        stock: 3,
-        reorderLevel: 5,
-        iconCode: 'local_florist',
-      ),
-      DemoProduct(
-        id: 'p3',
-        name: 'بخور فاخر',
-        barcode: '6224000113',
-        category: 'بخور',
-        price: 180,
-        cost: 110,
-        stock: 57,
-        reorderLevel: 8,
-        iconCode: 'fire',
-      ),
-      DemoProduct(
-        id: 'p4',
-        name: 'ماء الورد',
-        barcode: '6224000114',
-        category: 'زيوت',
-        price: 60,
-        cost: 35,
-        stock: 0,
-        reorderLevel: 5,
-        iconCode: 'water',
-      ),
-      DemoProduct(
-        id: 'p5',
-        name: 'دهن العود',
-        barcode: '6224000115',
-        category: 'زيوت',
-        price: 700,
-        cost: 520,
-        stock: 12,
-        reorderLevel: 4,
-        iconCode: 'oil',
-      ),
-      DemoProduct(
-        id: 'p6',
-        name: 'عنبر',
-        barcode: '6224000116',
-        category: 'عطور',
-        price: 540,
-        cost: 390,
-        stock: 2,
-        reorderLevel: 5,
-        iconCode: 'gift',
-      ),
-      DemoProduct(
-        id: 'p7',
-        name: 'مبخرة نحاس',
-        barcode: '6224000117',
-        category: 'هدايا',
-        price: 240,
-        cost: 160,
-        stock: 18,
-        reorderLevel: 5,
-        iconCode: 'gift',
-      ),
-      DemoProduct(
-        id: 'p8',
-        name: 'بخور معمول',
-        barcode: '6224000118',
-        category: 'بخور',
-        price: 150,
-        cost: 90,
-        stock: 40,
-        reorderLevel: 8,
-        iconCode: 'fire',
-      ),
-      DemoProduct(
-        id: 'p9',
-        name: 'زيت الصندل',
-        barcode: '6224000119',
-        category: 'زيوت',
-        price: 210,
-        cost: 140,
-        stock: 5,
-        reorderLevel: 5,
-        iconCode: 'oil',
-      ),
-      DemoProduct(
-        id: 'p10',
-        name: 'طقم هدايا',
-        barcode: '6224000120',
-        category: 'هدايا',
-        price: 380,
-        cost: 250,
-        stock: 9,
-        reorderLevel: 4,
-        iconCode: 'gift',
-      ),
-      DemoProduct(
-        id: 'p11',
-        name: 'مسك أبيض',
-        barcode: '6224000121',
-        category: 'عطور',
-        price: 260,
-        cost: 170,
-        stock: 33,
-        reorderLevel: 5,
-        iconCode: 'local_florist',
-      ),
-      DemoProduct(
-        id: 'p12',
-        name: 'عود كمبودي',
-        barcode: '6224000122',
-        category: 'بخور',
-        price: 820,
-        cost: 600,
-        stock: 0,
-        reorderLevel: 3,
-        iconCode: 'spa',
-      ),
-    ];
-    customers = const [
-      DemoCustomer(
-        id: 'c1',
-        name: 'سالم المبروك',
-        phone: '0912345678',
-        creditLimit: 2000,
-        balance: 450,
-      ),
-      DemoCustomer(
-        id: 'c2',
-        name: 'نور الهدى',
-        phone: '0923456789',
-        creditLimit: 1500,
-        balance: 1200,
-      ),
-      DemoCustomer(
-        id: 'c3',
-        name: 'خالد عمر',
-        phone: '0934567890',
-        creditLimit: 1000,
-      ),
-      DemoCustomer(
-        id: 'c4',
-        name: 'ليان أحمد',
-        phone: '0945678901',
-        creditLimit: 1000,
-        balance: -320,
-      ),
-    ];
-    suppliers = const [
-      DemoSupplier(
-        id: 's1',
-        name: 'مؤسسة العطور',
-        phone: '0911122334',
-        balance: 5400,
-      ),
-      DemoSupplier(id: 's2', name: 'مستودع البخور', phone: '0922233445'),
-      DemoSupplier(
-        id: 's3',
-        name: 'شركة الزيوت',
-        phone: '0933344556',
-        balance: 2100,
-      ),
-    ];
-    final now = DateTime.now();
-    sales = [
-      DemoSale(
-        id: 'INV-1048',
-        branchId: 'b1',
-        date: now.subtract(const Duration(days: 1)),
-        lines: const [
-          DemoSaleLine(productId: 'p1', quantity: 1, unitPrice: 450),
-        ],
-        total: 450,
-        status: DemoSaleStatus.paid,
-        paymentMethod: DemoPaymentMethod.cash,
-        customerId: 'c1',
-      ),
-      DemoSale(
-        id: 'INV-1047',
-        branchId: 'b2',
-        date: now.subtract(const Duration(days: 2)),
-        lines: const [
-          DemoSaleLine(productId: 'p3', quantity: 2, unitPrice: 180),
-          DemoSaleLine(productId: 'p2', quantity: 2, unitPrice: 320),
-        ],
-        total: 1000,
-        status: DemoSaleStatus.credit,
-        paymentMethod: DemoPaymentMethod.credit,
-        customerId: 'c2',
-      ),
-      DemoSale(
-        id: 'INV-1046',
-        branchId: 'b1',
-        date: now.subtract(const Duration(days: 3)),
-        lines: const [
-          DemoSaleLine(productId: 'p7', quantity: 1, unitPrice: 240),
-          DemoSaleLine(productId: 'p9', quantity: 1, unitPrice: 210),
-        ],
-        total: 450,
-        status: DemoSaleStatus.paid,
-        paymentMethod: DemoPaymentMethod.card,
-      ),
-    ];
-    purchases = [
-      DemoPurchase(
-        id: 'PUR-210',
-        supplierId: 's1',
-        date: now.subtract(const Duration(days: 4)),
-        total: 5400,
-        paid: false,
-      ),
-    ];
-    expenses = [
-      DemoExpense(
-        id: 'EXP-001',
-        category: 'إيجار',
-        amount: 3000,
-        date: now.subtract(const Duration(days: 10)),
-        branchId: 'b1',
-        method: DemoPaymentMethod.bank,
-      ),
-      DemoExpense(
-        id: 'EXP-SAL-E2',
-        category: 'مرتبات',
-        amount: 3300,
-        date: DateTime(now.year, now.month, 1),
-        branchId: 'b1',
-        method: DemoPaymentMethod.bank,
-        employeeId: 'E2',
-      ),
-    ];
-    accounts = const [
-      DemoAccount(
-        id: 'ACC-C1',
-        name: 'الصندوق الرئيسي',
-        type: DemoAccountType.cash,
-        branchId: 'b1',
-        openingBalance: 15000,
-      ),
-      DemoAccount(
-        id: 'ACC-C2',
-        name: 'صندوق بنغازي',
-        type: DemoAccountType.cash,
-        branchId: 'b2',
-        openingBalance: 8000,
-      ),
-      DemoAccount(
-        id: 'ACC-C3',
-        name: 'صندوق مصراتة',
-        type: DemoAccountType.cash,
-        branchId: 'b3',
-        openingBalance: 5000,
-      ),
-      DemoAccount(
-        id: 'ACC-B1',
-        name: 'مصرف الجمهورية',
-        type: DemoAccountType.bank,
-        branchId: 'b1',
-        openingBalance: 250000,
-        bankName: 'مصرف الجمهورية',
-        accountNo: '0071-2298-114',
-      ),
-      DemoAccount(
-        id: 'ACC-B2',
-        name: 'مصرف التجارة والتنمية الوطني',
-        type: DemoAccountType.bank,
-        branchId: 'b1',
-        openingBalance: 1284500.5,
-        bankName: 'مصرف التجارة والتنمية',
-        accountNo: '0043-9910-552',
-      ),
-    ];
-    treasuryMovements = [
-      DemoTreasuryMovement(
-        id: 'MOV-009',
-        accountId: 'ACC-B2',
-        type: DemoMovementType.withdraw,
-        amount: 15400.25,
-        date: now.subtract(const Duration(days: 1)),
-        isInflow: false,
-        reference: 'CHK-1130',
-        description: 'شيك مورد لم يُصرف بعد',
-        reconciled: false,
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-001',
-        accountId: 'ACC-C1',
-        type: DemoMovementType.deposit,
-        amount: 3200,
-        date: now.subtract(const Duration(days: 1)),
-        isInflow: true,
-        reference: 'REC-3391',
-        description: 'مبيعات نقدية',
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-002',
-        accountId: 'ACC-C1',
-        type: DemoMovementType.withdraw,
-        amount: 1500,
-        date: now.subtract(const Duration(days: 1)),
-        isInflow: false,
-        reference: 'EXP-014',
-        description: 'مصروف صيانة',
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-003b',
-        accountId: 'ACC-B1',
-        type: DemoMovementType.transfer,
-        amount: 10000,
-        date: now.subtract(const Duration(days: 2)),
-        isInflow: true,
-        reference: 'TRF-207',
-        description: 'إيداع من الصندوق الرئيسي',
-        counterAccountId: 'ACC-C1',
-        reconciled: false,
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-003a',
-        accountId: 'ACC-C1',
-        type: DemoMovementType.transfer,
-        amount: 10000,
-        date: now.subtract(const Duration(days: 2)),
-        isInflow: false,
-        reference: 'TRF-207',
-        description: 'إيداع بنكي — مصرف الجمهورية',
-        counterAccountId: 'ACC-B1',
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-004',
-        accountId: 'ACC-B2',
-        type: DemoMovementType.deposit,
-        amount: 750000,
-        date: now.subtract(const Duration(days: 3)),
-        isInflow: true,
-        reference: 'REC-8800',
-        description: 'تحصيل قيمة عقد توريد',
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-005',
-        accountId: 'ACC-B1',
-        type: DemoMovementType.withdraw,
-        amount: 42250.75,
-        date: now.subtract(const Duration(days: 4)),
-        isInflow: false,
-        reference: 'CHK-1121',
-        description: 'شيك مورد',
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-006',
-        accountId: 'ACC-C2',
-        type: DemoMovementType.reconcile,
-        amount: 120,
-        date: now.subtract(const Duration(days: 5)),
-        isInflow: true,
-        reference: 'ADJ-01',
-        description: 'تسوية فروق جرد الصندوق',
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-007',
-        accountId: 'ACC-C2',
-        type: DemoMovementType.deposit,
-        amount: 2600,
-        date: now.subtract(const Duration(days: 6)),
-        isInflow: true,
-        reference: 'REC-3410',
-        description: 'مبيعات نقدية',
-      ),
-      DemoTreasuryMovement(
-        id: 'MOV-008',
-        accountId: 'ACC-C3',
-        type: DemoMovementType.withdraw,
-        amount: 900,
-        date: now.subtract(const Duration(days: 7)),
-        isInflow: false,
-        reference: 'EXP-021',
-        description: 'نثريات',
-      ),
-    ];
-    ledgerAccounts = const [
-      // 1 Assets
-      DemoLedgerAccount(
-        id: '1',
-        code: '1',
-        name: 'الأصول',
-        type: DemoLedgerAccountType.asset,
-      ),
-      DemoLedgerAccount(
-        id: '11',
-        code: '11',
-        name: 'الأصول المتداولة',
-        type: DemoLedgerAccountType.asset,
-        parentId: '1',
-      ),
-      DemoLedgerAccount(
-        id: '1101',
-        code: '1101',
-        name: 'الصندوق',
-        type: DemoLedgerAccountType.asset,
-        parentId: '11',
-      ),
-      DemoLedgerAccount(
-        id: '1102',
-        code: '1102',
-        name: 'المصارف',
-        type: DemoLedgerAccountType.asset,
-        parentId: '11',
-      ),
-      DemoLedgerAccount(
-        id: '110201',
-        code: '110201',
-        name: 'مصرف الجمهورية',
-        type: DemoLedgerAccountType.asset,
-        parentId: '1102',
-      ),
-      DemoLedgerAccount(
-        id: '110202',
-        code: '110202',
-        name: 'مصرف التجارة والتنمية',
-        type: DemoLedgerAccountType.asset,
-        parentId: '1102',
-      ),
-      DemoLedgerAccount(
-        id: '1103',
-        code: '1103',
-        name: 'ذمم العملاء',
-        type: DemoLedgerAccountType.asset,
-        parentId: '11',
-      ),
-      DemoLedgerAccount(
-        id: '1104',
-        code: '1104',
-        name: 'المخزون',
-        type: DemoLedgerAccountType.asset,
-        parentId: '11',
-      ),
-      // 12 Fixed assets
-      DemoLedgerAccount(
-        id: '12',
-        code: '12',
-        name: 'الأصول الثابتة',
-        type: DemoLedgerAccountType.asset,
-        parentId: '1',
-      ),
-      DemoLedgerAccount(
-        id: '1201',
-        code: '1201',
-        name: 'الأثاث والمعدات',
-        type: DemoLedgerAccountType.asset,
-        parentId: '12',
-      ),
-      // Deep branch (depth 6) to stress tree indentation + long names.
-      DemoLedgerAccount(
-        id: '1203',
-        code: '1203',
-        name: 'أصول أخرى',
-        type: DemoLedgerAccountType.asset,
-        parentId: '12',
-      ),
-      DemoLedgerAccount(
-        id: '120301',
-        code: '120301',
-        name: 'المستوى الثالث',
-        type: DemoLedgerAccountType.asset,
-        parentId: '1203',
-      ),
-      DemoLedgerAccount(
-        id: '12030101',
-        code: '12030101',
-        name: 'المستوى الرابع',
-        type: DemoLedgerAccountType.asset,
-        parentId: '120301',
-      ),
-      DemoLedgerAccount(
-        id: '1203010101',
-        code: '1203010101',
-        name: 'المستوى الخامس',
-        type: DemoLedgerAccountType.asset,
-        parentId: '12030101',
-      ),
-      DemoLedgerAccount(
-        id: '120301010101',
-        code: '120301010101',
-        name: 'المستوى السادس - حساب بأسم عربي طويل جدًا لاختبار التداخل',
-        type: DemoLedgerAccountType.asset,
-        parentId: '1203010101',
-      ),
-      // 2 Liabilities
-      DemoLedgerAccount(
-        id: '2',
-        code: '2',
-        name: 'الخصوم',
-        type: DemoLedgerAccountType.liability,
-      ),
-      DemoLedgerAccount(
-        id: '21',
-        code: '21',
-        name: 'الخصوم المتداولة',
-        type: DemoLedgerAccountType.liability,
-        parentId: '2',
-      ),
-      DemoLedgerAccount(
-        id: '2101',
-        code: '2101',
-        name: 'ذمم الموردين',
-        type: DemoLedgerAccountType.liability,
-        parentId: '21',
-      ),
-      DemoLedgerAccount(
-        id: '2102',
-        code: '2102',
-        name: 'مصلحة الضرائب',
-        type: DemoLedgerAccountType.liability,
-        parentId: '21',
-      ),
-      // 3 Equity
-      DemoLedgerAccount(
-        id: '3',
-        code: '3',
-        name: 'حقوق الملكية',
-        type: DemoLedgerAccountType.equity,
-      ),
-      DemoLedgerAccount(
-        id: '3101',
-        code: '3101',
-        name: 'رأس المال',
-        type: DemoLedgerAccountType.equity,
-        parentId: '3',
-      ),
-      DemoLedgerAccount(
-        id: '3102',
-        code: '3102',
-        name: 'الأرباح المحتجزة',
-        type: DemoLedgerAccountType.equity,
-        parentId: '3',
-      ),
-      // 4 Revenue
-      DemoLedgerAccount(
-        id: '4',
-        code: '4',
-        name: 'الإيرادات',
-        type: DemoLedgerAccountType.revenue,
-      ),
-      DemoLedgerAccount(
-        id: '4101',
-        code: '4101',
-        name: 'إيرادات المبيعات',
-        type: DemoLedgerAccountType.revenue,
-        parentId: '4',
-      ),
-      DemoLedgerAccount(
-        id: '4102',
-        code: '4102',
-        name: 'إيرادات أخرى',
-        type: DemoLedgerAccountType.revenue,
-        parentId: '4',
-      ),
-      // 5 Expenses
-      DemoLedgerAccount(
-        id: '5',
-        code: '5',
-        name: 'المصروفات',
-        type: DemoLedgerAccountType.expense,
-      ),
-      DemoLedgerAccount(
-        id: '5101',
-        code: '5101',
-        name: 'تكلفة المبيعات',
-        type: DemoLedgerAccountType.expense,
-        parentId: '5',
-      ),
-      DemoLedgerAccount(
-        id: '5102',
-        code: '5102',
-        name: 'الرواتب والأجور',
-        type: DemoLedgerAccountType.expense,
-        parentId: '5',
-      ),
-      DemoLedgerAccount(
-        id: '5103',
-        code: '5103',
-        name: 'الإيجار',
-        type: DemoLedgerAccountType.expense,
-        parentId: '5',
-      ),
-      DemoLedgerAccount(
-        id: '5104',
-        code: '5104',
-        name: 'الكهرباء والماء',
-        type: DemoLedgerAccountType.expense,
-        parentId: '5',
-      ),
-      DemoLedgerAccount(
-        id: '5105',
-        code: '5105',
-        name: 'مصروفات أخرى',
-        type: DemoLedgerAccountType.expense,
-        parentId: '5',
-      ),
-    ];
-    journalEntries = [
-      DemoJournalEntry(
-        id: 'JV-001',
-        number: 'JV-001',
-        date: now.subtract(const Duration(days: 60)),
-        description: 'إثبات رأس المال الافتتاحي عند تأسيس الشركة',
-        status: DemoEntryStatus.posted,
-        reviewed: true,
-        approved: true,
-        createdBy: 'أحمد الفيتوري',
-        reference: 'CAP-01',
-        attachments: const ['عقد_التأسيس.pdf'],
-        lines: const [
-          DemoJournalLine(
-            accountId: '1101',
-            debit: 100000,
-            description: 'إيداع رأس المال',
-          ),
-          DemoJournalLine(
-            accountId: '3101',
-            credit: 100000,
-            description: 'رأس المال المدفوع',
-          ),
-        ],
-      ),
-      DemoJournalEntry(
-        id: 'JV-002',
-        number: 'JV-002',
-        date: now.subtract(const Duration(days: 30)),
-        description: 'إثبات المبيعات النقدية لشهر يوليو',
-        status: DemoEntryStatus.posted,
-        reviewed: true,
-        approved: true,
-        createdBy: 'سميرة',
-        reference: 'REC-3391',
-        lines: const [
-          DemoJournalLine(
-            accountId: '1101',
-            debit: 45000,
-            description: 'تحصيل نقدي',
-          ),
-          DemoJournalLine(
-            accountId: '4101',
-            credit: 45000,
-            description: 'مبيعات',
-          ),
-        ],
-      ),
-      DemoJournalEntry(
-        id: 'JV-003',
-        number: 'JV-003',
-        date: now.subtract(const Duration(days: 25)),
-        description: 'شراء أثاث ومعدات مكتبية من مصرف الجمهورية',
-        status: DemoEntryStatus.posted,
-        reviewed: true,
-        createdBy: 'سميرة',
-        reference: 'CHK-1121',
-        lines: const [
-          DemoJournalLine(
-            accountId: '1201',
-            debit: 22000,
-            description: 'أثاث مكتبي',
-          ),
-          DemoJournalLine(
-            accountId: '110201',
-            credit: 22000,
-            description: 'شيك مصرفي',
-          ),
-        ],
-      ),
-      DemoJournalEntry(
-        id: 'JV-004',
-        number: 'JV-004',
-        date: now.subtract(const Duration(days: 20)),
-        description:
-            'إثبات المصروفات التشغيلية لشهر يوليو (رواتب وإيجار وكهرباء)',
-        status: DemoEntryStatus.posted,
-        approved: true,
-        createdBy: 'سميرة',
-        reference: 'EXP-JUL',
-        lines: const [
-          DemoJournalLine(
-            accountId: '5102',
-            debit: 18000,
-            description: 'رواتب الموظفين',
-          ),
-          DemoJournalLine(
-            accountId: '5103',
-            debit: 6000,
-            description: 'إيجار المحل',
-          ),
-          DemoJournalLine(
-            accountId: '5104',
-            debit: 1500,
-            description: 'كهرباء وماء',
-          ),
-          DemoJournalLine(
-            accountId: '110201',
-            credit: 25500,
-            description: 'سداد من المصرف',
-          ),
-        ],
-      ),
-      DemoJournalEntry(
-        id: 'JV-005',
-        number: 'JV-005',
-        date: now.subtract(const Duration(days: 2)),
-        description: 'قيد تحت المراجعة — غير متوازن (للتوضيح)',
-        status: DemoEntryStatus.draft,
-        createdBy: 'محمد',
-        lines: const [
-          DemoJournalLine(
-            accountId: '5105',
-            debit: 3000,
-            description: 'مصروف نثري',
-          ),
-          DemoJournalLine(
-            accountId: '1101',
-            credit: 2500,
-            description: 'صرف نقدي',
-          ),
-        ],
-      ),
-      DemoJournalEntry(
-        id: 'JV-006',
-        number: 'JV-006',
-        date: now.subtract(const Duration(days: 15)),
-        description: 'مصروف تم تسجيله بالخطأ ثم عُكس',
-        status: DemoEntryStatus.reversed,
-        reviewed: true,
-        createdBy: 'محمد',
-        lines: const [
-          DemoJournalLine(
-            accountId: '5105',
-            debit: 1200,
-            description: 'مصروف مكرر',
-          ),
-          DemoJournalLine(
-            accountId: '1101',
-            credit: 1200,
-            description: 'صرف نقدي',
-          ),
-        ],
-      ),
-      DemoJournalEntry(
-        id: 'JV-007',
-        number: 'JV-007',
-        date: now.subtract(const Duration(days: 15)),
-        description: 'عكس القيد JV-006',
-        status: DemoEntryStatus.posted,
-        reviewed: true,
-        approved: true,
-        createdBy: 'أحمد الفيتوري',
-        reversalOfId: 'JV-006',
-        lines: const [
-          DemoJournalLine(
-            accountId: '1101',
-            debit: 1200,
-            description: 'إعادة المبلغ',
-          ),
-          DemoJournalLine(
-            accountId: '5105',
-            credit: 1200,
-            description: 'إلغاء المصروف',
-          ),
-        ],
-      ),
-    ];
-    accountingAudit = [
-      DemoAccountingAudit(
-        id: 'AUD-1',
-        date: now.subtract(const Duration(days: 60)),
-        user: 'أحمد الفيتوري',
-        action: 'ترحيل',
-        entryNumber: 'JV-001',
-        before: 'مسودة',
-        after: 'مُرحّل',
-      ),
-      DemoAccountingAudit(
-        id: 'AUD-2',
-        date: now.subtract(const Duration(days: 59)),
-        user: 'أحمد الفيتوري',
-        action: 'اعتماد',
-        entryNumber: 'JV-001',
-        before: 'قيد المراجعة',
-        after: 'معتمد',
-      ),
-      DemoAccountingAudit(
-        id: 'AUD-3',
-        date: now.subtract(const Duration(days: 15)),
-        user: 'أحمد الفيتوري',
-        action: 'عكس',
-        entryNumber: 'JV-006',
-        before: 'مُرحّل',
-        after: 'معكوس — أُنشئ القيد JV-007',
-      ),
-    ];
-    employees = [
-      DemoEmployee(
-        id: 'E1',
-        name: 'طارق بن عمر',
-        title: 'مدير عام',
-        branchId: 'b1',
-        hireDate: now.subtract(const Duration(days: 900)),
-        phone: '0912000001',
-        baseSalary: 4500,
-        allowances: 800,
-        bonuses: 500,
-        deductions: 150,
-      ),
-      DemoEmployee(
-        id: 'E2',
-        name: 'سميرة المبروك',
-        title: 'محاسبة',
-        branchId: 'b1',
-        hireDate: now.subtract(const Duration(days: 600)),
-        phone: '0912000002',
-        baseSalary: 3000,
-        allowances: 400,
-        bonuses: 200,
-        deductions: 100,
-      ),
-      DemoEmployee(
-        id: 'E3',
-        name: 'محمد الأحمر',
-        title: 'كاشير',
-        branchId: 'b2',
-        hireDate: now.subtract(const Duration(days: 400)),
-        phone: '0912000003',
-        baseSalary: 1800,
-        allowances: 200,
-        overtime: 150,
-        deductions: 50,
-      ),
-      DemoEmployee(
-        id: 'E4',
-        name: 'عبد الرحمن الطاهر الفيتوري القذافي',
-        title: 'مشرف مبيعات',
-        branchId: 'b1',
-        hireDate: now.subtract(const Duration(days: 300)),
-        phone: '0912000004',
-        baseSalary: 2500,
-        allowances: 300,
-        commissions: 600,
-        deductions: 80,
-      ),
-      DemoEmployee(
-        id: 'E5',
-        name: 'فاطمة الزهراء',
-        title: 'أمينة مخزن',
-        branchId: 'b3',
-        hireDate: now.subtract(const Duration(days: 200)),
-        phone: '0912000005',
-        baseSalary: 2000,
-        allowances: 250,
-        deductions: 60,
-      ),
-      DemoEmployee(
-        id: 'E6',
-        name: 'خالد سالم',
-        title: 'سائق توصيل',
-        branchId: 'b2',
-        hireDate: now.subtract(const Duration(days: 120)),
-        phone: '0912000006',
-        baseSalary: 1600,
-        overtime: 200,
-        deductions: 40,
-      ),
-    ];
-    payrollTxns = [
-      DemoPayrollTxn(
-        id: 'PT-1',
-        employeeId: 'E1',
-        type: DemoPayrollTxnType.advance,
-        amount: 1000,
-        date: now.subtract(const Duration(days: 10)),
-        note: 'سلفة على الراتب',
-      ),
-      DemoPayrollTxn(
-        id: 'PT-2',
-        employeeId: 'E3',
-        type: DemoPayrollTxnType.withdrawal,
-        amount: 300,
-        date: now.subtract(const Duration(days: 5)),
-        note: 'سحب نقدي',
-      ),
-      DemoPayrollTxn(
-        id: 'PT-3',
-        employeeId: 'E4',
-        type: DemoPayrollTxnType.advance,
-        amount: 500,
-        date: now.subtract(const Duration(days: 8)),
-        note: 'سلفة طارئة',
-      ),
-      DemoPayrollTxn(
-        id: 'PT-4',
-        employeeId: 'E2',
-        type: DemoPayrollTxnType.withdrawal,
-        amount: 200,
-        date: now.subtract(const Duration(days: 3)),
-        note: 'سحب',
-      ),
-    ];
-    terminals = const [
-      DemoTerminal(
-        id: 'POS-01',
-        branchId: 'b1',
-        name: 'الكاشير الرئيسي',
-        status: 'متصل',
-      ),
-      DemoTerminal(
-        id: 'POS-02',
-        branchId: 'b1',
-        name: 'الكاشير 2',
-        status: 'متاح',
-      ),
-      DemoTerminal(
-        id: 'POS-05',
-        branchId: 'b2',
-        name: 'نقطة بنغازي',
-        status: 'متصل',
-      ),
-    ];
-    notifications = [
-      DemoNotification(
-        id: 'n1',
-        title: 'مخزون منخفض',
-        message: 'عدة أصناف تحتاج إلى إعادة طلب.',
-        date: now,
-      ),
-    ];
-    users = const [
-      DemoUser(id: 'u1', name: 'أحمد الفيتوري', role: 'مدير', active: true),
-      DemoUser(id: 'u2', name: 'سالم المبروك', role: 'كاشير', active: true),
-    ];
-    statusHistory = [
-      DemoStatusHistory(
-        id: 'h1',
-        entityId: 'INV-1048',
-        status: 'مدفوعة',
-        date: now,
-        actor: 'أحمد الفيتوري',
-      ),
-    ];
-  }
+  /// Set when [load] couldn't decode the saved blob. While true, [_save] is a
+  /// no-op so the preserved (unreadable) data is never overwritten.
+  bool _loadFailed = false;
 
   void _decode(Map<String, dynamic> j) {
     branches =
@@ -1127,7 +200,7 @@ class DemoStore extends ChangeNotifier {
             )
             .toList();
     // Guarded so a persisted blob saved before the treasury module existed
-    // keeps its seeded accounts/movements instead of being wiped to empty.
+    // keeps the default accounts/movements instead of being wiped to empty.
     if (j['accounts'] != null) {
       accounts =
           (j['accounts'] as List)
@@ -1225,7 +298,7 @@ class DemoStore extends ChangeNotifier {
   }
 
   Future<void> _save() async {
-    if (!_enablePersistence) return;
+    if (!_enablePersistence || _loadFailed) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _storageKey,
@@ -1394,7 +467,7 @@ class DemoStore extends ChangeNotifier {
         entityId: id,
         status: status.name,
         date: DateTime.now(),
-        actor: 'المستخدم الحالي',
+        actor: _actor,
       ),
       ...statusHistory,
     ];
@@ -1617,7 +690,7 @@ class DemoStore extends ChangeNotifier {
       DemoAccountingAudit(
         id: 'AUD-${DateTime.now().microsecondsSinceEpoch}',
         date: DateTime.now(),
-        user: 'المستخدم الحالي',
+        user: _actor,
         action: action,
         entryNumber: entryNumber,
         before: before,
@@ -1694,7 +767,7 @@ class DemoStore extends ChangeNotifier {
       status: DemoEntryStatus.posted,
       reviewed: true,
       approved: true,
-      createdBy: 'المستخدم الحالي',
+      createdBy: _actor,
       reversalOfId: e.id,
       lines: [
         for (final l in e.lines)

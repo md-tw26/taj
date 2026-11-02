@@ -9,11 +9,14 @@ class DemoStoreProvider extends InheritedNotifier<DemoStore> {
     required super.child,
   }) : super(notifier: store);
 
-  static final DemoStore fallback = DemoStore();
-
   static DemoStore of(BuildContext context) {
     final provider =
         context.dependOnInheritedWidgetOfExactType<DemoStoreProvider>();
-    return provider?.notifier ?? fallback;
+    assert(
+      provider != null,
+      'No DemoStoreProvider found. Wrap the app (or the widget under test — '
+      'see test/helpers/test_harness.dart) in a DemoStoreProvider.',
+    );
+    return provider!.notifier!;
   }
 }
