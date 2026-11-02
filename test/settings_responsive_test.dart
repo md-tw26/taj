@@ -24,6 +24,8 @@ import 'package:taj/core/theme/taj_colors.dart';
 import 'package:taj/modules/settings/settings_models.dart';
 import 'package:taj/modules/settings/settings_screen.dart';
 
+import 'helpers/test_harness.dart';
+
 const _sizes = <(String, double, double)>[
   ('phone-xs-portrait', 320, 568),
   ('phone-xs-landscape', 568, 320),
@@ -73,7 +75,7 @@ Widget _host(
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: Directionality(
+      home: withStore(Directionality(
         textDirection: dir,
         child: Scaffold(
           body: SettingsScreen(
@@ -89,7 +91,7 @@ Widget _host(
             testInitialSection: initial,
           ),
         ),
-      ),
+      )),
     );
 
 Future<void> _pumpAt(WidgetTester tester, double w, double h, Widget child) async {

@@ -45,8 +45,12 @@ class ResponsiveChartCard extends StatelessWidget {
   final bool legendBeside;
 
   static double aspectFor(double width) {
-    if (width < AppBreakpoints.chartAspectTall) return AppBreakpoints.chartAspectPhone;
-    if (width < AppBreakpoints.chartAspectWide) return AppBreakpoints.chartAspectMid;
+    if (width < AppBreakpoints.chartAspectTall) {
+      return AppBreakpoints.chartAspectPhone;
+    }
+    if (width < AppBreakpoints.chartAspectWide) {
+      return AppBreakpoints.chartAspectMid;
+    }
     return AppBreakpoints.chartAspectWideR;
   }
 
@@ -63,8 +67,10 @@ class ResponsiveChartCard extends StatelessWidget {
           final cardW = c.maxWidth;
           final palette = _palette(context);
 
-          final primary = spec.series.isEmpty ? const <double>[] : spec.series.first.values;
-          final noData = spec.series.isEmpty ||
+          final primary =
+              spec.series.isEmpty ? const <double>[] : spec.series.first.values;
+          final noData =
+              spec.series.isEmpty ||
               spec.series.every((s) => s.values.every((v) => v == 0)) ||
               (spec.labels.isEmpty && spec.kind != SmartChartKind.line);
 
@@ -83,17 +89,28 @@ class ResponsiveChartCard extends StatelessWidget {
 
           switch (spec.kind) {
             case SmartChartKind.bars when horizontalBars:
-              final g = _topN(spec.labels, primary, AppBreakpoints.chartMaxCategories);
+              final g = _topN(
+                spec.labels,
+                primary,
+                AppBreakpoints.chartMaxCategories,
+              );
               catLabels = g.labels;
               catValues = g.values;
-              final rowH = maxHeight != null
-                  ? (maxHeight! / math.max(1, catValues.length)).clamp(26.0, 40.0)
-                  : 34.0;
+              final rowH =
+                  maxHeight != null
+                      ? (maxHeight! / math.max(1, catValues.length)).clamp(
+                        26.0,
+                        40.0,
+                      )
+                      : 34.0;
               plotH = math.max(90.0, catValues.length * rowH);
             case SmartChartKind.bars:
               // Adaptive: fit as many bars as the width allows at the min slot,
               // group the tail into "أخرى" rather than squeezing.
-              final cap = math.max(3, (cardW / AppBreakpoints.chartBarMinSlot).floor());
+              final cap = math.max(
+                3,
+                (cardW / AppBreakpoints.chartBarMinSlot).floor(),
+              );
               final g = _topN(spec.labels, primary, cap);
               catLabels = g.labels;
               catValues = g.values;
@@ -103,7 +120,11 @@ class ResponsiveChartCard extends StatelessWidget {
                 plotH = AppBreakpoints.chartMinHeight;
               }
             case SmartChartKind.donut:
-              final g = _topN(spec.labels, primary, AppBreakpoints.chartMaxCategories);
+              final g = _topN(
+                spec.labels,
+                primary,
+                AppBreakpoints.chartMaxCategories,
+              );
               catLabels = g.labels;
               catValues = g.values;
               plotH = _plotForAspect(cardW);
@@ -124,24 +145,31 @@ class ResponsiveChartCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(spec.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                spec.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
               if (spec.subtitle != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Text(spec.subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+                  child: Text(
+                    spec.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                  ),
                 ),
             ],
           );
 
           Widget plot;
           if (loading) {
-            plot = SizedBox(height: plotH, child: SkeletonBox(height: plotH, radius: 12));
+            plot = SizedBox(
+              height: plotH,
+              child: SkeletonBox(height: plotH, radius: 12),
+            );
           } else if (noData) {
             plot = _NotEnoughData(height: plotH);
           } else if (numericFallback) {
@@ -161,27 +189,35 @@ class ResponsiveChartCard extends StatelessWidget {
           }
 
           final legendItems =
-              (loading || noData) ? const <_LegendItem>[] : _legendItems(context, palette, catLabels, catValues);
+              (loading || noData)
+                  ? const <_LegendItem>[]
+                  : _legendItems(context, palette, catLabels, catValues);
           final legend =
-              legendItems.isEmpty ? const SizedBox.shrink() : _Legend(items: legendItems, beside: legendBeside);
+              legendItems.isEmpty
+                  ? const SizedBox.shrink()
+                  : _Legend(items: legendItems, beside: legendBeside);
 
-          final body = legendBeside && legendItems.isNotEmpty
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: plot),
-                    const SizedBox(width: 12),
-                    SizedBox(width: 120, child: legend),
-                  ],
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    plot,
-                    if (legendItems.isNotEmpty) ...[const SizedBox(height: 10), legend],
-                  ],
-                );
+          final body =
+              legendBeside && legendItems.isNotEmpty
+                  ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: plot),
+                      const SizedBox(width: 12),
+                      SizedBox(width: 120, child: legend),
+                    ],
+                  )
+                  : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      plot,
+                      if (legendItems.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        legend,
+                      ],
+                    ],
+                  );
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -200,11 +236,17 @@ class ResponsiveChartCard extends StatelessWidget {
   }
 
   List<_LegendItem> _legendItems(
-      BuildContext context, List<Color> palette, List<String> catLabels, List<double> catValues) {
+    BuildContext context,
+    List<Color> palette,
+    List<String> catLabels,
+    List<double> catValues,
+  ) {
     // line/area → one entry per series; bars/donut → one per (grouped) category.
     if (spec.kind == SmartChartKind.line || spec.kind == SmartChartKind.area) {
       if (spec.series.length < 2) return const [];
-      return [for (final s in spec.series) _LegendItem(color: s.color, label: s.name)];
+      return [
+        for (final s in spec.series) _LegendItem(color: s.color, label: s.name),
+      ];
     }
     return [
       for (var i = 0; i < catLabels.length; i++)
@@ -247,7 +289,10 @@ String _truncate(String s, int maxChars) =>
 /// Collapse categories beyond [max] into a trailing "أخرى" bucket — a
 /// presentation change only, the source data is untouched.
 ({List<String> labels, List<double> values}) _topN(
-    List<String> labels, List<double> values, int max) {
+  List<String> labels,
+  List<double> values,
+  int max,
+) {
   if (labels.length <= max) return (labels: labels, values: values);
   final idx = [for (var i = 0; i < values.length; i++) i]
     ..sort((a, b) => values[b].compareTo(values[a]));
@@ -285,10 +330,16 @@ class _NotEnoughData extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.bubble_chart_outlined, size: 26, color: taj.textDisabled),
+              Icon(
+                Icons.bubble_chart_outlined,
+                size: 26,
+                color: taj.textDisabled,
+              ),
               const SizedBox(height: 8),
-              Text('لا توجد بيانات كافية',
-                  style: TextStyle(color: taj.textSecondary, fontSize: 13)),
+              Text(
+                'لا توجد بيانات كافية',
+                style: TextStyle(color: taj.textSecondary, fontSize: 13),
+              ),
             ],
           ),
         ),
@@ -300,7 +351,11 @@ class _NotEnoughData extends StatelessWidget {
 /// When the plot would be too short to be legible, show the headline number(s)
 /// instead of a distorted chart, at the same height.
 class _NumericSummary extends StatelessWidget {
-  const _NumericSummary({required this.spec, required this.height, required this.palette});
+  const _NumericSummary({
+    required this.spec,
+    required this.height,
+    required this.palette,
+  });
   final ChartSpec spec;
   final double height;
   final List<Color> palette;
@@ -308,7 +363,8 @@ class _NumericSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
-    final values = spec.series.isEmpty ? const <double>[] : spec.series.first.values;
+    final values =
+        spec.series.isEmpty ? const <double>[] : spec.series.first.values;
     final total = values.fold<double>(0, (s, v) => s + v);
     // Top category (bars/donut) or series total (line).
     String headline;
@@ -322,7 +378,10 @@ class _NumericSummary extends StatelessWidget {
         if (values[i] > values[maxI]) maxI = i;
       }
       headline = values.isEmpty ? '—' : _fmt(values[maxI], spec.unit);
-      caption = values.isEmpty || maxI >= spec.labels.length ? 'الأعلى' : spec.labels[maxI];
+      caption =
+          values.isEmpty || maxI >= spec.labels.length
+              ? 'الأعلى'
+              : spec.labels[maxI];
     }
     return SizedBox(
       height: height,
@@ -336,19 +395,26 @@ class _NumericSummary extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(headline,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppThemes.numeralStyle(context,
-                      fontSize: 22, fontWeight: FontWeight.w800)),
+              Text(
+                headline,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppThemes.numeralStyle(
+                  context,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 4),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(caption,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: taj.textSecondary, fontSize: 12)),
+                child: Text(
+                  caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: taj.textSecondary, fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -419,20 +485,35 @@ class _Legend extends StatelessWidget {
           Container(
             width: 10,
             height: 10,
-            decoration: BoxDecoration(color: it.color, borderRadius: BorderRadius.circular(3)),
+            decoration: BoxDecoration(
+              color: it.color,
+              borderRadius: BorderRadius.circular(3),
+            ),
           ),
           const SizedBox(width: 6),
           Flexible(
-            child: Text(it.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+            child: Text(
+              it.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.bodySmall?.copyWith(color: taj.textSecondary),
+            ),
           ),
           if (it.value != null) ...[
             const SizedBox(width: 6),
-            Text(it.value!,
-                style: AppThemes.numeralStyle(context,
-                    fontSize: 12, fontWeight: FontWeight.w700, color: taj.textPrimary)),
+            Flexible(
+              child: Text(
+                it.value!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppThemes.numeralStyle(
+                  context,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: taj.textPrimary,
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -448,8 +529,14 @@ class _Legend extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: taj.divider),
       ),
-      child: Text('+$n',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: taj.textSecondary)),
+      child: Text(
+        '+$n',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: taj.textSecondary,
+        ),
+      ),
     );
   }
 }
@@ -551,27 +638,35 @@ class _InteractiveChartState extends State<_InteractiveChart> {
         final spec = widget.spec;
         final painter = switch (spec.kind) {
           SmartChartKind.donut => _DonutPainter(
-              values: widget.catValues, palette: widget.palette, hole: taj.paper, rtl: widget.rtl, active: _active),
+            values: widget.catValues,
+            palette: widget.palette,
+            hole: taj.paper,
+            rtl: widget.rtl,
+            active: _active,
+          ),
           SmartChartKind.line || SmartChartKind.area => _LinePainter(
-              series: spec.series,
-              n: spec.labels.length,
-              labels: spec.labels,
-              area: spec.kind == SmartChartKind.area,
-              grid: taj.divider,
-              labelColor: taj.textSecondary,
-              unit: spec.unit,
-              rtl: widget.rtl,
-              active: _active),
-          SmartChartKind.bars => widget.horizontalBars
-              ? _HBarsPainter(
+            series: spec.series,
+            n: spec.labels.length,
+            labels: spec.labels,
+            area: spec.kind == SmartChartKind.area,
+            grid: taj.divider,
+            labelColor: taj.textSecondary,
+            unit: spec.unit,
+            rtl: widget.rtl,
+            active: _active,
+          ),
+          SmartChartKind.bars =>
+            widget.horizontalBars
+                ? _HBarsPainter(
                   labels: widget.catLabels,
                   values: widget.catValues,
                   palette: widget.palette,
                   labelColor: taj.textSecondary,
                   unit: spec.unit,
                   rtl: widget.rtl,
-                  active: _active)
-              : _VBarsPainter(
+                  active: _active,
+                )
+                : _VBarsPainter(
                   labels: widget.catLabels,
                   values: widget.catValues,
                   palette: widget.palette,
@@ -579,7 +674,8 @@ class _InteractiveChartState extends State<_InteractiveChart> {
                   labelColor: taj.textSecondary,
                   unit: spec.unit,
                   rtl: widget.rtl,
-                  active: _active),
+                  active: _active,
+                ),
         };
 
         final chart = MouseRegion(
@@ -593,7 +689,12 @@ class _InteractiveChartState extends State<_InteractiveChart> {
         );
 
         final tooltip = _active == null ? null : _tooltip(context, size);
-        return Stack(children: [Positioned.fill(child: chart), if (tooltip != null) tooltip]);
+        return Stack(
+          children: [
+            Positioned.fill(child: chart),
+            if (tooltip != null) tooltip,
+          ],
+        );
       },
     );
   }
@@ -608,12 +709,16 @@ class _InteractiveChartState extends State<_InteractiveChart> {
       label = i < spec.labels.length ? spec.labels[i] : '';
       final parts = <String>[
         for (final s in spec.series)
-          if (i < s.values.length) '${s.name}: ${_fmtExact(s.values[i], spec.unit)}',
+          if (i < s.values.length)
+            '${s.name}: ${_fmtExact(s.values[i], spec.unit)}',
       ];
       value = parts.join('\n');
     } else {
       label = i < widget.catLabels.length ? widget.catLabels[i] : '';
-      value = i < widget.catValues.length ? _fmtExact(widget.catValues[i], spec.unit) : '';
+      value =
+          i < widget.catValues.length
+              ? _fmtExact(widget.catValues[i], spec.unit)
+              : '';
     }
 
     // Clamp the tooltip fully inside the plot using its max box, so it never
@@ -621,9 +726,13 @@ class _InteractiveChartState extends State<_InteractiveChart> {
     const ttW = 180.0;
     const ttH = 52.0;
     final left =
-        (_pointer.dx - ttW / 2).clamp(0.0, math.max(0.0, size.width - ttW)).toDouble();
+        (_pointer.dx - ttW / 2)
+            .clamp(0.0, math.max(0.0, size.width - ttW))
+            .toDouble();
     final top =
-        (_pointer.dy - ttH - 10).clamp(0.0, math.max(0.0, size.height - ttH)).toDouble();
+        (_pointer.dy - ttH - 10)
+            .clamp(0.0, math.max(0.0, size.height - ttH))
+            .toDouble();
 
     return Positioned(
       left: left,
@@ -642,17 +751,26 @@ class _InteractiveChartState extends State<_InteractiveChart> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-                Text(value,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 12,
-                        fontFeatures: const [FontFeature.tabularFigures()])),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 12,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
               ],
             ),
           ),
@@ -666,21 +784,25 @@ class _InteractiveChartState extends State<_InteractiveChart> {
 // Painters
 // ---------------------------------------------------------------------------
 
-TextPainter _tp(String s, Color color, {double size = 12, FontWeight w = FontWeight.w600}) =>
-    TextPainter(
-      text: TextSpan(
-        text: s,
-        style: TextStyle(
-          color: color,
-          fontSize: size,
-          fontWeight: w,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
-      ),
-      textDirection: TextDirection.rtl,
-      maxLines: 1,
-      ellipsis: '…',
-    );
+TextPainter _tp(
+  String s,
+  Color color, {
+  double size = 12,
+  FontWeight w = FontWeight.w600,
+}) => TextPainter(
+  text: TextSpan(
+    text: s,
+    style: TextStyle(
+      color: color,
+      fontSize: size,
+      fontWeight: w,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    ),
+  ),
+  textDirection: TextDirection.rtl,
+  maxLines: 1,
+  ellipsis: '…',
+);
 
 class _VBarsPainter extends CustomPainter {
   _VBarsPainter({
@@ -714,8 +836,13 @@ class _VBarsPainter extends CustomPainter {
     final slot = size.width / n;
     final barW = math.min(slot * 0.62, 46.0);
 
-    canvas.drawLine(Offset(0, topBand + chartH), Offset(size.width, topBand + chartH),
-        Paint()..color = grid..strokeWidth = 1);
+    canvas.drawLine(
+      Offset(0, topBand + chartH),
+      Offset(size.width, topBand + chartH),
+      Paint()
+        ..color = grid
+        ..strokeWidth = 1,
+    );
 
     for (var i = 0; i < n; i++) {
       final slotLeft = rtl ? size.width - (i + 1) * slot : i * slot;
@@ -727,7 +854,14 @@ class _VBarsPainter extends CustomPainter {
         topRight: const Radius.circular(4),
       );
       final color = palette[i % palette.length];
-      canvas.drawRRect(rect, Paint()..color = active == null || active == i ? color : color.withValues(alpha: 0.4));
+      canvas.drawRRect(
+        rect,
+        Paint()
+          ..color =
+              active == null || active == i
+                  ? color
+                  : color.withValues(alpha: 0.4),
+      );
 
       // Value label above the active bar (or all bars when wide enough).
       if (active == i || (active == null && barW >= 28)) {
@@ -747,7 +881,8 @@ class _VBarsPainter extends CustomPainter {
     }
   }
 
-  String _fmt(double v) => unit == null ? arNumCompact(v) : '${arNumCompact(v)} $unit';
+  String _fmt(double v) =>
+      unit == null ? arNumCompact(v) : '${arNumCompact(v)} $unit';
 
   @override
   bool shouldRepaint(_VBarsPainter old) =>
@@ -789,8 +924,12 @@ class _HBarsPainter extends CustomPainter {
       final cy = i * rowH + rowH / 2;
       final w = (values[i] / safeMax) * trackW;
       final color = palette[i % palette.length];
-      final paint = Paint()
-        ..color = active == null || active == i ? color : color.withValues(alpha: 0.4);
+      final paint =
+          Paint()
+            ..color =
+                active == null || active == i
+                    ? color
+                    : color.withValues(alpha: 0.4);
       final left = rtl ? size.width - w : trackLeft;
       final rect = RRect.fromRectAndCorners(
         Rect.fromLTWH(left, cy - barH / 2, w, barH),
@@ -810,14 +949,19 @@ class _HBarsPainter extends CustomPainter {
 
       // Value at the bar end.
       final vp = _tp(_fmt(values[i]), labelColor, size: 12)..layout();
-      final vx = rtl
-          ? (size.width - w - vp.width - 4).clamp(0.0, size.width - vp.width)
-          : (trackLeft + w + 4).clamp(0.0, size.width - vp.width);
+      final vx =
+          rtl
+              ? (size.width - w - vp.width - 4).clamp(
+                0.0,
+                size.width - vp.width,
+              )
+              : (trackLeft + w + 4).clamp(0.0, size.width - vp.width);
       vp.paint(canvas, Offset(vx, cy - vp.height / 2));
     }
   }
 
-  String _fmt(double v) => unit == null ? arNumCompact(v) : '${arNumCompact(v)} $unit';
+  String _fmt(double v) =>
+      unit == null ? arNumCompact(v) : '${arNumCompact(v)} $unit';
 
   @override
   bool shouldRepaint(_HBarsPainter old) =>
@@ -869,8 +1013,13 @@ class _LinePainter extends CustomPainter {
 
     // Baseline + a mid gridline.
     for (final y in [0.0, chartH]) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y),
-          Paint()..color = grid..strokeWidth = 1);
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        Paint()
+          ..color = grid
+          ..strokeWidth = 1,
+      );
     }
 
     for (final s in series) {
@@ -879,17 +1028,21 @@ class _LinePainter extends CustomPainter {
         path.lineTo(xAt(i), yAt(s.values[i]));
       }
       if (area) {
-        final fill = Path.from(path)
-          ..lineTo(xAt(count - 1), chartH)
-          ..lineTo(xAt(0), chartH)
-          ..close();
+        final fill =
+            Path.from(path)
+              ..lineTo(xAt(count - 1), chartH)
+              ..lineTo(xAt(0), chartH)
+              ..close();
         canvas.drawPath(
           fill,
           Paint()
             ..shader = LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [s.color.withValues(alpha: 0.22), s.color.withValues(alpha: 0)],
+              colors: [
+                s.color.withValues(alpha: 0.22),
+                s.color.withValues(alpha: 0),
+              ],
             ).createShader(Rect.fromLTWH(0, 0, size.width, chartH)),
         );
       }
@@ -903,19 +1056,30 @@ class _LinePainter extends CustomPainter {
           ..strokeCap = StrokeCap.round,
       );
       for (var i = 0; i < count; i++) {
-        canvas.drawCircle(Offset(xAt(i), yAt(s.values[i])), active == i ? 4 : 2.5,
-            Paint()..color = s.color);
+        canvas.drawCircle(
+          Offset(xAt(i), yAt(s.values[i])),
+          active == i ? 4 : 2.5,
+          Paint()..color = s.color,
+        );
       }
     }
 
     // Active vertical guide.
     if (active != null && active! >= 0 && active! < count) {
-      canvas.drawLine(Offset(xAt(active!), 0), Offset(xAt(active!), chartH),
-          Paint()..color = grid..strokeWidth = 1);
+      canvas.drawLine(
+        Offset(xAt(active!), 0),
+        Offset(xAt(active!), chartH),
+        Paint()
+          ..color = grid
+          ..strokeWidth = 1,
+      );
     }
 
     // Sparse x labels: first, middle, last (avoids collisions).
-    final ticks = count <= 3 ? [for (var i = 0; i < count; i++) i] : [0, count ~/ 2, count - 1];
+    final ticks =
+        count <= 3
+            ? [for (var i = 0; i < count; i++) i]
+            : [0, count ~/ 2, count - 1];
     for (final i in ticks) {
       if (i >= labels.length) continue;
       final tp = _tp(_truncate(labels[i], 8), labelColor, size: 12)..layout();
@@ -962,14 +1126,26 @@ class _DonutPainter extends CustomPainter {
         start,
         sweep,
         true,
-        Paint()..color = active == null || active == i ? color : color.withValues(alpha: 0.4),
+        Paint()
+          ..color =
+              active == null || active == i
+                  ? color
+                  : color.withValues(alpha: 0.4),
       );
       start += sweep;
     }
     canvas.drawCircle(center, radius * 0.58, Paint()..color = hole);
     // Center total.
-    final tp = _tp(arNumCompact(total), _contrast(hole), size: 14, w: FontWeight.w800)..layout();
-    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    final tp = _tp(
+      arNumCompact(total),
+      _contrast(hole),
+      size: 14,
+      w: FontWeight.w800,
+    )..layout();
+    tp.paint(
+      canvas,
+      Offset(center.dx - tp.width / 2, center.dy - tp.height / 2),
+    );
     // silence unused rect warning by referencing it once.
     assert(rect.width >= 0);
   }

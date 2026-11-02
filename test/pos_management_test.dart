@@ -10,6 +10,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:taj/core/theme/app_themes.dart';
 import 'package:taj/modules/pos_management/pos_management_screen.dart';
 
+import 'helpers/test_harness.dart';
+
 Widget _host() => MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppThemes.light(),
@@ -20,7 +22,7 @@ Widget _host() => MaterialApp(
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: const Scaffold(body: PosManagementScreen()),
+      home: withStore(const Scaffold(body: PosManagementScreen())),
     );
 
 Future<void> _pump(WidgetTester tester, Size size) async {

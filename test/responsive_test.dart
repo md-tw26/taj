@@ -31,6 +31,8 @@ import 'package:taj/modules/accounting/accounting_screen.dart';
 import 'package:taj/modules/employees/employees_screen.dart';
 import 'package:taj/modules/treasury/treasury_screen.dart';
 
+import 'helpers/test_harness.dart';
+
 /// (label, logical width, logical height). Covers phones, tablets, laptops,
 /// desktops, 2K/4K and ultra-wide, plus a couple of landscape/short cases.
 const _sizes = <(String, double, double)>[
@@ -80,7 +82,7 @@ Widget _host(Widget screen) => MaterialApp(
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: Scaffold(body: screen),
+      home: withStore(Scaffold(body: screen)),
     );
 
 void main() {

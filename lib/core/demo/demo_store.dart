@@ -6,10 +6,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'demo_models.dart';
 
 class DemoStore extends ChangeNotifier {
-  DemoStore() {
+  /// [autoLoad] and [enablePersistence] exist for tests: a store built with
+  /// `autoLoad: false` skips reading SharedPreferences (and the caller fills
+  /// it directly — see `test/fixtures/sample_data.dart`), and one built with
+  /// `enablePersistence: false` never writes to SharedPreferences. The real
+  /// app never sets either, so its behavior is unchanged.
+  DemoStore({bool autoLoad = true, bool enablePersistence = true})
+    : _enablePersistence = enablePersistence {
     _seed();
-    load();
+    if (autoLoad) {
+      load();
+    } else {
+      isLoading = false;
+    }
   }
+
+  final bool _enablePersistence;
 
   static const _storageKey = 'taj_demo_store_v1';
   bool isLoading = true;
@@ -509,189 +521,223 @@ class DemoStore extends ChangeNotifier {
     ledgerAccounts = const [
       // 1 Assets
       DemoLedgerAccount(
-          id: '1', code: '1', name: 'الأصول', type: DemoLedgerAccountType.asset),
+        id: '1',
+        code: '1',
+        name: 'الأصول',
+        type: DemoLedgerAccountType.asset,
+      ),
       DemoLedgerAccount(
-          id: '11',
-          code: '11',
-          name: 'الأصول المتداولة',
-          type: DemoLedgerAccountType.asset,
-          parentId: '1'),
+        id: '11',
+        code: '11',
+        name: 'الأصول المتداولة',
+        type: DemoLedgerAccountType.asset,
+        parentId: '1',
+      ),
       DemoLedgerAccount(
-          id: '1101',
-          code: '1101',
-          name: 'الصندوق',
-          type: DemoLedgerAccountType.asset,
-          parentId: '11'),
+        id: '1101',
+        code: '1101',
+        name: 'الصندوق',
+        type: DemoLedgerAccountType.asset,
+        parentId: '11',
+      ),
       DemoLedgerAccount(
-          id: '1102',
-          code: '1102',
-          name: 'المصارف',
-          type: DemoLedgerAccountType.asset,
-          parentId: '11'),
+        id: '1102',
+        code: '1102',
+        name: 'المصارف',
+        type: DemoLedgerAccountType.asset,
+        parentId: '11',
+      ),
       DemoLedgerAccount(
-          id: '110201',
-          code: '110201',
-          name: 'مصرف الجمهورية',
-          type: DemoLedgerAccountType.asset,
-          parentId: '1102'),
+        id: '110201',
+        code: '110201',
+        name: 'مصرف الجمهورية',
+        type: DemoLedgerAccountType.asset,
+        parentId: '1102',
+      ),
       DemoLedgerAccount(
-          id: '110202',
-          code: '110202',
-          name: 'مصرف التجارة والتنمية',
-          type: DemoLedgerAccountType.asset,
-          parentId: '1102'),
+        id: '110202',
+        code: '110202',
+        name: 'مصرف التجارة والتنمية',
+        type: DemoLedgerAccountType.asset,
+        parentId: '1102',
+      ),
       DemoLedgerAccount(
-          id: '1103',
-          code: '1103',
-          name: 'ذمم العملاء',
-          type: DemoLedgerAccountType.asset,
-          parentId: '11'),
+        id: '1103',
+        code: '1103',
+        name: 'ذمم العملاء',
+        type: DemoLedgerAccountType.asset,
+        parentId: '11',
+      ),
       DemoLedgerAccount(
-          id: '1104',
-          code: '1104',
-          name: 'المخزون',
-          type: DemoLedgerAccountType.asset,
-          parentId: '11'),
+        id: '1104',
+        code: '1104',
+        name: 'المخزون',
+        type: DemoLedgerAccountType.asset,
+        parentId: '11',
+      ),
       // 12 Fixed assets
       DemoLedgerAccount(
-          id: '12',
-          code: '12',
-          name: 'الأصول الثابتة',
-          type: DemoLedgerAccountType.asset,
-          parentId: '1'),
+        id: '12',
+        code: '12',
+        name: 'الأصول الثابتة',
+        type: DemoLedgerAccountType.asset,
+        parentId: '1',
+      ),
       DemoLedgerAccount(
-          id: '1201',
-          code: '1201',
-          name: 'الأثاث والمعدات',
-          type: DemoLedgerAccountType.asset,
-          parentId: '12'),
+        id: '1201',
+        code: '1201',
+        name: 'الأثاث والمعدات',
+        type: DemoLedgerAccountType.asset,
+        parentId: '12',
+      ),
       // Deep branch (depth 6) to stress tree indentation + long names.
       DemoLedgerAccount(
-          id: '1203',
-          code: '1203',
-          name: 'أصول أخرى',
-          type: DemoLedgerAccountType.asset,
-          parentId: '12'),
+        id: '1203',
+        code: '1203',
+        name: 'أصول أخرى',
+        type: DemoLedgerAccountType.asset,
+        parentId: '12',
+      ),
       DemoLedgerAccount(
-          id: '120301',
-          code: '120301',
-          name: 'المستوى الثالث',
-          type: DemoLedgerAccountType.asset,
-          parentId: '1203'),
+        id: '120301',
+        code: '120301',
+        name: 'المستوى الثالث',
+        type: DemoLedgerAccountType.asset,
+        parentId: '1203',
+      ),
       DemoLedgerAccount(
-          id: '12030101',
-          code: '12030101',
-          name: 'المستوى الرابع',
-          type: DemoLedgerAccountType.asset,
-          parentId: '120301'),
+        id: '12030101',
+        code: '12030101',
+        name: 'المستوى الرابع',
+        type: DemoLedgerAccountType.asset,
+        parentId: '120301',
+      ),
       DemoLedgerAccount(
-          id: '1203010101',
-          code: '1203010101',
-          name: 'المستوى الخامس',
-          type: DemoLedgerAccountType.asset,
-          parentId: '12030101'),
+        id: '1203010101',
+        code: '1203010101',
+        name: 'المستوى الخامس',
+        type: DemoLedgerAccountType.asset,
+        parentId: '12030101',
+      ),
       DemoLedgerAccount(
-          id: '120301010101',
-          code: '120301010101',
-          name: 'المستوى السادس - حساب بأسم عربي طويل جدًا لاختبار التداخل',
-          type: DemoLedgerAccountType.asset,
-          parentId: '1203010101'),
+        id: '120301010101',
+        code: '120301010101',
+        name: 'المستوى السادس - حساب بأسم عربي طويل جدًا لاختبار التداخل',
+        type: DemoLedgerAccountType.asset,
+        parentId: '1203010101',
+      ),
       // 2 Liabilities
       DemoLedgerAccount(
-          id: '2',
-          code: '2',
-          name: 'الخصوم',
-          type: DemoLedgerAccountType.liability),
+        id: '2',
+        code: '2',
+        name: 'الخصوم',
+        type: DemoLedgerAccountType.liability,
+      ),
       DemoLedgerAccount(
-          id: '21',
-          code: '21',
-          name: 'الخصوم المتداولة',
-          type: DemoLedgerAccountType.liability,
-          parentId: '2'),
+        id: '21',
+        code: '21',
+        name: 'الخصوم المتداولة',
+        type: DemoLedgerAccountType.liability,
+        parentId: '2',
+      ),
       DemoLedgerAccount(
-          id: '2101',
-          code: '2101',
-          name: 'ذمم الموردين',
-          type: DemoLedgerAccountType.liability,
-          parentId: '21'),
+        id: '2101',
+        code: '2101',
+        name: 'ذمم الموردين',
+        type: DemoLedgerAccountType.liability,
+        parentId: '21',
+      ),
       DemoLedgerAccount(
-          id: '2102',
-          code: '2102',
-          name: 'مصلحة الضرائب',
-          type: DemoLedgerAccountType.liability,
-          parentId: '21'),
+        id: '2102',
+        code: '2102',
+        name: 'مصلحة الضرائب',
+        type: DemoLedgerAccountType.liability,
+        parentId: '21',
+      ),
       // 3 Equity
       DemoLedgerAccount(
-          id: '3',
-          code: '3',
-          name: 'حقوق الملكية',
-          type: DemoLedgerAccountType.equity),
+        id: '3',
+        code: '3',
+        name: 'حقوق الملكية',
+        type: DemoLedgerAccountType.equity,
+      ),
       DemoLedgerAccount(
-          id: '3101',
-          code: '3101',
-          name: 'رأس المال',
-          type: DemoLedgerAccountType.equity,
-          parentId: '3'),
+        id: '3101',
+        code: '3101',
+        name: 'رأس المال',
+        type: DemoLedgerAccountType.equity,
+        parentId: '3',
+      ),
       DemoLedgerAccount(
-          id: '3102',
-          code: '3102',
-          name: 'الأرباح المحتجزة',
-          type: DemoLedgerAccountType.equity,
-          parentId: '3'),
+        id: '3102',
+        code: '3102',
+        name: 'الأرباح المحتجزة',
+        type: DemoLedgerAccountType.equity,
+        parentId: '3',
+      ),
       // 4 Revenue
       DemoLedgerAccount(
-          id: '4',
-          code: '4',
-          name: 'الإيرادات',
-          type: DemoLedgerAccountType.revenue),
+        id: '4',
+        code: '4',
+        name: 'الإيرادات',
+        type: DemoLedgerAccountType.revenue,
+      ),
       DemoLedgerAccount(
-          id: '4101',
-          code: '4101',
-          name: 'إيرادات المبيعات',
-          type: DemoLedgerAccountType.revenue,
-          parentId: '4'),
+        id: '4101',
+        code: '4101',
+        name: 'إيرادات المبيعات',
+        type: DemoLedgerAccountType.revenue,
+        parentId: '4',
+      ),
       DemoLedgerAccount(
-          id: '4102',
-          code: '4102',
-          name: 'إيرادات أخرى',
-          type: DemoLedgerAccountType.revenue,
-          parentId: '4'),
+        id: '4102',
+        code: '4102',
+        name: 'إيرادات أخرى',
+        type: DemoLedgerAccountType.revenue,
+        parentId: '4',
+      ),
       // 5 Expenses
       DemoLedgerAccount(
-          id: '5',
-          code: '5',
-          name: 'المصروفات',
-          type: DemoLedgerAccountType.expense),
+        id: '5',
+        code: '5',
+        name: 'المصروفات',
+        type: DemoLedgerAccountType.expense,
+      ),
       DemoLedgerAccount(
-          id: '5101',
-          code: '5101',
-          name: 'تكلفة المبيعات',
-          type: DemoLedgerAccountType.expense,
-          parentId: '5'),
+        id: '5101',
+        code: '5101',
+        name: 'تكلفة المبيعات',
+        type: DemoLedgerAccountType.expense,
+        parentId: '5',
+      ),
       DemoLedgerAccount(
-          id: '5102',
-          code: '5102',
-          name: 'الرواتب والأجور',
-          type: DemoLedgerAccountType.expense,
-          parentId: '5'),
+        id: '5102',
+        code: '5102',
+        name: 'الرواتب والأجور',
+        type: DemoLedgerAccountType.expense,
+        parentId: '5',
+      ),
       DemoLedgerAccount(
-          id: '5103',
-          code: '5103',
-          name: 'الإيجار',
-          type: DemoLedgerAccountType.expense,
-          parentId: '5'),
+        id: '5103',
+        code: '5103',
+        name: 'الإيجار',
+        type: DemoLedgerAccountType.expense,
+        parentId: '5',
+      ),
       DemoLedgerAccount(
-          id: '5104',
-          code: '5104',
-          name: 'الكهرباء والماء',
-          type: DemoLedgerAccountType.expense,
-          parentId: '5'),
+        id: '5104',
+        code: '5104',
+        name: 'الكهرباء والماء',
+        type: DemoLedgerAccountType.expense,
+        parentId: '5',
+      ),
       DemoLedgerAccount(
-          id: '5105',
-          code: '5105',
-          name: 'مصروفات أخرى',
-          type: DemoLedgerAccountType.expense,
-          parentId: '5'),
+        id: '5105',
+        code: '5105',
+        name: 'مصروفات أخرى',
+        type: DemoLedgerAccountType.expense,
+        parentId: '5',
+      ),
     ];
     journalEntries = [
       DemoJournalEntry(
@@ -706,8 +752,16 @@ class DemoStore extends ChangeNotifier {
         reference: 'CAP-01',
         attachments: const ['عقد_التأسيس.pdf'],
         lines: const [
-          DemoJournalLine(accountId: '1101', debit: 100000, description: 'إيداع رأس المال'),
-          DemoJournalLine(accountId: '3101', credit: 100000, description: 'رأس المال المدفوع'),
+          DemoJournalLine(
+            accountId: '1101',
+            debit: 100000,
+            description: 'إيداع رأس المال',
+          ),
+          DemoJournalLine(
+            accountId: '3101',
+            credit: 100000,
+            description: 'رأس المال المدفوع',
+          ),
         ],
       ),
       DemoJournalEntry(
@@ -721,8 +775,16 @@ class DemoStore extends ChangeNotifier {
         createdBy: 'سميرة',
         reference: 'REC-3391',
         lines: const [
-          DemoJournalLine(accountId: '1101', debit: 45000, description: 'تحصيل نقدي'),
-          DemoJournalLine(accountId: '4101', credit: 45000, description: 'مبيعات'),
+          DemoJournalLine(
+            accountId: '1101',
+            debit: 45000,
+            description: 'تحصيل نقدي',
+          ),
+          DemoJournalLine(
+            accountId: '4101',
+            credit: 45000,
+            description: 'مبيعات',
+          ),
         ],
       ),
       DemoJournalEntry(
@@ -735,24 +797,49 @@ class DemoStore extends ChangeNotifier {
         createdBy: 'سميرة',
         reference: 'CHK-1121',
         lines: const [
-          DemoJournalLine(accountId: '1201', debit: 22000, description: 'أثاث مكتبي'),
-          DemoJournalLine(accountId: '110201', credit: 22000, description: 'شيك مصرفي'),
+          DemoJournalLine(
+            accountId: '1201',
+            debit: 22000,
+            description: 'أثاث مكتبي',
+          ),
+          DemoJournalLine(
+            accountId: '110201',
+            credit: 22000,
+            description: 'شيك مصرفي',
+          ),
         ],
       ),
       DemoJournalEntry(
         id: 'JV-004',
         number: 'JV-004',
         date: now.subtract(const Duration(days: 20)),
-        description: 'إثبات المصروفات التشغيلية لشهر يوليو (رواتب وإيجار وكهرباء)',
+        description:
+            'إثبات المصروفات التشغيلية لشهر يوليو (رواتب وإيجار وكهرباء)',
         status: DemoEntryStatus.posted,
         approved: true,
         createdBy: 'سميرة',
         reference: 'EXP-JUL',
         lines: const [
-          DemoJournalLine(accountId: '5102', debit: 18000, description: 'رواتب الموظفين'),
-          DemoJournalLine(accountId: '5103', debit: 6000, description: 'إيجار المحل'),
-          DemoJournalLine(accountId: '5104', debit: 1500, description: 'كهرباء وماء'),
-          DemoJournalLine(accountId: '110201', credit: 25500, description: 'سداد من المصرف'),
+          DemoJournalLine(
+            accountId: '5102',
+            debit: 18000,
+            description: 'رواتب الموظفين',
+          ),
+          DemoJournalLine(
+            accountId: '5103',
+            debit: 6000,
+            description: 'إيجار المحل',
+          ),
+          DemoJournalLine(
+            accountId: '5104',
+            debit: 1500,
+            description: 'كهرباء وماء',
+          ),
+          DemoJournalLine(
+            accountId: '110201',
+            credit: 25500,
+            description: 'سداد من المصرف',
+          ),
         ],
       ),
       DemoJournalEntry(
@@ -763,8 +850,16 @@ class DemoStore extends ChangeNotifier {
         status: DemoEntryStatus.draft,
         createdBy: 'محمد',
         lines: const [
-          DemoJournalLine(accountId: '5105', debit: 3000, description: 'مصروف نثري'),
-          DemoJournalLine(accountId: '1101', credit: 2500, description: 'صرف نقدي'),
+          DemoJournalLine(
+            accountId: '5105',
+            debit: 3000,
+            description: 'مصروف نثري',
+          ),
+          DemoJournalLine(
+            accountId: '1101',
+            credit: 2500,
+            description: 'صرف نقدي',
+          ),
         ],
       ),
       DemoJournalEntry(
@@ -776,8 +871,16 @@ class DemoStore extends ChangeNotifier {
         reviewed: true,
         createdBy: 'محمد',
         lines: const [
-          DemoJournalLine(accountId: '5105', debit: 1200, description: 'مصروف مكرر'),
-          DemoJournalLine(accountId: '1101', credit: 1200, description: 'صرف نقدي'),
+          DemoJournalLine(
+            accountId: '5105',
+            debit: 1200,
+            description: 'مصروف مكرر',
+          ),
+          DemoJournalLine(
+            accountId: '1101',
+            credit: 1200,
+            description: 'صرف نقدي',
+          ),
         ],
       ),
       DemoJournalEntry(
@@ -791,8 +894,16 @@ class DemoStore extends ChangeNotifier {
         createdBy: 'أحمد الفيتوري',
         reversalOfId: 'JV-006',
         lines: const [
-          DemoJournalLine(accountId: '1101', debit: 1200, description: 'إعادة المبلغ'),
-          DemoJournalLine(accountId: '5105', credit: 1200, description: 'إلغاء المصروف'),
+          DemoJournalLine(
+            accountId: '1101',
+            debit: 1200,
+            description: 'إعادة المبلغ',
+          ),
+          DemoJournalLine(
+            accountId: '5105',
+            credit: 1200,
+            description: 'إلغاء المصروف',
+          ),
         ],
       ),
     ];
@@ -1021,7 +1132,8 @@ class DemoStore extends ChangeNotifier {
       accounts =
           (j['accounts'] as List)
               .map(
-                (e) => DemoAccount.fromJson(Map<String, dynamic>.from(e as Map)),
+                (e) =>
+                    DemoAccount.fromJson(Map<String, dynamic>.from(e as Map)),
               )
               .toList();
     }
@@ -1039,8 +1151,9 @@ class DemoStore extends ChangeNotifier {
       ledgerAccounts =
           (j['ledgerAccounts'] as List)
               .map(
-                (e) =>
-                    DemoLedgerAccount.fromJson(Map<String, dynamic>.from(e as Map)),
+                (e) => DemoLedgerAccount.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
               )
               .toList();
     }
@@ -1048,8 +1161,9 @@ class DemoStore extends ChangeNotifier {
       journalEntries =
           (j['journalEntries'] as List)
               .map(
-                (e) =>
-                    DemoJournalEntry.fromJson(Map<String, dynamic>.from(e as Map)),
+                (e) => DemoJournalEntry.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
               )
               .toList();
     }
@@ -1067,7 +1181,8 @@ class DemoStore extends ChangeNotifier {
       employees =
           (j['employees'] as List)
               .map(
-                (e) => DemoEmployee.fromJson(Map<String, dynamic>.from(e as Map)),
+                (e) =>
+                    DemoEmployee.fromJson(Map<String, dynamic>.from(e as Map)),
               )
               .toList();
     }
@@ -1075,8 +1190,9 @@ class DemoStore extends ChangeNotifier {
       payrollTxns =
           (j['payrollTxns'] as List)
               .map(
-                (e) =>
-                    DemoPayrollTxn.fromJson(Map<String, dynamic>.from(e as Map)),
+                (e) => DemoPayrollTxn.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
               )
               .toList();
     }
@@ -1109,6 +1225,7 @@ class DemoStore extends ChangeNotifier {
   }
 
   Future<void> _save() async {
+    if (!_enablePersistence) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _storageKey,
@@ -1121,8 +1238,7 @@ class DemoStore extends ChangeNotifier {
         'purchases': purchases.map((e) => e.toJson()).toList(),
         'expenses': expenses.map((e) => e.toJson()).toList(),
         'accounts': accounts.map((e) => e.toJson()).toList(),
-        'treasuryMovements':
-            treasuryMovements.map((e) => e.toJson()).toList(),
+        'treasuryMovements': treasuryMovements.map((e) => e.toJson()).toList(),
         'ledgerAccounts': ledgerAccounts.map((e) => e.toJson()).toList(),
         'journalEntries': journalEntries.map((e) => e.toJson()).toList(),
         'accountingAudit': accountingAudit.map((e) => e.toJson()).toList(),
@@ -1460,11 +1576,15 @@ class DemoStore extends ChangeNotifier {
 
   /// Posted/reversed entries that touch [accountId] (exact account), oldest
   /// first — the raw material for the general ledger and account detail.
-  List<DemoJournalEntry> entriesTouching(String accountId) => journalEntries
-      .where((e) =>
-          _countsForBalance(e) && e.lines.any((l) => l.accountId == accountId))
-      .toList()
-    ..sort((a, b) => a.date.compareTo(b.date));
+  List<DemoJournalEntry> entriesTouching(String accountId) =>
+      journalEntries
+          .where(
+            (e) =>
+                _countsForBalance(e) &&
+                e.lines.any((l) => l.accountId == accountId),
+          )
+          .toList()
+        ..sort((a, b) => a.date.compareTo(b.date));
 
   DemoLedgerAccount? ledgerAccountById(String id) {
     for (final a in ledgerAccounts) {
@@ -1488,7 +1608,11 @@ class DemoStore extends ChangeNotifier {
   String get nextEntryNumber => _nextEntryNumber();
 
   void _appendAudit(
-      String action, String entryNumber, String before, String after) {
+    String action,
+    String entryNumber,
+    String before,
+    String after,
+  ) {
     accountingAudit = [
       DemoAccountingAudit(
         id: 'AUD-${DateTime.now().microsecondsSinceEpoch}',
@@ -1510,10 +1634,11 @@ class DemoStore extends ChangeNotifier {
     }
     journalEntries = [entry, ...journalEntries];
     _appendAudit(
-        'إنشاء',
-        entry.number,
-        '—',
-        entry.status == DemoEntryStatus.posted ? 'مُرحّل' : 'مسودة');
+      'إنشاء',
+      entry.number,
+      '—',
+      entry.status == DemoEntryStatus.posted ? 'مُرحّل' : 'مسودة',
+    );
     await _save();
     notifyListeners();
   }
@@ -1607,19 +1732,20 @@ class DemoStore extends ChangeNotifier {
   List<DemoPayrollTxn> payrollTxnsFor(String employeeId, {DateTime? month}) {
     final m = month ?? DateTime.now();
     return payrollTxns
-        .where((t) =>
-            t.employeeId == employeeId &&
-            t.date.year == m.year &&
-            t.date.month == m.month)
+        .where(
+          (t) =>
+              t.employeeId == employeeId &&
+              t.date.year == m.year &&
+              t.date.month == m.month,
+        )
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
-  double advancesTotal(String employeeId, {DateTime? month}) => payrollTxnsFor(
-          employeeId,
-          month: month)
-      .where((t) => t.type == DemoPayrollTxnType.advance)
-      .fold<double>(0, (s, t) => s + t.amount);
+  double advancesTotal(String employeeId, {DateTime? month}) =>
+      payrollTxnsFor(employeeId, month: month)
+          .where((t) => t.type == DemoPayrollTxnType.advance)
+          .fold<double>(0, (s, t) => s + t.amount);
 
   double withdrawalsTotal(String employeeId, {DateTime? month}) =>
       payrollTxnsFor(employeeId, month: month)
@@ -1643,19 +1769,20 @@ class DemoStore extends ChangeNotifier {
   }
 
   /// Salary expenses (category مرتبات) linked to [employeeId].
-  List<DemoExpense> linkedExpensesFor(String employeeId) => expenses
-      .where((x) => x.employeeId == employeeId)
-      .toList()
-    ..sort((a, b) => b.date.compareTo(a.date));
+  List<DemoExpense> linkedExpensesFor(String employeeId) =>
+      expenses.where((x) => x.employeeId == employeeId).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
 
   /// Whether the employee has a salary payment recorded in [month].
   bool isSalaryPaid(String employeeId, {DateTime? month}) {
     final m = month ?? DateTime.now();
-    return expenses.any((x) =>
-        x.employeeId == employeeId &&
-        x.category == 'مرتبات' &&
-        x.date.year == m.year &&
-        x.date.month == m.month);
+    return expenses.any(
+      (x) =>
+          x.employeeId == employeeId &&
+          x.category == 'مرتبات' &&
+          x.date.year == m.year &&
+          x.date.month == m.month,
+    );
   }
 
   Future<void> addEmployee(DemoEmployee employee) async {

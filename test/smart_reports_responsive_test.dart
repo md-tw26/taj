@@ -14,6 +14,8 @@ import 'package:taj/core/theme/app_themes.dart';
 import 'package:taj/modules/smart_reports/smart_analytics.dart';
 import 'package:taj/modules/smart_reports/smart_reports_screen.dart';
 
+import 'helpers/test_harness.dart';
+
 Widget _host(Widget child, {TextDirection dir = TextDirection.rtl}) => MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppThemes.light(),
@@ -24,7 +26,7 @@ Widget _host(Widget child, {TextDirection dir = TextDirection.rtl}) => MaterialA
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: Scaffold(body: child),
+      home: withStore(Scaffold(body: child)),
     );
 
 Future<void> _pumpAt(WidgetTester tester, double w, double h, Widget child) async {

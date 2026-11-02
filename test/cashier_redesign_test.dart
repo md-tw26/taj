@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taj/core/user_role.dart';
 import 'package:taj/main.dart';
 
+import 'fixtures/sample_data.dart';
+
 const _cart = {'p1': 2, 'p2': 1, 'p3': 1};
 
 /// Pumps the cashier screen without pumpAndSettle: the search field auto-focuses
@@ -28,11 +30,12 @@ Future<void> _pumpCashier(
   addTearDown(tester.view.resetDevicePixelRatio);
 
   await tester.pumpWidget(
-    const TajApp(
+    TajApp(
       testSignedIn: true,
       testRole: UserRole.cashier,
       testUserName: 'cashier',
       testInitialCart: _cart,
+      store: buildSampleStore(),
     ),
   );
   await tester.pump(); // first frame

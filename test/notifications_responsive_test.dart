@@ -13,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:taj/core/theme/app_themes.dart';
 import 'package:taj/modules/notifications/notifications_screen.dart';
 
+import 'helpers/test_harness.dart';
+
 const _sizes = <(String, double, double)>[
   ('phone-xs-portrait', 320, 568),
   ('phone-xs-landscape', 568, 320),
@@ -44,7 +46,7 @@ Widget _host(Widget child, TextDirection dir) => MaterialApp(
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: Directionality(textDirection: dir, child: child),
+      home: withStore(Directionality(textDirection: dir, child: child)),
     );
 
 // A bell hosted at the top-trailing corner, i.e. the worst case for a popover

@@ -17,6 +17,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:taj/core/theme/app_themes.dart';
 import 'package:taj/modules/users/users_screen.dart';
 
+import 'helpers/test_harness.dart';
+
 const _sizes = <(String, double, double)>[
   ('phone-xs-portrait', 320, 568),
   ('phone-xs-landscape', 568, 320),
@@ -92,10 +94,10 @@ Widget _host(TextDirection dir) => MaterialApp(
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: Directionality(
+      home: withStore(Directionality(
         textDirection: dir,
         child: const Scaffold(body: UsersScreen()),
-      ),
+      )),
     );
 
 Future<void> _pumpAt(WidgetTester tester, double w, double h, Widget child) async {

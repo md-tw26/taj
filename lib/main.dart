@@ -24,11 +24,17 @@ class TajApp extends StatefulWidget {
     this.initialDark = false,
     this.testInitialCart,
     this.testOpenReports = false,
+    this.store,
   });
 
   final bool testSignedIn;
   final UserRole testRole;
   final String testUserName;
+
+  /// Test hook: inject a pre-built store (e.g. fixture-seeded, or empty)
+  /// instead of letting [TajApp] create its own. A store passed this way is
+  /// owned by the caller — [TajApp] never disposes it.
+  final DemoStore? store;
 
   /// Test hook: force the app to start in dark mode (used by the screenshot
   /// harness). The in-app toggle still works from this state.
@@ -51,6 +57,7 @@ class _TajAppState extends State<TajApp> {
   late String _userName;
   late UserPermissions _permissions;
   late final DemoStore _demoStore;
+  late final bool _ownsStore;
   TajSwatch _primary = TajColors.primarySwatch;
   ChartStyle _chartStyle = ChartStyle.area;
   AppBranch _selectedBranch = kDefaultBranch;
@@ -63,7 +70,8 @@ class _TajAppState extends State<TajApp> {
     _role = widget.testRole;
     _userName = widget.testUserName;
     _permissions = UserPermissions.forRole(_role);
-    _demoStore = DemoStore();
+    _ownsStore = widget.store == null;
+    _demoStore = widget.store ?? DemoStore();
   }
 
   void _toggleTheme() => setState(
@@ -146,7 +154,7 @@ class _TajAppState extends State<TajApp> {
 
   @override
   void dispose() {
-    _demoStore.dispose();
+    if (_ownsStore) _demoStore.dispose();
     super.dispose();
   }
 }
