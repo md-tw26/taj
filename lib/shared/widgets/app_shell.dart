@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/branches.dart';
 import '../../core/chart_style.dart';
+import '../../core/demo/demo_provider.dart';
 import '../../core/theme/taj_colors.dart';
 import '../../core/responsive.dart';
 import '../../modules/customers/customers_screen.dart';
@@ -252,14 +253,8 @@ class _AppShellState extends State<AppShell> {
       case 'day':
         return const DayClosingScreen();
       case 'pos':
-        return PosManagementScreen(
-          branchId: switch (_selectedBranch.id) {
-            'main' || 'tripoli' => 'b1',
-            'benghazi' => 'b2',
-            'misrata' => 'b3',
-            _ => null,
-          },
-        );
+        // _selectedBranch.id is already a real store branch id.
+        return PosManagementScreen(branchId: _selectedBranch.id);
       case 'items':
         return const ProductsScreen();
       case 'inventory':
@@ -589,13 +584,14 @@ class _WorkspaceSwitcher extends StatelessWidget {
         onSelected: onBranchChanged,
         itemBuilder:
             (context) => [
-              for (final branch in kBranches)
+              // Options come from the store's branches — the single source.
+              for (final b in DemoStoreProvider.of(context).branches)
                 PopupMenuItem<AppBranch>(
-                  value: branch,
+                  value: AppBranch(b.id, b.name),
                   child: Row(
                     children: [
-                      Expanded(child: Text(branch.name)),
-                      if (branch.id == selectedBranch.id)
+                      Expanded(child: Text(b.name)),
+                      if (b.id == selectedBranch.id)
                         Icon(
                           Icons.check_rounded,
                           size: 18,
@@ -957,10 +953,7 @@ class _TopBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 _SyncPill(state: sync, pending: pending, compact: tight),
                 const SizedBox(width: 8),
-                if (!tight) ...[
-                  _LanguagePill(),
-                  const SizedBox(width: 4),
-                ],
+                if (!tight) ...[_LanguagePill(), const SizedBox(width: 4)],
                 IconButton(
                   tooltip: isDark ? 'الوضع الفاتح' : 'الوضع الداكن',
                   onPressed: onToggleTheme,
@@ -995,8 +988,10 @@ class _SyncPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
+    // No server in this version — data lives on this device. The pill states
+    // that honestly ("محلي") instead of claiming a live connection.
     final (label, swatch, icon) = switch (state) {
-      SyncState.online => ('متصل', taj.success, Icons.cloud_done_outlined),
+      SyncState.online => ('محلي', taj.info, Icons.sd_storage_outlined),
       SyncState.offline => ('غير متصل', taj.warning, Icons.cloud_off_outlined),
       SyncState.syncing => ('جارٍ المزامنة', taj.info, Icons.sync_rounded),
     };
@@ -1105,6 +1100,8 @@ class _UserMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
+    final name = DemoStoreProvider.of(context).currentUser;
+    final initial = name.trim().isEmpty ? '؟' : name.trim().characters.first;
     return PopupMenuButton<String>(
       tooltip: 'الحساب',
       offset: const Offset(0, 48),
@@ -1123,7 +1120,7 @@ class _UserMenu extends StatelessWidget {
         radius: 18,
         backgroundColor: taj.primary.lighter,
         child: Text(
-          'ط',
+          initial,
           style: TextStyle(
             color: taj.primary.dark,
             fontWeight: FontWeight.w700,

@@ -1050,7 +1050,7 @@ class _LocalBadge extends StatelessWidget {
     final color = taj.info;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: color.lighter,
         borderRadius: BorderRadius.circular(8),
@@ -1058,8 +1058,8 @@ class _LocalBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.sd_storage_outlined, size: 13, color: color.dark),
-          const SizedBox(width: 6),
+          Icon(Icons.sd_storage_outlined, size: 12, color: color.dark),
+          const SizedBox(width: 5),
           Text(
             'محلي',
             style: TextStyle(

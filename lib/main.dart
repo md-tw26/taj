@@ -139,13 +139,16 @@ class _TajAppState extends State<TajApp> {
   }
 
   String _getBranchName(AppBranch branch) {
+    // Resolve the real branch name from the store (falling back to the selected
+    // value), so the label reflects the actual branch, not fixed text.
+    final match = _demoStore.branches.where((b) => b.id == branch.id);
+    final name = match.isEmpty ? branch.name : match.first.name;
     switch (_role) {
       case UserRole.merchant:
-        return 'نقطة البيع - الفرع الرئيسي';
       case UserRole.cashier:
-        return 'نقطة البيع - الفرع الرئيسي';
+        return 'نقطة البيع - $name';
       case UserRole.admin:
-        return branch.name;
+        return name;
     }
   }
 

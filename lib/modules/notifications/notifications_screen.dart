@@ -264,8 +264,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             tooltip: 'المزيد',
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (v) {
-              if (v == 'all')
+              if (v == 'all') {
                 DemoStoreProvider.of(context).markAllNotificationsRead();
+              }
               if (v == 'filter') _openAdvancedFilters();
             },
             itemBuilder:
