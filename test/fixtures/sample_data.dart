@@ -974,7 +974,10 @@ void applySampleData(DemoStore store) {
   // that has no home in `DemoTerminal` yet (id/branch/name/status only) — that
   // dataset stays local to the screen until Phase 4 decides how much of it the
   // store can actually back with real fields.
+  // 11 terminals across the four branches (POS-01..POS-11). Exercises the POS
+  // management board's branch filter in pos_management_test.
   store.terminals = const [
+    // b1 — طرابلس (POS-01..04)
     DemoTerminal(
       id: 'POS-01',
       branchId: 'b1',
@@ -988,10 +991,61 @@ void applySampleData(DemoStore store) {
       status: 'متاح',
     ),
     DemoTerminal(
+      id: 'POS-03',
+      branchId: 'b1',
+      name: 'الكاشير 3',
+      status: 'في استراحة',
+    ),
+    DemoTerminal(
+      id: 'POS-04',
+      branchId: 'b1',
+      name: 'الكاشير 4',
+      status: 'مغلق',
+    ),
+    // b2 — بنغازي (POS-05..06)
+    DemoTerminal(
       id: 'POS-05',
       branchId: 'b2',
       name: 'نقطة بنغازي',
       status: 'متصل',
+    ),
+    DemoTerminal(
+      id: 'POS-06',
+      branchId: 'b2',
+      name: 'نقطة بنغازي 2',
+      status: 'متاح',
+    ),
+    // b3 — مصراتة (POS-07..08)
+    DemoTerminal(
+      id: 'POS-07',
+      branchId: 'b3',
+      name: 'نقطة مصراتة',
+      status: 'متصل',
+    ),
+    DemoTerminal(
+      id: 'POS-08',
+      branchId: 'b3',
+      name: 'نقطة مصراتة 2',
+      status: 'مغلق',
+    ),
+    // b4 — الزاوية (POS-09..11)
+    DemoTerminal(
+      id: 'POS-09',
+      branchId: 'b4',
+      name: 'نقطة الزاوية',
+      status: 'متصل',
+    ),
+    DemoTerminal(
+      id: 'POS-10',
+      branchId: 'b4',
+      name: 'نقطة الزاوية 2',
+      status: 'متاح',
+    ),
+    DemoTerminal(
+      id: 'POS-11',
+      branchId: 'b4',
+      name: 'نقطة الزاوية 3',
+      status: 'في استراحة',
     ),
   ];
 

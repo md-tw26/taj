@@ -12,18 +12,22 @@ import 'package:taj/modules/pos_management/pos_management_screen.dart';
 
 import 'helpers/test_harness.dart';
 
-Widget _host() => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppThemes.light(),
-      locale: const Locale('ar'),
-      supportedLocales: const [Locale('ar'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: withStore(const Scaffold(body: PosManagementScreen())),
-    );
+// Store wraps the whole MaterialApp so the terminal detail bottom-sheet (an
+// overlay entry) can resolve the provider too.
+Widget _host() => withStore(
+  MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: AppThemes.light(),
+    locale: const Locale('ar'),
+    supportedLocales: const [Locale('ar'), Locale('en')],
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    home: const Scaffold(body: PosManagementScreen()),
+  ),
+);
 
 Future<void> _pump(WidgetTester tester, Size size) async {
   tester.view.devicePixelRatio = 1.0;
@@ -73,35 +77,48 @@ const _sections = <(String, String)>[
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
-  for (final (label, size) in const [('wide', Size(1280, 900)), ('narrow', Size(380, 820))]) {
-    testWidgets('POS management — all sections render without overflow ($label)',
-        (tester) async {
-      await _pump(tester, size);
+  for (final (label, size) in const [
+    ('wide', Size(1280, 900)),
+    ('narrow', Size(380, 820)),
+  ]) {
+    testWidgets(
+      'POS management — all sections render without overflow ($label)',
+      (tester) async {
+        await _pump(tester, size);
 
-      // Overview is the default section.
-      expect(find.text('إدارة نقاط البيع'), findsOneWidget);
-      expect(find.text('الفروع'), findsWidgets); // KPI + tab
-      expect(tester.takeException(), isNull);
+        // Overview is the default section.
+        expect(find.text('إدارة نقاط البيع'), findsOneWidget);
+        expect(find.text('الفروع'), findsWidgets); // KPI + tab
+        expect(tester.takeException(), isNull);
 
-      for (final (tab, marker) in _sections) {
-        final errs = <FlutterErrorDetails>[];
-        final prev = FlutterError.onError;
-        FlutterError.onError = errs.add;
-        await _openSection(tester, tab);
-        expect(find.text(marker), findsWidgets,
-            reason: 'section "$tab" should show "$marker"');
-        // Force the rest of the section to lay out and re-check.
-        await _scrollThrough(tester);
-        FlutterError.onError = prev;
-        expect(errs, isEmpty,
-            reason: 'section "$tab" overflowed at $label: '
-                '${errs.map((e) => e.exceptionAsString()).join("; ")}');
-      }
-    });
+        for (final (tab, marker) in _sections) {
+          final errs = <FlutterErrorDetails>[];
+          final prev = FlutterError.onError;
+          FlutterError.onError = errs.add;
+          await _openSection(tester, tab);
+          expect(
+            find.text(marker),
+            findsWidgets,
+            reason: 'section "$tab" should show "$marker"',
+          );
+          // Force the rest of the section to lay out and re-check.
+          await _scrollThrough(tester);
+          FlutterError.onError = prev;
+          expect(
+            errs,
+            isEmpty,
+            reason:
+                'section "$tab" overflowed at $label: '
+                '${errs.map((e) => e.exceptionAsString()).join("; ")}',
+          );
+        }
+      },
+    );
   }
 
-  testWidgets('POS management — branch filter narrows the terminal set',
-      (tester) async {
+  testWidgets('POS management — branch filter narrows the terminal set', (
+    tester,
+  ) async {
     await _pump(tester, const Size(1280, 900));
 
     // 11 terminals across all branches → POS-11 exists on the overview board.
@@ -110,7 +127,7 @@ void main() {
     // Filter to branch 2 (بنغازي, 2 terminals: POS-05/06).
     await tester.tap(find.text('كل الفروع'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('بنغازي - الفرع').last);
+    await tester.tap(find.text('بنغازي - الفرع الشرقي').last);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
