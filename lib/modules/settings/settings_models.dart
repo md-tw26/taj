@@ -2,7 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Identity of each Settings section, in sub-navigation order.
-enum SettingsSectionId { appearance, localization, invoice, discount, dayClosing, sync }
+enum SettingsSectionId {
+  appearance,
+  localization,
+  invoice,
+  discount,
+  dayClosing,
+  sync,
+}
 
 /// Metadata for a section as shown in the sub-navigation (list / sidebar).
 @immutable
@@ -17,18 +24,42 @@ class SettingsSectionMeta {
 /// The sub-navigation, in order. Titles/subtitles/icons match the original
 /// placeholder rows so nothing about the module's identity changes.
 const List<SettingsSectionMeta> settingsSections = [
-  SettingsSectionMeta(SettingsSectionId.appearance, 'المظهر',
-      'الألوان، الوضع الداكن، شكل الرسوم', Icons.palette_outlined),
-  SettingsSectionMeta(SettingsSectionId.localization, 'اللغة والعملة والضرائب',
-      'العربية • الدينار الليبي • الضريبة', Icons.translate_rounded),
-  SettingsSectionMeta(SettingsSectionId.invoice, 'الفواتير والطباعة',
-      'قالب الفاتورة، الطابعة الحرارية', Icons.receipt_long_outlined),
-  SettingsSectionMeta(SettingsSectionId.discount, 'سياسة الخصم',
-      'النطاق، المدة، المستخدمون المخوّلون', Icons.percent_rounded),
-  SettingsSectionMeta(SettingsSectionId.dayClosing, 'سياسة الإقفال اليومي',
-      'وقت الإقفال، المراجعة، القفل', Icons.event_available_outlined),
-  SettingsSectionMeta(SettingsSectionId.sync, 'المزامنة والنسخ الاحتياطي',
-      'أوف‑لاين، آخر نسخة احتياطية', Icons.sync_rounded),
+  SettingsSectionMeta(
+    SettingsSectionId.appearance,
+    'المظهر',
+    'الألوان، الوضع الداكن، شكل الرسوم',
+    Icons.palette_outlined,
+  ),
+  SettingsSectionMeta(
+    SettingsSectionId.localization,
+    'اللغة والعملة والضرائب',
+    'العربية • الدينار الليبي • الضريبة',
+    Icons.translate_rounded,
+  ),
+  SettingsSectionMeta(
+    SettingsSectionId.invoice,
+    'الفواتير والطباعة',
+    'قالب الفاتورة، الطابعة الحرارية',
+    Icons.receipt_long_outlined,
+  ),
+  SettingsSectionMeta(
+    SettingsSectionId.discount,
+    'سياسة الخصم',
+    'النطاق، المدة، المستخدمون المخوّلون',
+    Icons.percent_rounded,
+  ),
+  SettingsSectionMeta(
+    SettingsSectionId.dayClosing,
+    'سياسة الإقفال اليومي',
+    'وقت الإقفال، المراجعة، القفل',
+    Icons.event_available_outlined,
+  ),
+  SettingsSectionMeta(
+    SettingsSectionId.sync,
+    'المزامنة والنسخ الاحتياطي',
+    'أوف‑لاين، آخر نسخة احتياطية',
+    Icons.sync_rounded,
+  ),
 ];
 
 SettingsSectionMeta settingsSectionMeta(SettingsSectionId id) =>
@@ -95,44 +126,6 @@ enum BackupFrequency {
 }
 
 // ---------------------------------------------------------------------------
-// Demo option data (prototype — in-memory only)
-// ---------------------------------------------------------------------------
-
-const List<String> kDemoDiscountItems = [
-  'عود ملكي', 'بخور فاخر', 'دهن عود', 'مسك أبيض',
-  'عنبر', 'ماء ورد', 'زعفران', 'صندل', 'مبخرة نحاسية', 'عطر شرقي',
-];
-
-const List<String> kDemoBranches = [
-  'الفرع الرئيسي', 'فرع طرابلس', 'فرع بنغازي', 'فرع مصراتة',
-];
-
-const List<String> kDemoUsers = [
-  'أحمد علي', 'سالم محمد', 'فاطمة إبراهيم', 'خالد يوسف', 'ليلى حسن',
-];
-
-const List<String> kDemoPrinters = [
-  'الطابعة الحرارية 80mm', 'طابعة A4 - المكتب', 'طابعة الكاشير 58mm',
-];
-
-/// One row of the backup-history demo table.
-@immutable
-class BackupRecord {
-  const BackupRecord(this.date, this.size, this.ok);
-  final String date;
-  final String size;
-  final bool ok;
-}
-
-const List<BackupRecord> kDemoBackupHistory = [
-  BackupRecord('2026/09/12 03:00', '48٫2 MB', true),
-  BackupRecord('2026/09/11 03:00', '47٫9 MB', true),
-  BackupRecord('2026/09/10 03:00', '47٫1 MB', true),
-  BackupRecord('2026/09/09 03:00', '—', false),
-  BackupRecord('2026/09/08 03:00', '46٫8 MB', true),
-];
-
-// ---------------------------------------------------------------------------
 // Editable settings draft
 // ---------------------------------------------------------------------------
 
@@ -154,21 +147,21 @@ class SettingsDraft {
     this.taxInclusive = false,
     this.numberStyle = NumberStyle.western,
     // Invoice & print
-    this.storeName = 'مؤسسة التاج للعود والعطور',
+    this.storeName = 'متجري',
     this.invoiceHeader = 'فاتورة ضريبية مبسطة',
-    this.invoiceFooter = 'شكراً لتسوقكم — لا يُسترجع العطر بعد فتح العبوة',
+    this.invoiceFooter = 'شكراً لتسوقكم',
     this.showLogo = true,
     this.paperSize = PaperSize.thermal,
     this.printCopies = 1,
-    this.printer = 'الطابعة الحرارية 80mm',
+    this.printer = '',
     // Discount policy
     this.discountEnabled = true,
     this.discountScope = DiscountScope.category,
-    this.discountTargets = const <String>{'عود ملكي', 'بخور فاخر'},
+    this.discountTargets = const <String>{},
     this.discountStart,
     this.discountEnd,
-    this.discountBranches = const <String>{'الفرع الرئيسي'},
-    this.discountUsers = const <String>{'أحمد علي'},
+    this.discountBranches = const <String>{},
+    this.discountUsers = const <String>{},
     this.discountAutoOff = true,
     this.maxDiscountPct = 15,
     // Day-closing policy
@@ -334,15 +327,35 @@ class SettingsDraft {
   // the hash cheap while honouring the equals/hashCode contract.
   @override
   int get hashCode => Object.hashAll([
-        language, currency, taxRate, taxInclusive, numberStyle,
-        storeName, invoiceHeader, invoiceFooter, showLogo, paperSize,
-        printCopies, printer,
-        discountEnabled, discountScope, discountTargets.length,
-        discountStart, discountEnd,
-        discountBranches.length, discountUsers.length, discountAutoOff,
-        maxDiscountPct,
-        closingTime, requireReview, autoClose, lockAfterClose, graceMinutes,
-        notifyOnClose,
-        offlineMode, autoBackup, backupFrequency,
-      ]);
+    language,
+    currency,
+    taxRate,
+    taxInclusive,
+    numberStyle,
+    storeName,
+    invoiceHeader,
+    invoiceFooter,
+    showLogo,
+    paperSize,
+    printCopies,
+    printer,
+    discountEnabled,
+    discountScope,
+    discountTargets.length,
+    discountStart,
+    discountEnd,
+    discountBranches.length,
+    discountUsers.length,
+    discountAutoOff,
+    maxDiscountPct,
+    closingTime,
+    requireReview,
+    autoClose,
+    lockAfterClose,
+    graceMinutes,
+    notifyOnClose,
+    offlineMode,
+    autoBackup,
+    backupFrequency,
+  ]);
 }

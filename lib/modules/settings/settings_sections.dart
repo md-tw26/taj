@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/chart_style.dart';
+import '../../core/demo/demo_provider.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
-import '../../shared/widgets/taj_ui.dart';
 import 'settings_models.dart';
 import 'settings_previews.dart';
 import 'settings_widgets.dart';
@@ -99,8 +99,11 @@ class _AppearanceSection extends StatelessWidget {
                   'يختار مدير النظام لون العلامة الذي يريحه — من ألوان Minimals.',
               child: LayoutBuilder(
                 builder: (context, c) {
-                  final cols = gridColumnsFor(c.maxWidth,
-                      minItemWidth: AppBreakpoints.settingsSwatchMin, spacing: 14);
+                  final cols = gridColumnsFor(
+                    c.maxWidth,
+                    minItemWidth: AppBreakpoints.settingsSwatchMin,
+                    spacing: 14,
+                  );
                   const spacing = 14.0;
                   final itemW = (c.maxWidth - spacing * (cols - 1)) / cols;
                   return Wrap(
@@ -150,7 +153,9 @@ class _AppearanceSection extends StatelessWidget {
               title: 'معاينة حيّة',
               subtitle: 'انعكاس فوري للون والوضع وشكل الرسم على واجهة مصغّرة.',
               child: ThemePreviewMini(
-                  primary: currentPrimary, chartStyle: chartStyle),
+                primary: currentPrimary,
+                chartStyle: chartStyle,
+              ),
             ),
           ],
         ),
@@ -194,23 +199,33 @@ class _SwatchTile extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: swatch.main.withValues(alpha: selected ? 0.45 : 0.22),
+                    color: swatch.main.withValues(
+                      alpha: selected ? 0.45 : 0.22,
+                    ),
                     blurRadius: selected ? 12 : 6,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: selected
-                  ? Icon(Icons.check_rounded, color: swatch.contrastText, size: 22)
-                  : null,
+              child:
+                  selected
+                      ? Icon(
+                        Icons.check_rounded,
+                        color: swatch.contrastText,
+                        size: 22,
+                      )
+                      : null,
             ),
             const SizedBox(height: 6),
-            Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.labelSmall?.copyWith(
-                    color: selected ? taj.textPrimary : taj.textSecondary,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.labelSmall?.copyWith(
+                color: selected ? taj.textPrimary : taj.textSecondary,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
@@ -284,8 +299,8 @@ class _LocalizationSection extends StatelessWidget {
                 min: 0,
                 max: 30,
                 suffix: '٪',
-                onChanged: (v) =>
-                    onDraft(draft.copyWith(taxRate: v.toDouble())),
+                onChanged:
+                    (v) => onDraft(draft.copyWith(taxRate: v.toDouble())),
               ),
             ),
             SettingRow(
@@ -376,12 +391,18 @@ class _InvoiceSection extends StatelessWidget {
               title: 'الطابعة',
               subtitle: 'الطابعة الافتراضية للفواتير.',
               controlIsWide: true,
-              control: SettingsSelectField<String>(
-                value: draft.printer,
-                items: kDemoPrinters,
-                labelOf: (p) => p,
-                onChanged: (v) => onDraft(draft.copyWith(printer: v)),
-              ),
+              control:
+                  draft.printer.isEmpty
+                      ? Text(
+                        'لا توجد طابعات مُعرّفة',
+                        style: TextStyle(color: context.taj.textSecondary),
+                      )
+                      : SettingsSelectField<String>(
+                        value: draft.printer,
+                        items: [draft.printer],
+                        labelOf: (p) => p,
+                        onChanged: (v) => onDraft(draft.copyWith(printer: v)),
+                      ),
             ),
             SettingRow(
               title: 'عدد النسخ',
@@ -418,6 +439,12 @@ class _DiscountSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final on = draft.discountEnabled;
     final needsTargets = draft.discountScope != DiscountScope.all;
+    // Options come from the store (the user's real products / branches /
+    // users), never a hard-coded list.
+    final store = DemoStoreProvider.of(context);
+    final itemOptions = [for (final p in store.products) p.name];
+    final branchOptions = [for (final b in store.branches) b.name];
+    final userOptions = [for (final u in store.users) u.name];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -444,8 +471,9 @@ class _DiscountSection extends StatelessWidget {
                 step: 5,
                 suffix: '٪',
                 enabled: on,
-                onChanged: (v) =>
-                    onDraft(draft.copyWith(maxDiscountPct: v.toDouble())),
+                onChanged:
+                    (v) =>
+                        onDraft(draft.copyWith(maxDiscountPct: v.toDouble())),
               ),
             ),
           ],
@@ -475,7 +503,7 @@ class _DiscountSection extends StatelessWidget {
                 enabled: on,
                 child: SettingsChipsField(
                   selected: draft.discountTargets,
-                  options: kDemoDiscountItems,
+                  options: itemOptions,
                   pickerTitle: 'اختيار الأصناف',
                   enabled: on,
                   onChanged: (s) => onDraft(draft.copyWith(discountTargets: s)),
@@ -515,7 +543,9 @@ class _DiscountSection extends StatelessWidget {
               control: Switch(
                 value: draft.discountAutoOff,
                 onChanged:
-                    on ? (v) => onDraft(draft.copyWith(discountAutoOff: v)) : null,
+                    on
+                        ? (v) => onDraft(draft.copyWith(discountAutoOff: v))
+                        : null,
               ),
             ),
           ],
@@ -531,7 +561,7 @@ class _DiscountSection extends StatelessWidget {
               enabled: on,
               child: SettingsChipsField(
                 selected: draft.discountBranches,
-                options: kDemoBranches,
+                options: branchOptions,
                 pickerTitle: 'اختيار الفروع',
                 enabled: on,
                 onChanged: (s) => onDraft(draft.copyWith(discountBranches: s)),
@@ -543,7 +573,7 @@ class _DiscountSection extends StatelessWidget {
               enabled: on,
               child: SettingsChipsField(
                 selected: draft.discountUsers,
-                options: kDemoUsers,
+                options: userOptions,
                 pickerTitle: 'اختيار المستخدمين',
                 enabled: on,
                 onChanged: (s) => onDraft(draft.copyWith(discountUsers: s)),
@@ -658,8 +688,10 @@ class _TimeField extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () async {
-          final picked =
-              await showTimePicker(context: context, initialTime: value);
+          final picked = await showTimePicker(
+            context: context,
+            initialTime: value,
+          );
           if (picked != null) onChanged(picked);
         },
         child: Container(
@@ -673,11 +705,20 @@ class _TimeField extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(label,
-                    style: AppThemes.numeralStyle(context,
-                        fontSize: 15, fontWeight: FontWeight.w700)),
+                child: Text(
+                  label,
+                  style: AppThemes.numeralStyle(
+                    context,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-              Icon(Icons.access_time_rounded, size: 17, color: taj.textSecondary),
+              Icon(
+                Icons.access_time_rounded,
+                size: 17,
+                color: taj.textSecondary,
+              ),
             ],
           ),
         ),
@@ -741,8 +782,8 @@ class _SyncSection extends StatelessWidget {
               ),
             ),
             SettingsBlock(
-              title: 'آخر نسخة احتياطية',
-              subtitle: 'أُنشئت في ٢٠٢٦/٠٩/١٢ الساعة ٠٣:٠٠ — بحجم ٤٨٫٢ MB.',
+              title: 'النسخ الاحتياطي',
+              subtitle: 'لم تُنشأ أي نسخة احتياطية بعد.',
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: OutlinedButton.icon(
@@ -770,83 +811,26 @@ class _SyncSection extends StatelessWidget {
   }
 }
 
-/// Backup-history demo table. Below [AppBreakpoints.settingsBackupTableMin] it
-/// scrolls horizontally rather than crushing its columns; the header stays put.
+/// Backup history. No real backups are performed in this version, so this is
+/// an honest empty state rather than a fabricated run log.
 class _BackupHistoryTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
-    final text = Theme.of(context).textTheme;
-
-    Widget cell(String s, {int flex = 1, TextAlign align = TextAlign.start, bool head = false}) =>
-        Expanded(
-          flex: flex,
-          child: Text(
-            s,
-            textAlign: align,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: head
-                ? text.labelMedium?.copyWith(color: taj.textSecondary)
-                : text.bodyMedium,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Icon(Icons.history_rounded, size: 20, color: taj.textSecondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'لا توجد نسخ احتياطية بعد.',
+              style: TextStyle(color: taj.textSecondary),
+            ),
           ),
-        );
-
-    return LayoutBuilder(
-      builder: (context, c) {
-        final tableWidth =
-            c.maxWidth < AppBreakpoints.settingsBackupTableMin
-                ? AppBreakpoints.settingsBackupTableMin
-                : c.maxWidth;
-        final table = SizedBox(
-          width: tableWidth,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    cell('التاريخ', flex: 3, head: true),
-                    cell('الحجم', flex: 2, align: TextAlign.center, head: true),
-                    cell('الحالة', flex: 2, align: TextAlign.end, head: true),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: taj.divider),
-              for (final r in kDemoBackupHistory) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    children: [
-                      cell(r.date, flex: 3),
-                      cell(r.size, flex: 2, align: TextAlign.center),
-                      Expanded(
-                        flex: 2,
-                        child: Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: StatusBadge(
-                            label: r.ok ? 'ناجحة' : 'فشلت',
-                            status: r.ok ? TajStatus.success : TajStatus.error,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (r != kDemoBackupHistory.last)
-                  Divider(height: 1, color: taj.divider),
-              ],
-            ],
-          ),
-        );
-
-        if (tableWidth <= c.maxWidth) return table;
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: table,
-        );
-      },
+        ],
+      ),
     );
   }
 }
