@@ -22,7 +22,6 @@ class CashierPosScreen extends StatefulWidget {
     required this.userName,
     this.permissions = UserPermissions.cashier,
     this.initialCart,
-    this.testOpenReports = false,
     required this.onLogout,
     required this.onToggleTheme,
   });
@@ -31,7 +30,6 @@ class CashierPosScreen extends StatefulWidget {
   final String userName;
   final UserPermissions permissions;
   final Map<String, int>? initialCart;
-  final bool testOpenReports;
   final VoidCallback onLogout;
   final VoidCallback onToggleTheme;
 
@@ -44,7 +42,6 @@ class _CashierPosScreenState extends State<CashierPosScreen>
   final Map<String, int> _cart = {};
   String _searchQuery = '';
   String _selectedCategory = 'الكل';
-  bool _isOnline = true;
   bool _isGridView = true;
   bool _isSidebarCollapsed = false;
   final TextEditingController _searchController = TextEditingController();
@@ -74,46 +71,9 @@ class _CashierPosScreenState extends State<CashierPosScreen>
       _cart.addAll(widget.initialCart!);
     }
     _loadProfessionalMode();
-    if (widget.testOpenReports) {
-      _seedTestSales();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showReportsSheet();
-      });
-      return;
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.requestFocus();
     });
-  }
-
-  void _seedTestSales() {
-    final now = DateTime.now();
-    _completedSales.addAll([
-      _CompletedSale(
-        method: PaymentMethod.cash,
-        total: 250,
-        itemCount: 3,
-        time: now,
-      ),
-      _CompletedSale(
-        method: PaymentMethod.cash,
-        total: 90,
-        itemCount: 1,
-        time: now,
-      ),
-      _CompletedSale(
-        method: PaymentMethod.sadad,
-        total: 150,
-        itemCount: 2,
-        time: now,
-      ),
-      _CompletedSale(
-        method: PaymentMethod.bank,
-        total: 320,
-        itemCount: 4,
-        time: now,
-      ),
-    ]);
   }
 
   static const _professionalModePrefKey = 'pos_mode_professional_';
@@ -474,11 +434,15 @@ class _CashierPosScreenState extends State<CashierPosScreen>
         }).toList();
     final itemCount = _itemCount;
     final note = _orderNote;
+    final store = DemoStoreProvider.of(context);
+    // Post against the current (first) branch — the per-till branch selector is
+    // out of scope, but this is a real branch id, not a hard-coded one.
+    final branchId = store.branches.isEmpty ? null : store.branches.first.id;
     try {
-      await DemoStoreProvider.of(context).addSale(
+      await store.addSale(
         quantities: Map<String, int>.from(_cart),
         paymentMethod: _demoPaymentMethod(method),
-        branchId: 'b1',
+        branchId: branchId,
         totalOverride: total,
       );
     } catch (error) {
@@ -660,13 +624,11 @@ class _CashierPosScreenState extends State<CashierPosScreen>
             _TopBar(
               branchName: widget.branchName,
               userName: widget.userName,
-              isOnline: _isOnline,
               isGridView: _isGridView,
               isProfessional: _isProfessional,
               onToggleMode: _toggleProfessionalMode,
               onToggleTheme: widget.onToggleTheme,
               onLogout: widget.onLogout,
-              onToggleOnline: () => setState(() => _isOnline = !_isOnline),
               onToggleView: () => setState(() => _isGridView = !_isGridView),
               onOpenReports: _isProfessional ? _showReportsSheet : null,
             ),
@@ -843,26 +805,22 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.branchName,
     required this.userName,
-    required this.isOnline,
     required this.isGridView,
     required this.isProfessional,
     required this.onToggleMode,
     required this.onToggleTheme,
     required this.onLogout,
-    required this.onToggleOnline,
     required this.onToggleView,
     this.onOpenReports,
   });
 
   final String branchName;
   final String userName;
-  final bool isOnline;
   final bool isGridView;
   final bool isProfessional;
   final VoidCallback onToggleMode;
   final VoidCallback onToggleTheme;
   final VoidCallback onLogout;
-  final VoidCallback onToggleOnline;
   final VoidCallback onToggleView;
   final VoidCallback? onOpenReports;
 
@@ -982,8 +940,9 @@ class _TopBar extends StatelessWidget {
               Container(width: 1, height: 26, color: taj.divider),
               const SizedBox(width: 12),
 
-              // Online badge
-              _OnlineBadge(isOnline: isOnline, onTap: onToggleOnline),
+              // Local-storage badge (there is no server; data is stored on
+              // this device).
+              const _LocalBadge(),
 
               const Spacer(),
 
@@ -1082,46 +1041,34 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _OnlineBadge extends StatelessWidget {
-  const _OnlineBadge({required this.isOnline, required this.onTap});
-  final bool isOnline;
-  final VoidCallback onTap;
+class _LocalBadge extends StatelessWidget {
+  const _LocalBadge();
 
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
-    final color = isOnline ? taj.success : taj.warning;
+    final color = taj.info;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: color.lighter,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: color.main,
-                shape: BoxShape.circle,
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.lighter,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.sd_storage_outlined, size: 13, color: color.dark),
+          const SizedBox(width: 6),
+          Text(
+            'محلي',
+            style: TextStyle(
+              color: color.dark,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(width: 6),
-            Text(
-              isOnline ? 'متصل' : 'غير متصل',
-              style: TextStyle(
-                color: color.dark,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -23,7 +23,6 @@ class TajApp extends StatefulWidget {
     this.testUserName = 'admin',
     this.initialDark = false,
     this.testInitialCart,
-    this.testOpenReports = false,
     this.store,
   });
 
@@ -42,9 +41,6 @@ class TajApp extends StatefulWidget {
 
   /// Test hook: pre-fill the cashier cart with {productId: quantity}.
   final Map<String, int>? testInitialCart;
-
-  /// Test hook: open the professional session-report sheet on startup.
-  final bool testOpenReports;
 
   @override
   State<TajApp> createState() => _TajAppState();
@@ -112,7 +108,6 @@ class _TajAppState extends State<TajApp> {
                       userName: _userName,
                       permissions: _permissions,
                       initialCart: widget.testInitialCart,
-                      testOpenReports: widget.testOpenReports,
                       onLogout: () => setState(() => _signedIn = false),
                       onToggleTheme: _toggleTheme,
                     )
