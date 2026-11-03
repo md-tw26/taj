@@ -103,6 +103,29 @@ class DemoStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> upsertUser(DemoUser user) async {
+    final i = users.indexWhere((u) => u.id == user.id);
+    if (i < 0) {
+      users = [...users, user];
+    } else {
+      users = [
+        for (final u in users)
+          if (u.id == user.id) user else u,
+      ];
+    }
+    await _save();
+    notifyListeners();
+  }
+
+  Future<void> setUserActive(String id, bool active) async {
+    users = [
+      for (final u in users)
+        if (u.id == id) u.copyWith(active: active) else u,
+    ];
+    await _save();
+    notifyListeners();
+  }
+
   List<double> get lastSevenDaySales {
     final today = DateTime.now();
     return List.generate(7, (index) {

@@ -413,22 +413,64 @@ class DemoUser {
     required this.name,
     required this.role,
     required this.active,
+    this.username = '',
+    this.roleId = '',
+    this.branchId = '',
+    this.lastActive,
   });
   final String id;
   final String name;
   final String role;
   final bool active;
+
+  // Optional fields used by the Users & Permissions screen. Defaulted so older
+  // persisted blobs (which lacked them) still decode.
+  final String username;
+  final String roleId;
+  final String branchId;
+  final DateTime? lastActive;
+
+  DemoUser copyWith({
+    String? name,
+    String? role,
+    bool? active,
+    String? username,
+    String? roleId,
+    String? branchId,
+    DateTime? lastActive,
+  }) => DemoUser(
+    id: id,
+    name: name ?? this.name,
+    role: role ?? this.role,
+    active: active ?? this.active,
+    username: username ?? this.username,
+    roleId: roleId ?? this.roleId,
+    branchId: branchId ?? this.branchId,
+    lastActive: lastActive ?? this.lastActive,
+  );
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
     'role': role,
     'active': active,
+    'username': username,
+    'roleId': roleId,
+    'branchId': branchId,
+    'lastActive': lastActive?.toIso8601String(),
   };
   factory DemoUser.fromJson(Map<String, dynamic> j) => DemoUser(
     id: j['id'] as String,
     name: j['name'] as String,
     role: j['role'] as String,
     active: j['active'] as bool? ?? true,
+    username: j['username'] as String? ?? '',
+    roleId: j['roleId'] as String? ?? '',
+    branchId: j['branchId'] as String? ?? '',
+    lastActive:
+        j['lastActive'] == null
+            ? null
+            : DateTime.tryParse(j['lastActive'] as String),
   );
 }
 
