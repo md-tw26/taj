@@ -43,42 +43,43 @@ enum _CloseStep { sales, expenses, returns, cash, stock, deficit, report }
 
 extension _CloseStepMeta on _CloseStep {
   String get title => switch (this) {
-        _CloseStep.sales => 'المبيعات',
-        _CloseStep.expenses => 'المصروفات',
-        _CloseStep.returns => 'المرتجعات',
-        _CloseStep.cash => 'فرق الصندوق',
-        _CloseStep.stock => 'فرق المخزون',
-        _CloseStep.deficit => 'العجز والفائض',
-        _CloseStep.report => 'التقرير اليومي',
-      };
+    _CloseStep.sales => 'المبيعات',
+    _CloseStep.expenses => 'المصروفات',
+    _CloseStep.returns => 'المرتجعات',
+    _CloseStep.cash => 'فرق الصندوق',
+    _CloseStep.stock => 'فرق المخزون',
+    _CloseStep.deficit => 'العجز والفائض',
+    _CloseStep.report => 'التقرير اليومي',
+  };
 
   IconData get icon => switch (this) {
-        _CloseStep.sales => Icons.point_of_sale_rounded,
-        _CloseStep.expenses => Icons.payments_rounded,
-        _CloseStep.returns => Icons.assignment_return_rounded,
-        _CloseStep.cash => Icons.account_balance_wallet_rounded,
-        _CloseStep.stock => Icons.inventory_2_rounded,
-        _CloseStep.deficit => Icons.balance_rounded,
-        _CloseStep.report => Icons.description_rounded,
-      };
+    _CloseStep.sales => Icons.point_of_sale_rounded,
+    _CloseStep.expenses => Icons.payments_rounded,
+    _CloseStep.returns => Icons.assignment_return_rounded,
+    _CloseStep.cash => Icons.account_balance_wallet_rounded,
+    _CloseStep.stock => Icons.inventory_2_rounded,
+    _CloseStep.deficit => Icons.balance_rounded,
+    _CloseStep.report => Icons.description_rounded,
+  };
 }
 
-/// Cash denominations counted at close (Libyan dinar), each with its demo
-/// default count. Insertion order is descending so the count sheet reads
+/// Cash denominations counted at close (Libyan dinar), a reference list. Counts
+/// start at 0 — the user counts the drawer. Descending so the count sheet reads
 /// top-to-bottom from the largest note.
-const Map<int, int> _kDenoms = {50: 10, 20: 25, 10: 30, 5: 20, 1: 45};
+const List<int> _kDenoms = [50, 20, 10, 5, 1];
 
 class _DayClosingScreenState extends State<DayClosingScreen> {
   int _step = 0;
   bool _dayClosed = false;
   bool _acknowledgedVariance = false;
 
-  /// When the operating day opened — shown in the banner. Fixed for the session
-  /// so it survives rebuilds (and therefore rotations/resizes).
+  /// When this closing session opened — the real time the screen was entered,
+  /// captured once so it survives rebuilds (rotations/resizes).
   late final DateTime _openedAt;
 
-  /// Opening cash float placed in the drawer at the start of the day.
-  static const double _openingFloat = 500;
+  /// Opening cash float placed in the drawer — entered by the user, default 0.
+  final TextEditingController _openingCtl = TextEditingController(text: '0');
+  double get _openingFloat => double.tryParse(_openingCtl.text.trim()) ?? 0;
 
   // Entered values live in controllers held by the State, so a rotation or a
   // window resize (which only rebuilds via LayoutBuilder) never loses them.
@@ -89,9 +90,8 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
   @override
   void initState() {
     super.initState();
-    // A stable "opened at" a few hours ago for the demo banner.
-    final now = DateTime.now();
-    _openedAt = DateTime(now.year, now.month, now.day, 8, 30);
+    // The real moment this closing session opened — no fabricated time.
+    _openedAt = DateTime.now();
   }
 
   @override
@@ -99,25 +99,20 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
     super.didChangeDependencies();
     if (_controllersReady) return;
     // Store is available here (InheritedWidget), unlike in initState.
-    for (final e in _kDenoms.entries) {
-      _cashCtl[e.key] = TextEditingController(text: '${e.value}');
+    for (final d in _kDenoms) {
+      _cashCtl[d] = TextEditingController(text: '0');
     }
-    final products = _store.products;
-    for (var i = 0; i < products.length; i++) {
-      final p = products[i];
-      // Pre-fill counted = system stock, with two deliberate demo discrepancies
-      // on the first products so a variance (and its "needs review" path) is
-      // visible without any manual entry.
-      var counted = p.stock;
-      if (i == 0) counted = p.stock - 1;
-      if (i == 1) counted = p.stock + 2;
-      _stockCtl[p.id] = TextEditingController(text: '$counted');
+    // Counted stock starts at the system quantity (zero variance) — the user
+    // edits from there. No pre-invented discrepancies.
+    for (final p in _store.products) {
+      _stockCtl[p.id] = TextEditingController(text: '${p.stock}');
     }
     _controllersReady = true;
   }
 
   @override
   void dispose() {
+    _openingCtl.dispose();
     for (final c in _cashCtl.values) {
       c.dispose();
     }
@@ -135,7 +130,8 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
   // figures it produces. Do not fold layout concerns into these methods.
   // ===========================================================================
 
-  int _cashCount(int denom) => int.tryParse(_cashCtl[denom]?.text.trim() ?? '') ?? 0;
+  int _cashCount(int denom) =>
+      int.tryParse(_cashCtl[denom]?.text.trim() ?? '') ?? 0;
 
   int _stockCount(String id, int fallback) {
     final t = _stockCtl[id]?.text.trim() ?? '';
@@ -145,13 +141,18 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
 
   _DayFigures _compute() {
     final store = _store;
+    final now = DateTime.now();
+    bool isToday(DateTime d) =>
+        d.year == now.year && d.month == now.month && d.day == now.day;
 
     double cashSales = 0, elecSales = 0, creditSales = 0;
     double returnsTotal = 0, cashReturns = 0;
     var orderCount = 0, returnsCount = 0;
     final byMethod = <DemoPaymentMethod, double>{};
 
+    // The close covers the current operating day only — not all history.
     for (final s in store.sales) {
+      if (!isToday(s.date)) continue;
       if (s.status == DemoSaleStatus.cancelled) continue;
       if (s.status == DemoSaleStatus.returned) {
         returnsTotal += s.total;
@@ -174,14 +175,17 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
     double expensesTotal = 0, cashExpenses = 0;
     final byCategory = <String, double>{};
     for (final e in store.expenses) {
+      if (!isToday(e.date)) continue;
       expensesTotal += e.amount;
       byCategory[e.category] = (byCategory[e.category] ?? 0) + e.amount;
       if (e.method == DemoPaymentMethod.cash) cashExpenses += e.amount;
     }
 
     final expectedCash = _openingFloat + cashSales - cashExpenses - cashReturns;
-    final countedCash = _kDenoms.keys
-        .fold<double>(0, (sum, d) => sum + d * _cashCount(d));
+    final countedCash = _kDenoms.fold<double>(
+      0,
+      (sum, d) => sum + d * _cashCount(d),
+    );
     final cashVariance = countedCash - expectedCash;
 
     final stock = <_StockVar>[];
@@ -241,9 +245,9 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
     final ok = await _showCloseConfirmDialog(context, f);
     if (ok == true && mounted) {
       setState(() => _dayClosed = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إقفال اليوم بنجاح')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم إقفال اليوم بنجاح')));
     }
   }
 
@@ -267,7 +271,8 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
           final w = c.maxWidth;
           final h = c.maxHeight;
           final f = _compute();
-          final showPanel = w >= AppBreakpoints.closingSidePanel &&
+          final showPanel =
+              w >= AppBreakpoints.closingSidePanel &&
               h >= AppBreakpoints.closingSidePanelMinHeight;
 
           final wizard = _WizardColumn(
@@ -276,6 +281,7 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
             openedAt: _openedAt,
             figures: f,
             cashControllers: _cashCtl,
+            openingController: _openingCtl,
             stockControllers: _stockCtl,
             acknowledged: _acknowledgedVariance,
             showTotalsInline: !showPanel,
@@ -284,9 +290,10 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
             onNext: _next,
             onBack: _back,
             onClose: () => _confirmClose(f),
-            onSaveDraft: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم حفظ المسودة')),
-            ),
+            onSaveDraft:
+                () => ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('تم حفظ المسودة'))),
             onSkip: _next,
             onChanged: () => setState(() {}),
             onPrint: () => _showPrintPreviewDialog(context, f, _openedAt),
@@ -297,7 +304,8 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxWidth: AppBreakpoints.closingContentMax +
+                  maxWidth:
+                      AppBreakpoints.closingContentMax +
                       24 +
                       AppBreakpoints.closingSidePanelWidth,
                 ),
@@ -322,8 +330,9 @@ class _DayClosingScreenState extends State<DayClosingScreen> {
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(maxWidth: AppBreakpoints.closingContentMax),
+              constraints: const BoxConstraints(
+                maxWidth: AppBreakpoints.closingContentMax,
+              ),
               child: SizedBox(height: h, child: wizard),
             ),
           );
@@ -419,6 +428,7 @@ class _WizardColumn extends StatelessWidget {
     required this.openedAt,
     required this.figures,
     required this.cashControllers,
+    required this.openingController,
     required this.stockControllers,
     required this.acknowledged,
     required this.showTotalsInline,
@@ -438,6 +448,7 @@ class _WizardColumn extends StatelessWidget {
   final DateTime openedAt;
   final _DayFigures figures;
   final Map<int, TextEditingController> cashControllers;
+  final TextEditingController openingController;
   final Map<String, TextEditingController> stockControllers;
   final bool acknowledged;
   final bool showTotalsInline;
@@ -474,7 +485,12 @@ class _WizardColumn extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(pad, short ? 8 : 14, pad, short ? 8 : 12),
+              padding: EdgeInsets.fromLTRB(
+                pad,
+                short ? 8 : 14,
+                pad,
+                short ? 8 : 12,
+              ),
               child: _StepperHeader(
                 width: w,
                 step: step,
@@ -495,6 +511,7 @@ class _WizardColumn extends StatelessWidget {
                   acknowledged: acknowledged,
                   showTotalsInline: showTotalsInline,
                   cashControllers: cashControllers,
+                  openingController: openingController,
                   stockControllers: stockControllers,
                   onAcknowledge: onAcknowledge,
                   onChanged: onChanged,
@@ -549,7 +566,9 @@ class _OpenDayBanner extends StatelessWidget {
     // never eats more than ~15% of a short screen.
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: 14, vertical: condensed ? 8 : 12),
+        horizontal: 14,
+        vertical: condensed ? 8 : 12,
+      ),
       decoration: BoxDecoration(
         color: swatch.lighter,
         borderRadius: BorderRadius.circular(12),
@@ -563,8 +582,11 @@ class _OpenDayBanner extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(closed ? Icons.check_circle_rounded : Icons.today_rounded,
-                  size: 18, color: accent),
+              Icon(
+                closed ? Icons.check_circle_rounded : Icons.today_rounded,
+                size: 18,
+                color: accent,
+              ),
               const SizedBox(width: 8),
               Text(
                 closed ? 'تم إقفال اليوم' : 'اليوم التشغيلي مفتوح',
@@ -675,20 +697,24 @@ class _StepperHeader extends StatelessWidget {
     for (var i = 0; i < _count; i++) {
       if (i > 0) {
         final done = i <= step;
-        nodes.add(Expanded(
-          child: Container(
-            height: 2,
-            margin: const EdgeInsets.only(bottom: 2),
-            color: done ? taj.primary.main : taj.divider,
+        nodes.add(
+          Expanded(
+            child: Container(
+              height: 2,
+              margin: const EdgeInsets.only(bottom: 2),
+              color: done ? taj.primary.main : taj.divider,
+            ),
           ),
-        ));
+        );
       }
-      nodes.add(_StepNode(
-        index: i,
-        step: step,
-        title: showAllTitles ? _CloseStep.values[i].title : null,
-        onTap: () => onSelect(i),
-      ));
+      nodes.add(
+        _StepNode(
+          index: i,
+          step: step,
+          title: showAllTitles ? _CloseStep.values[i].title : null,
+          onTap: () => onSelect(i),
+        ),
+      );
     }
 
     return Column(
@@ -742,37 +768,43 @@ class _StepNode extends StatelessWidget {
         border: Border.all(color: borderColor, width: 1.5),
       ),
       alignment: Alignment.center,
-      child: done
-          ? Icon(Icons.check_rounded, size: 17, color: fg)
-          : Text(
-              '${index + 1}',
-              style: AppThemes.numeralStyle(context,
-                  fontSize: 13, fontWeight: FontWeight.w700, color: fg),
-            ),
+      child:
+          done
+              ? Icon(Icons.check_rounded, size: 17, color: fg)
+              : Text(
+                '${index + 1}',
+                style: AppThemes.numeralStyle(
+                  context,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
+              ),
     );
 
-    final node = title == null
-        ? circle
-        : SizedBox(
-            width: 96,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                circle,
-                const SizedBox(height: 6),
-                Text(
-                  title!,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.labelSmall?.copyWith(
-                    color: current ? taj.primary.dark : taj.textSecondary,
-                    fontWeight: current ? FontWeight.w700 : FontWeight.w600,
+    final node =
+        title == null
+            ? circle
+            : SizedBox(
+              width: 96,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  circle,
+                  const SizedBox(height: 6),
+                  Text(
+                    title!,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.labelSmall?.copyWith(
+                      color: current ? taj.primary.dark : taj.textSecondary,
+                      fontWeight: current ? FontWeight.w700 : FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
+                ],
+              ),
+            );
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -872,10 +904,12 @@ class _BottomBar extends StatelessWidget {
         if (v == 'draft') onSaveDraft();
         if (v == 'skip') onSkip();
       },
-      itemBuilder: (_) => [
-        const PopupMenuItem(value: 'draft', child: Text('حفظ مسودة')),
-        if (!isReport) const PopupMenuItem(value: 'skip', child: Text('تخطي الخطوة')),
-      ],
+      itemBuilder:
+          (_) => [
+            const PopupMenuItem(value: 'draft', child: Text('حفظ مسودة')),
+            if (!isReport)
+              const PopupMenuItem(value: 'skip', child: Text('تخطي الخطوة')),
+          ],
     );
 
     final Widget row;
@@ -934,6 +968,7 @@ class _StepBody extends StatelessWidget {
     required this.acknowledged,
     required this.showTotalsInline,
     required this.cashControllers,
+    required this.openingController,
     required this.stockControllers,
     required this.onAcknowledge,
     required this.onChanged,
@@ -947,6 +982,7 @@ class _StepBody extends StatelessWidget {
   final bool acknowledged;
   final bool showTotalsInline;
   final Map<int, TextEditingController> cashControllers;
+  final TextEditingController openingController;
   final Map<String, TextEditingController> stockControllers;
   final ValueChanged<bool> onAcknowledge;
   final VoidCallback onChanged;
@@ -995,14 +1031,26 @@ class _StepBody extends StatelessWidget {
         width: width,
         cols: _summaryCols(width),
         cards: [
-          _Stat('إجمالي المبيعات', arDinar(f.grossSales),
-              icon: Icons.point_of_sale_rounded),
-          _Stat('عدد الفواتير', arNum(f.orderCount),
-              icon: Icons.receipt_long_rounded),
-          _Stat('مبيعات نقدية', arDinar(f.cashSales),
-              icon: Icons.payments_rounded),
-          _Stat('مبيعات آجلة', arDinar(f.creditSales),
-              icon: Icons.schedule_rounded),
+          _Stat(
+            'إجمالي المبيعات',
+            arDinar(f.grossSales),
+            icon: Icons.point_of_sale_rounded,
+          ),
+          _Stat(
+            'عدد الفواتير',
+            arNum(f.orderCount),
+            icon: Icons.receipt_long_rounded,
+          ),
+          _Stat(
+            'مبيعات نقدية',
+            arDinar(f.cashSales),
+            icon: Icons.payments_rounded,
+          ),
+          _Stat(
+            'مبيعات آجلة',
+            arDinar(f.creditSales),
+            icon: Icons.schedule_rounded,
+          ),
         ],
       ),
       const SizedBox(height: 16),
@@ -1028,12 +1076,21 @@ class _StepBody extends StatelessWidget {
         width: width,
         cols: _summaryCols(width),
         cards: [
-          _Stat('إجمالي المصروفات', arDinar(f.expensesTotal),
-              icon: Icons.payments_rounded),
-          _Stat('مصروفات نقدية', arDinar(f.cashExpenses),
-              icon: Icons.account_balance_wallet_rounded),
-          _Stat('عدد البنود', arNum(f.expensesByCategory.length),
-              icon: Icons.list_alt_rounded),
+          _Stat(
+            'إجمالي المصروفات',
+            arDinar(f.expensesTotal),
+            icon: Icons.payments_rounded,
+          ),
+          _Stat(
+            'مصروفات نقدية',
+            arDinar(f.cashExpenses),
+            icon: Icons.account_balance_wallet_rounded,
+          ),
+          _Stat(
+            'عدد البنود',
+            arNum(f.expensesByCategory.length),
+            icon: Icons.list_alt_rounded,
+          ),
         ],
       ),
       const SizedBox(height: 16),
@@ -1059,13 +1116,22 @@ class _StepBody extends StatelessWidget {
         width: width,
         cols: _summaryCols(width),
         cards: [
-          _Stat('إجمالي المرتجعات', arDinar(f.returnsTotal),
-              icon: Icons.assignment_return_rounded,
-              valueStatus: f.returnsTotal > 0 ? TajStatus.warning : null),
-          _Stat('عدد المرتجعات', arNum(f.returnsCount),
-              icon: Icons.replay_rounded),
-          _Stat('صافي المبيعات', arDinar(f.grossSales - f.returnsTotal),
-              icon: Icons.trending_up_rounded),
+          _Stat(
+            'إجمالي المرتجعات',
+            arDinar(f.returnsTotal),
+            icon: Icons.assignment_return_rounded,
+            valueStatus: f.returnsTotal > 0 ? TajStatus.warning : null,
+          ),
+          _Stat(
+            'عدد المرتجعات',
+            arNum(f.returnsCount),
+            icon: Icons.replay_rounded,
+          ),
+          _Stat(
+            'صافي المبيعات',
+            arDinar(f.grossSales - f.returnsTotal),
+            icon: Icons.trending_up_rounded,
+          ),
         ],
       ),
     ];
@@ -1075,8 +1141,11 @@ class _StepBody extends StatelessWidget {
     return [
       _StepIntro(
         step: _CloseStep.cash,
-        subtitle: 'عُدّ النقد الفعلي في الصندوق وقارنه بالمتوقّع.',
+        subtitle:
+            'أدخل الرصيد الافتتاحي ثم عُدّ النقد الفعلي وقارنه بالمتوقّع.',
       ),
+      const SizedBox(height: 16),
+      _OpeningFloatField(controller: openingController, onChanged: onChanged),
       const SizedBox(height: 16),
       _CashCountCard(
         controllers: cashControllers,
@@ -1123,8 +1192,11 @@ class _StepBody extends StatelessWidget {
         cards: [
           _Stat.variance('فرق الصندوق', f.cashVariance),
           _Stat.variance('قيمة فرق المخزون', f.stockVarianceValue),
-          _Stat.variance('الصافي (عجز/فائض)', f.netDeficitSurplus,
-              emphasize: true),
+          _Stat.variance(
+            'الصافي (عجز/فائض)',
+            f.netDeficitSurplus,
+            emphasize: true,
+          ),
         ],
       ),
       if (f.needsReview) ...[
@@ -1139,9 +1211,10 @@ class _StepBody extends StatelessWidget {
     return [
       _StepIntro(
         step: _CloseStep.report,
-        subtitle: dayClosed
-            ? 'تم إقفال اليوم — يمكنك طباعة التقرير.'
-            : 'راجِع ملخّص اليوم ثم أقفِل اليوم.',
+        subtitle:
+            dayClosed
+                ? 'تم إقفال اليوم — يمكنك طباعة التقرير.'
+                : 'راجِع ملخّص اليوم ثم أقفِل اليوم.',
       ),
       const SizedBox(height: 16),
       _DailyReportCard(figures: f, onPrint: onPrint),
@@ -1151,10 +1224,7 @@ class _StepBody extends StatelessWidget {
         const SizedBox(height: 8),
         _AcknowledgeTile(value: acknowledged, onChanged: onAcknowledge),
       ],
-      if (dayClosed) ...[
-        const SizedBox(height: 16),
-        _ClosedBanner(),
-      ],
+      if (dayClosed) ...[const SizedBox(height: 16), _ClosedBanner()],
     ];
   }
 }
@@ -1191,8 +1261,10 @@ class _StepIntro extends StatelessWidget {
             children: [
               Text(step.title, style: text.titleMedium),
               const SizedBox(height: 2),
-              Text(subtitle,
-                  style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+              Text(
+                subtitle,
+                style: text.bodySmall?.copyWith(color: taj.textSecondary),
+              ),
             ],
           ),
         ),
@@ -1218,9 +1290,8 @@ class _StatCardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     const gap = 12.0;
     final columns = math.max(1, cols);
-    final itemW = columns == 1
-        ? width
-        : (width - gap * (columns - 1)) / columns;
+    final itemW =
+        columns == 1 ? width : (width - gap * (columns - 1)) / columns;
     return Wrap(
       spacing: gap,
       runSpacing: gap,
@@ -1233,30 +1304,42 @@ class _StatCardGrid extends StatelessWidget {
 }
 
 class _Stat {
-  const _Stat(this.label, this.value,
-      {this.icon, this.valueStatus, this.caption});
+  const _Stat(
+    this.label,
+    this.value, {
+    this.icon,
+    this.valueStatus,
+    this.caption,
+  });
 
   /// A variance stat: the value is formatted with a sign + colour + icon so it
   /// never relies on colour alone, and long negative figures stay tabular.
   factory _Stat.variance(String label, double v, {bool emphasize = false}) {
-    final status = v < -0.005
-        ? TajStatus.error
-        : v > 0.005
+    final status =
+        v < -0.005
+            ? TajStatus.error
+            : v > 0.005
             ? TajStatus.success
             : null;
     final sign = v > 0.005 ? '+' : '';
     return _Stat(
       label,
       '$sign${arDinar(v)}',
-      icon: v < -0.005
-          ? Icons.south_east_rounded
-          : v > 0.005
+      icon:
+          v < -0.005
+              ? Icons.south_east_rounded
+              : v > 0.005
               ? Icons.north_east_rounded
               : Icons.remove_rounded,
       valueStatus: status,
-      caption: emphasize
-          ? (v < -0.005 ? 'عجز' : v > 0.005 ? 'فائض' : 'مطابق')
-          : null,
+      caption:
+          emphasize
+              ? (v < -0.005
+                  ? 'عجز'
+                  : v > 0.005
+                  ? 'فائض'
+                  : 'مطابق')
+              : null,
     );
   }
 
@@ -1276,7 +1359,9 @@ class _StatCardView extends StatelessWidget {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     final valueColor =
-        stat.valueStatus == null ? taj.textPrimary : taj.accentFor(taj.swatch(stat.valueStatus!));
+        stat.valueStatus == null
+            ? taj.textPrimary
+            : taj.accentFor(taj.swatch(stat.valueStatus!));
 
     return TajCard(
       padding: const EdgeInsets.all(16),
@@ -1290,11 +1375,12 @@ class _StatCardView extends StatelessWidget {
                 const SizedBox(width: 6),
               ],
               Expanded(
-                child: Text(stat.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        text.bodySmall?.copyWith(color: taj.textSecondary)),
+                child: Text(
+                  stat.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                ),
               ),
             ],
           ),
@@ -1303,13 +1389,19 @@ class _StatCardView extends StatelessWidget {
             stat.value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppThemes.numeralStyle(context,
-                fontSize: 20, fontWeight: FontWeight.w800, color: valueColor),
+            style: AppThemes.numeralStyle(
+              context,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: valueColor,
+            ),
           ),
           if (stat.caption != null) ...[
             const SizedBox(height: 4),
-            Text(stat.caption!,
-                style: text.labelSmall?.copyWith(color: valueColor)),
+            Text(
+              stat.caption!,
+              style: text.labelSmall?.copyWith(color: valueColor),
+            ),
           ],
         ],
       ),
@@ -1329,8 +1421,10 @@ class _MiniBreakdown extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     if (rows.isEmpty) {
       return TajCard(
-        child: Text('لا بيانات',
-            style: text.bodyMedium?.copyWith(color: taj.textSecondary)),
+        child: Text(
+          'لا بيانات',
+          style: text.bodyMedium?.copyWith(color: taj.textSecondary),
+        ),
       );
     }
     return TajCard(
@@ -1349,14 +1443,22 @@ class _MiniBreakdown extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                      child: Text(rows[i].$1,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.bodyMedium)),
+                    child: Text(
+                      rows[i].$1,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyMedium,
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Text(rows[i].$2,
-                      style: AppThemes.numeralStyle(context,
-                          fontSize: 14, fontWeight: FontWeight.w700)),
+                  Text(
+                    rows[i].$2,
+                    style: AppThemes.numeralStyle(
+                      context,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1414,9 +1516,14 @@ class _MiniTotal extends StatelessWidget {
       children: [
         Text(label, style: text.labelSmall?.copyWith(color: taj.textSecondary)),
         const SizedBox(height: 2),
-        Text(value,
-            style: AppThemes.numeralStyle(context,
-                fontSize: 14, fontWeight: FontWeight.w700)),
+        Text(
+          value,
+          style: AppThemes.numeralStyle(
+            context,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -1425,6 +1532,58 @@ class _MiniTotal extends StatelessWidget {
 // =============================================================================
 // Cash count
 // =============================================================================
+
+/// Opening cash float input — the amount placed in the drawer at the start of
+/// the day. Defaults to 0; the user sets it.
+class _OpeningFloatField extends StatelessWidget {
+  const _OpeningFloatField({required this.controller, required this.onChanged});
+  final TextEditingController controller;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final taj = context.taj;
+    return TajCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Icon(
+            Icons.account_balance_wallet_outlined,
+            size: 20,
+            color: taj.textSecondary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'الرصيد الافتتاحي للصندوق',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 120,
+            child: TextField(
+              controller: controller,
+              onChanged: (_) => onChanged(),
+              textAlign: TextAlign.center,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              style: AppThemes.numeralStyle(context, fontSize: 15),
+              decoration: const InputDecoration(
+                isDense: true,
+                suffixText: 'د.ل',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _CashCountCard extends StatelessWidget {
   const _CashCountCard({
@@ -1458,25 +1617,37 @@ class _CashCountCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                        child: Text('الفئة',
-                            style: text.bodySmall
-                                ?.copyWith(color: taj.textSecondary))),
+                      child: Text(
+                        'الفئة',
+                        style: text.bodySmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
+                      ),
+                    ),
                     SizedBox(
-                        width: 96,
-                        child: Text('العدد',
-                            textAlign: TextAlign.center,
-                            style: text.bodySmall
-                                ?.copyWith(color: taj.textSecondary))),
+                      width: 96,
+                      child: Text(
+                        'العدد',
+                        textAlign: TextAlign.center,
+                        style: text.bodySmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
+                      ),
+                    ),
                     SizedBox(
-                        width: 110,
-                        child: Text('الإجمالي',
-                            textAlign: TextAlign.end,
-                            style: text.bodySmall
-                                ?.copyWith(color: taj.textSecondary))),
+                      width: 110,
+                      child: Text(
+                        'الإجمالي',
+                        textAlign: TextAlign.end,
+                        style: text.bodySmall?.copyWith(
+                          color: taj.textSecondary,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              for (final d in _kDenoms.keys) ...[
+              for (final d in _kDenoms) ...[
                 Divider(height: 1, color: taj.divider),
                 _DenomRow(
                   denom: d,
@@ -1492,10 +1663,16 @@ class _CashCountCard extends StatelessWidget {
           width: width,
           cols: cols,
           cards: [
-            _Stat('النقد المتوقّع', arDinar(figures.expectedCash),
-                icon: Icons.calculate_rounded),
-            _Stat('النقد المعدود', arDinar(figures.countedCash),
-                icon: Icons.account_balance_wallet_rounded),
+            _Stat(
+              'النقد المتوقّع',
+              arDinar(figures.expectedCash),
+              icon: Icons.calculate_rounded,
+            ),
+            _Stat(
+              'النقد المعدود',
+              arDinar(figures.countedCash),
+              icon: Icons.account_balance_wallet_rounded,
+            ),
             _Stat.variance('الفرق', figures.cashVariance),
           ],
         ),
@@ -1523,9 +1700,14 @@ class _DenomRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text('${arNum(denom)} د.ل',
-                style: AppThemes.numeralStyle(context,
-                    fontSize: 14, fontWeight: FontWeight.w600)),
+            child: Text(
+              '${arNum(denom)} د.ل',
+              style: AppThemes.numeralStyle(
+                context,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           SizedBox(
             width: 96,
@@ -1537,17 +1719,24 @@ class _DenomRow extends StatelessWidget {
               onChanged: (_) => onChanged(),
               decoration: const InputDecoration(
                 isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
               ),
             ),
           ),
           SizedBox(
             width: 110,
-            child: Text(arDinar(lineTotal),
-                textAlign: TextAlign.end,
-                style: AppThemes.numeralStyle(context,
-                    fontSize: 14, fontWeight: FontWeight.w700)),
+            child: Text(
+              arDinar(lineTotal),
+              textAlign: TextAlign.end,
+              style: AppThemes.numeralStyle(
+                context,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -1619,10 +1808,12 @@ class _StockVarCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(row.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: text.titleSmall),
+          Text(
+            row.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: text.titleSmall,
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -1633,21 +1824,24 @@ class _StockVarCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('الفعلي',
-                        style: text.labelSmall
-                            ?.copyWith(color: taj.textSecondary)),
+                    Text(
+                      'الفعلي',
+                      style: text.labelSmall?.copyWith(
+                        color: taj.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: controller,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       onChanged: (_) => onChanged(),
                       decoration: const InputDecoration(
                         isDense: true,
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   ],
@@ -1658,7 +1852,10 @@ class _StockVarCard extends StatelessWidget {
           const SizedBox(height: 10),
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: _VarianceChip(qty: row.varianceQty, value: row.varianceValue),
+            child: _VarianceChip(
+              qty: row.varianceQty,
+              value: row.varianceValue,
+            ),
           ),
         ],
       ),
@@ -1673,9 +1870,14 @@ class _StockVarCard extends StatelessWidget {
       children: [
         Text(k, style: text.labelSmall?.copyWith(color: taj.textSecondary)),
         const SizedBox(height: 4),
-        Text(v,
-            style: AppThemes.numeralStyle(context,
-                fontSize: 15, fontWeight: FontWeight.w700)),
+        Text(
+          v,
+          style: AppThemes.numeralStyle(
+            context,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -1757,10 +1959,7 @@ class _FrozenStockTableState extends State<_FrozenStockTable> {
             height: _headH,
             child: Row(
               children: [
-                SizedBox(
-                  width: nameW,
-                  child: _headCell('الصنف', start: true),
-                ),
+                SizedBox(width: nameW, child: _headCell('الصنف', start: true)),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -1799,16 +1998,18 @@ class _FrozenStockTableState extends State<_FrozenStockTable> {
                           Container(
                             height: _rowH,
                             alignment: AlignmentDirectional.centerStart,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
                               border: Border(
-                                  bottom: BorderSide(color: taj.divider)),
+                                bottom: BorderSide(color: taj.divider),
+                              ),
                             ),
-                            child: Text(r.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodyMedium),
+                            child: Text(
+                              r.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                           ),
                       ],
                     ),
@@ -1828,29 +2029,32 @@ class _FrozenStockTableState extends State<_FrozenStockTable> {
                                 child: Row(
                                   children: [
                                     Expanded(
-                                        child: _numCell(context,
-                                            arNum(r.expected))),
+                                      child: _numCell(
+                                        context,
+                                        arNum(r.expected),
+                                      ),
+                                    ),
                                     Expanded(
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 6),
+                                          horizontal: 6,
+                                        ),
                                         child: TextField(
-                                          controller:
-                                              widget.controllers[r.id]!,
+                                          controller: widget.controllers[r.id]!,
                                           keyboardType: TextInputType.number,
                                           textAlign: TextAlign.center,
                                           inputFormatters: [
                                             FilteringTextInputFormatter
-                                                .digitsOnly
+                                                .digitsOnly,
                                           ],
-                                          onChanged: (_) =>
-                                              widget.onChanged(),
+                                          onChanged: (_) => widget.onChanged(),
                                           decoration: const InputDecoration(
                                             isDense: true,
                                             contentPadding:
                                                 EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 8),
+                                                  horizontal: 6,
+                                                  vertical: 8,
+                                                ),
                                           ),
                                         ),
                                       ),
@@ -1861,9 +2065,11 @@ class _FrozenStockTableState extends State<_FrozenStockTable> {
                                             AlignmentDirectional.centerEnd,
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 6),
+                                            horizontal: 6,
+                                          ),
                                           child: _VarianceText(
-                                              value: r.varianceValue),
+                                            value: r.varianceValue,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1887,25 +2093,33 @@ class _FrozenStockTableState extends State<_FrozenStockTable> {
   Widget _headCell(String label, {bool start = false}) {
     final taj = context.taj;
     return Container(
-      alignment: start
-          ? AlignmentDirectional.centerStart
-          : AlignmentDirectional.center,
+      alignment:
+          start
+              ? AlignmentDirectional.centerStart
+              : AlignmentDirectional.center,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Text(label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: taj.textSecondary, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: taj.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
   Widget _numCell(BuildContext context, String v) => Center(
-        child: Text(v,
-            style: AppThemes.numeralStyle(context,
-                fontSize: 14, fontWeight: FontWeight.w600)),
-      );
+    child: Text(
+      v,
+      style: AppThemes.numeralStyle(
+        context,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }
 
 // =============================================================================
@@ -1931,8 +2145,12 @@ class _VarianceText extends StatelessWidget {
             '$sign${arDinar(value)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppThemes.numeralStyle(context,
-                fontSize: 13, fontWeight: FontWeight.w700, color: color),
+            style: AppThemes.numeralStyle(
+              context,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ),
       ],
@@ -1963,8 +2181,12 @@ class _VarianceChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             '$sign${arNum(qty)} · $sign${arDinar(value)}',
-            style: AppThemes.numeralStyle(context,
-                fontSize: 12, fontWeight: FontWeight.w700, color: color),
+            style: AppThemes.numeralStyle(
+              context,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -2057,13 +2279,12 @@ class _AcknowledgeTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            Checkbox(
-              value: value,
-              onChanged: (v) => onChanged(v ?? false),
-            ),
+            Checkbox(value: value, onChanged: (v) => onChanged(v ?? false)),
             Expanded(
-              child: Text('راجعتُ الفروقات وأوافق على الإقفال',
-                  style: text.bodyMedium?.copyWith(color: taj.textPrimary)),
+              child: Text(
+                'راجعتُ الفروقات وأوافق على الإقفال',
+                style: text.bodyMedium?.copyWith(color: taj.textPrimary),
+              ),
             ),
           ],
         ),
@@ -2089,8 +2310,10 @@ class _ClosedBanner extends StatelessWidget {
           Icon(Icons.verified_rounded, color: accent),
           const SizedBox(width: 10),
           Expanded(
-            child: Text('تم إقفال اليوم بنجاح. لا يمكن تعديل عمليات اليوم بعد الإقفال.',
-                style: text.bodyMedium?.copyWith(color: accent, height: 1.5)),
+            child: Text(
+              'تم إقفال اليوم بنجاح. لا يمكن تعديل عمليات اليوم بعد الإقفال.',
+              style: text.bodyMedium?.copyWith(color: accent, height: 1.5),
+            ),
           ),
         ],
       ),
@@ -2131,8 +2354,12 @@ class _DailyReportCard extends StatelessWidget {
           for (final l in lines) _ReportLine(line: l),
           Divider(height: 20, color: taj.divider),
           _ReportLine(
-            line: _RLine('الصافي (عجز/فائض)', f.netDeficitSurplus,
-                variance: true, bold: true),
+            line: _RLine(
+              'الصافي (عجز/فائض)',
+              f.netDeficitSurplus,
+              variance: true,
+              bold: true,
+            ),
           ),
         ],
       ),
@@ -2151,17 +2378,23 @@ class _ReportLine extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(line.label,
-                style: line.bold ? text.titleSmall : text.bodyMedium),
+            child: Text(
+              line.label,
+              style: line.bold ? text.titleSmall : text.bodyMedium,
+            ),
           ),
           const SizedBox(width: 12),
           if (line.variance)
             _VarianceText(value: line.value)
           else
-            Text(arDinar(line.value),
-                style: AppThemes.numeralStyle(context,
-                    fontSize: line.bold ? 16 : 14,
-                    fontWeight: line.bold ? FontWeight.w800 : FontWeight.w700)),
+            Text(
+              arDinar(line.value),
+              style: AppThemes.numeralStyle(
+                context,
+                fontSize: line.bold ? 16 : 14,
+                fontWeight: line.bold ? FontWeight.w800 : FontWeight.w700,
+              ),
+            ),
         ],
       ),
     );
@@ -2169,8 +2402,12 @@ class _ReportLine extends StatelessWidget {
 }
 
 class _RLine {
-  const _RLine(this.label, this.value,
-      {this.variance = false, this.bold = false});
+  const _RLine(
+    this.label,
+    this.value, {
+    this.variance = false,
+    this.bold = false,
+  });
   final String label;
   final double value;
   final bool variance;
@@ -2178,12 +2415,12 @@ class _RLine {
 }
 
 List<_RLine> _reportLines(_DayFigures f) => [
-      _RLine('إجمالي المبيعات', f.grossSales),
-      _RLine('المرتجعات', -f.returnsTotal),
-      _RLine('المصروفات', -f.expensesTotal),
-      _RLine('فرق الصندوق', f.cashVariance, variance: true),
-      _RLine('قيمة فرق المخزون', f.stockVarianceValue, variance: true),
-    ];
+  _RLine('إجمالي المبيعات', f.grossSales),
+  _RLine('المرتجعات', -f.returnsTotal),
+  _RLine('المصروفات', -f.expensesTotal),
+  _RLine('فرق الصندوق', f.cashVariance, variance: true),
+  _RLine('قيمة فرق المخزون', f.stockVarianceValue, variance: true),
+];
 
 class _DayTotalsPanel extends StatelessWidget {
   const _DayTotalsPanel({required this.figures, required this.openedAt});
@@ -2206,8 +2443,10 @@ class _DayTotalsPanel extends StatelessWidget {
           children: [
             Text('إجماليات اليوم', style: text.titleMedium),
             const SizedBox(height: 4),
-            Text('مفتوح منذ ${_fmtDateTime(openedAt)}',
-                style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+            Text(
+              'مفتوح منذ ${_fmtDateTime(openedAt)}',
+              style: text.bodySmall?.copyWith(color: taj.textSecondary),
+            ),
             const SizedBox(height: 16),
             _panelRow(context, 'إجمالي المبيعات', arDinar(f.grossSales)),
             _panelRow(context, 'المرتجعات', arDinar(f.returnsTotal)),
@@ -2233,28 +2472,39 @@ class _DayTotalsPanel extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-              child: Text(k,
-                  style:
-                      text.bodyMedium?.copyWith(color: taj.textSecondary))),
+            child: Text(
+              k,
+              style: text.bodyMedium?.copyWith(color: taj.textSecondary),
+            ),
+          ),
           const SizedBox(width: 8),
-          Text(v,
-              style: AppThemes.numeralStyle(context,
-                  fontSize: 14, fontWeight: FontWeight.w700)),
+          Text(
+            v,
+            style: AppThemes.numeralStyle(
+              context,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _panelVarRow(BuildContext context, String k, double v,
-      {bool bold = false}) {
+  Widget _panelVarRow(
+    BuildContext context,
+    String k,
+    double v, {
+    bool bold = false,
+  }) {
     final text = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
           Expanded(
-              child: Text(k,
-                  style: bold ? text.titleSmall : text.bodyMedium)),
+            child: Text(k, style: bold ? text.titleSmall : text.bodyMedium),
+          ),
           const SizedBox(width: 8),
           _VarianceText(value: v),
         ],
@@ -2274,14 +2524,15 @@ Future<bool?> _showCloseConfirmDialog(BuildContext context, _DayFigures f) {
       final size = MediaQuery.sizeOf(ctx);
       final w = size.width;
       final phone = w < AppBreakpoints.phone;
-      final dialogW = phone
-          ? w
-          : math.min(AppBreakpoints.closingDialogMax, w - 48);
+      final dialogW =
+          phone ? w : math.min(AppBreakpoints.closingDialogMax, w - 48);
       final taj = ctx.taj;
       final text = Theme.of(ctx).textTheme;
       return Dialog(
-        insetPadding:
-            EdgeInsets.symmetric(horizontal: phone ? 12 : 24, vertical: 24),
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: phone ? 12 : 24,
+          vertical: 24,
+        ),
         backgroundColor: taj.paper,
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -2297,8 +2548,8 @@ Future<bool?> _showCloseConfirmDialog(BuildContext context, _DayFigures f) {
                 child: Row(
                   children: [
                     Expanded(
-                        child: Text('تأكيد إقفال اليوم',
-                            style: text.titleLarge)),
+                      child: Text('تأكيد إقفال اليوم', style: text.titleLarge),
+                    ),
                     IconButton(
                       onPressed: () => Navigator.of(ctx).pop(false),
                       icon: const Icon(Icons.close_rounded),
@@ -2311,21 +2562,31 @@ Future<bool?> _showCloseConfirmDialog(BuildContext context, _DayFigures f) {
               Flexible(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.fromLTRB(
-                      20, 16, 20, 16 + MediaQuery.viewInsetsOf(ctx).bottom),
+                    20,
+                    16,
+                    20,
+                    16 + MediaQuery.viewInsetsOf(ctx).bottom,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
                         'بعد الإقفال لا يمكن تعديل عمليات اليوم. راجِع الملخّص:',
-                        style: text.bodyMedium
-                            ?.copyWith(color: taj.textSecondary, height: 1.5),
+                        style: text.bodyMedium?.copyWith(
+                          color: taj.textSecondary,
+                          height: 1.5,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       for (final l in _reportLines(f)) _ReportLine(line: l),
                       Divider(height: 20, color: taj.divider),
                       _ReportLine(
-                        line: _RLine('الصافي (عجز/فائض)', f.netDeficitSurplus,
-                            variance: true, bold: true),
+                        line: _RLine(
+                          'الصافي (عجز/فائض)',
+                          f.netDeficitSurplus,
+                          variance: true,
+                          bold: true,
+                        ),
                       ),
                       if (f.needsReview) ...[
                         const SizedBox(height: 12),
@@ -2368,7 +2629,10 @@ Future<bool?> _showCloseConfirmDialog(BuildContext context, _DayFigures f) {
 }
 
 Future<void> _showPrintPreviewDialog(
-    BuildContext context, _DayFigures f, DateTime openedAt) {
+  BuildContext context,
+  _DayFigures f,
+  DateTime openedAt,
+) {
   return showDialog<void>(
     context: context,
     builder: (ctx) {
@@ -2379,8 +2643,10 @@ Future<void> _showPrintPreviewDialog(
       final taj = ctx.taj;
       final text = Theme.of(ctx).textTheme;
       return Dialog(
-        insetPadding:
-            EdgeInsets.symmetric(horizontal: phone ? 12 : 24, vertical: 24),
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: phone ? 12 : 24,
+          vertical: 24,
+        ),
         backgroundColor: taj.paper,
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -2396,7 +2662,8 @@ Future<void> _showPrintPreviewDialog(
                 child: Row(
                   children: [
                     Expanded(
-                        child: Text('معاينة الطباعة', style: text.titleLarge)),
+                      child: Text('معاينة الطباعة', style: text.titleLarge),
+                    ),
                     IconButton(
                       onPressed: () => Navigator.of(ctx).pop(),
                       icon: const Icon(Icons.close_rounded),
@@ -2437,7 +2704,8 @@ Future<void> _showPrintPreviewDialog(
                           Navigator.of(ctx).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content: Text('أُرسل التقرير إلى الطابعة')),
+                              content: Text('أُرسل التقرير إلى الطابعة'),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.print_rounded, size: 18),
@@ -2471,18 +2739,17 @@ class _ReceiptPreview extends StatelessWidget {
     const paper = Color(0xFFFFFFFF);
     const ink = Color(0xFF161C24);
     TextStyle mono(double s, [FontWeight w = FontWeight.w400]) =>
-        AppThemes.numeralStyle(context,
-            fontSize: s, fontWeight: w, color: ink);
+        AppThemes.numeralStyle(context, fontSize: s, fontWeight: w, color: ink);
 
     Widget line(String k, double v) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
-          child: Row(
-            children: [
-              Expanded(child: Text(k, style: mono(12))),
-              Text(arDinar(v), style: mono(12, FontWeight.w700)),
-            ],
-          ),
-        );
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(k, style: mono(12))),
+          Text(arDinar(v), style: mono(12, FontWeight.w700)),
+        ],
+      ),
+    );
 
     return Container(
       width: AppBreakpoints.closingReportPrintWidth,
@@ -2500,8 +2767,11 @@ class _ReceiptPreview extends StatelessWidget {
           Center(child: Text('التقرير اليومي', style: mono(12))),
           const SizedBox(height: 2),
           Center(
-              child: Text('يوم ${_fmtDate(openedAt)}',
-                  style: mono(11).copyWith(color: const Color(0xFF637381)))),
+            child: Text(
+              'يوم ${_fmtDate(openedAt)}',
+              style: mono(11).copyWith(color: const Color(0xFF637381)),
+            ),
+          ),
           const _DashedLine(),
           line('إجمالي المبيعات', f.grossSales),
           line('المرتجعات', -f.returnsTotal),
@@ -2515,9 +2785,15 @@ class _ReceiptPreview extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child: Text('الصافي (عجز/فائض)', style: mono(13, FontWeight.w800))),
-              Text(arDinar(f.netDeficitSurplus),
-                  style: mono(13, FontWeight.w800)),
+                child: Text(
+                  'الصافي (عجز/فائض)',
+                  style: mono(13, FontWeight.w800),
+                ),
+              ),
+              Text(
+                arDinar(f.netDeficitSurplus),
+                style: mono(13, FontWeight.w800),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -2532,14 +2808,14 @@ class _DashedLine extends StatelessWidget {
   const _DashedLine();
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Text(
-          '- - - - - - - - - - - - - - - - - - - - - -',
-          maxLines: 1,
-          overflow: TextOverflow.clip,
-          style: TextStyle(color: Color(0xFF919EAB), fontSize: 11),
-        ),
-      );
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: Text(
+      '- - - - - - - - - - - - - - - - - - - - - -',
+      maxLines: 1,
+      overflow: TextOverflow.clip,
+      style: TextStyle(color: Color(0xFF919EAB), fontSize: 11),
+    ),
+  );
 }
 
 // =============================================================================
@@ -2547,12 +2823,12 @@ class _DashedLine extends StatelessWidget {
 // =============================================================================
 
 String _methodLabel(DemoPaymentMethod m) => switch (m) {
-      DemoPaymentMethod.cash => 'نقدًا',
-      DemoPaymentMethod.bank => 'تحويل بنكي',
-      DemoPaymentMethod.card => 'بطاقة',
-      DemoPaymentMethod.sadad => 'سداد',
-      DemoPaymentMethod.credit => 'آجل',
-    };
+  DemoPaymentMethod.cash => 'نقدًا',
+  DemoPaymentMethod.bank => 'تحويل بنكي',
+  DemoPaymentMethod.card => 'بطاقة',
+  DemoPaymentMethod.sadad => 'سداد',
+  DemoPaymentMethod.credit => 'آجل',
+};
 
 String _fmtDate(DateTime d) =>
     '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';

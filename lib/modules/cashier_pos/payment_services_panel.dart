@@ -132,18 +132,18 @@ class PaymentServicesPanel extends StatelessWidget {
           children: [
             _IntegrationRow(
               name: 'LYPay',
-              status: 'متاح',
+              status: 'مخطّط له',
               endpoint: '/api/v1/payments/funds-transfers',
               auth: 'Bearer Token',
-              statusColor: taj.success.main,
+              statusColor: taj.warning.main,
             ),
             const Divider(),
             _IntegrationRow(
               name: 'DPAY',
-              status: 'متاح',
+              status: 'مخطّط له',
               endpoint: '/api/v1/payment/sessions/open',
               auth: 'Laravel Sanctum',
-              statusColor: taj.success.main,
+              statusColor: taj.warning.main,
             ),
             const Divider(),
             _IntegrationRow(
@@ -183,6 +183,9 @@ class _ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = taj.swatch(_serviceAccent(service.name)).main as Color;
+    final statusSwatch = service.status == 'قريباً' ? taj.warning : taj.success;
+    final statusColor = statusSwatch.main as Color;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -191,17 +194,17 @@ class _ServiceCard extends StatelessWidget {
           // Header with icon and status
           Container(
             padding: const EdgeInsets.all(12),
-            color: service.color.withValues(alpha: 0.08),
+            color: accent.withValues(alpha: 0.08),
             child: Row(
               children: [
                 Container(
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: service.color.withValues(alpha: 0.15),
+                    color: accent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(service.icon, color: service.color, size: 20),
+                  child: Icon(service.icon, color: accent, size: 20),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -226,10 +229,7 @@ class _ServiceCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                _StatusBadge(
-                  status: service.status,
-                  color: service.statusColor,
-                ),
+                _StatusBadge(status: service.status, color: statusColor),
               ],
             ),
           ),
@@ -261,17 +261,17 @@ class _ServiceCard extends StatelessWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: service.color.withValues(alpha: 0.06),
+                              color: accent.withValues(alpha: 0.06),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: service.color.withValues(alpha: 0.15),
+                                color: accent.withValues(alpha: 0.15),
                               ),
                             ),
                             child: Text(
                               f,
                               style: TextStyle(
                                 fontSize: 10,
-                                color: service.color,
+                                color: accent,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -348,12 +348,8 @@ class _IntegrationRow extends StatelessWidget {
           flex: 3,
           child: Text(
             endpoint,
-            style: TextStyle(
-              fontSize: 11,
-              color: taj.textSecondary,
-            ),
+            style: TextStyle(fontSize: 11, color: taj.textSecondary),
           ),
-
         ),
         Expanded(
           flex: 2,
@@ -376,9 +372,7 @@ class PaymentService {
     required this.nameEn,
     required this.description,
     required this.icon,
-    required this.color,
     required this.status,
-    required this.statusColor,
     this.features = const [],
   });
 
@@ -386,10 +380,22 @@ class PaymentService {
   final String nameEn;
   final String description;
   final IconData icon;
-  final Color color;
   final String status;
-  final Color statusColor;
   final List<String> features;
+}
+
+/// Stable per-service accent from the theme palette — no hard-coded brand
+/// colours (keeps the tiles varied without `Color(0x…)` outside the theme).
+TajStatus _serviceAccent(String name) {
+  const palette = [
+    TajStatus.primary,
+    TajStatus.info,
+    TajStatus.warning,
+    TajStatus.success,
+    TajStatus.secondary,
+    TajStatus.error,
+  ];
+  return palette[name.hashCode.abs() % palette.length];
 }
 
 // ── Service Data ─────────────────────────────────────────────────────────────
@@ -401,9 +407,7 @@ final _cblApprovedServices = [
     description:
         'خدمة الدفع الإلكتروني من المدار الجديد. تدعم التحويلات الفورية والدفع عبر الطرق المتعددة.',
     icon: Icons.send_to_mobile_outlined,
-    color: const Color(0xFF2196F3),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['تحويل فوري', 'دفع عبر الهاتف', 'QR Code', 'Webhook'],
   ),
   PaymentService(
@@ -412,9 +416,7 @@ final _cblApprovedServices = [
     description:
         'المعيار الوطني لرمز الاستجابة السريع (EMVCo). يدعم الطرق العرضية للمستهلك والتاجر.',
     icon: Icons.qr_code_2_outlined,
-    color: const Color(0xFF9C27B0),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: [
       'EMVCo Standard',
       'Consumer-presented',
@@ -428,9 +430,7 @@ final _cblApprovedServices = [
     description:
         'خدمة الدفع عبر الهاتف المحمول. متاحة عبر شبكة MobiCash وبوابات الدفع المتعددة.',
     icon: Icons.phone_android_outlined,
-    color: const Color(0xFFFF9800),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Phone Payment', 'USSD', 'QR Code', 'Multi-gateway'],
   ),
   PaymentService(
@@ -439,9 +439,7 @@ final _cblApprovedServices = [
     description:
         'منصة الدفع الإلكتروني من الاتصالات الليبية. تدعم المحافظ الإلكترونية والدفع عبر البطاقات.',
     icon: Icons.credit_card_outlined,
-    color: const Color(0xFF00BCD4),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['E-wallet', 'Card Payment', 'Online Payment'],
   ),
   PaymentService(
@@ -450,9 +448,7 @@ final _cblApprovedServices = [
     description:
         'دليل الخدمات والدفع الإلكتروني. يوفر قائمة شاملة بخدمات الدفع المتاحة في ليبيا.',
     icon: Icons.menu_book_outlined,
-    color: const Color(0xFF795548),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Service Directory', 'Payment Guide'],
   ),
   PaymentService(
@@ -461,9 +457,7 @@ final _cblApprovedServices = [
     description:
         'منصة الدفع الإلكتروني. تدعم التحويلات المالية والدفع عبر المحافظ الرقمية.',
     icon: Icons.account_balance_wallet_outlined,
-    color: const Color(0xFF607D8B),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Digital Wallet', 'Transfer', 'QR Payment'],
   ),
   PaymentService(
@@ -472,9 +466,7 @@ final _cblApprovedServices = [
     description:
         'خدمة الدفع الإلكتروني. تدعم الدفع عبر الهاتف والتحويلات المالية الفورية.',
     icon: Icons.phonelink_ring_outlined,
-    color: const Color(0xFFE91E63),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Mobile Payment', 'Instant Transfer'],
   ),
   PaymentService(
@@ -483,9 +475,7 @@ final _cblApprovedServices = [
     description:
         'منصة الدفع والتحويلات المالية. تدعم الدفع عبر الإنترنت والتحويلات البنكية.',
     icon: Icons.language_outlined,
-    color: const Color(0xFF3F51B5),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Online Payment', 'Bank Transfer', 'API Available'],
   ),
   PaymentService(
@@ -494,9 +484,7 @@ final _cblApprovedServices = [
     description:
         'مسارات الدفع الإلكتروني. توفر حلولاً متكاملة للمتاجر والشركات.',
     icon: Icons.alt_route_outlined,
-    color: const Color(0xFF009688),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['E-commerce', 'POS Integration', 'API'],
   ),
   PaymentService(
@@ -505,9 +493,7 @@ final _cblApprovedServices = [
     description:
         'منصة الدفع الإسلامي. توفر حلولاً متوافقة مع الشريعة الإسلامية للدفع الإلكتروني.',
     icon: Icons.account_balance_outlined,
-    color: const Color(0xFF4CAF50),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Islamic Finance', 'Sharia Compliant', 'Halal Payment'],
   ),
   PaymentService(
@@ -516,9 +502,7 @@ final _cblApprovedServices = [
     description:
         'خدمة الدفع السريع. تدعم الدفع عبر نقاط البيع والدفع الإلكتروني.',
     icon: Icons.flash_on_outlined,
-    color: const Color(0xFFFF5722),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Quick Payment', 'POS Network', 'Bill Payment'],
   ),
   PaymentService(
@@ -527,9 +511,7 @@ final _cblApprovedServices = [
     description:
         'منصة الدفع الإلكتروني. توفر حلولاً متكاملة للمتاجر والشركات.Libyan e-payment.',
     icon: Icons.play_circle_outline,
-    color: const Color(0xFF8BC34A),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['E-commerce', 'Subscription', 'API'],
   ),
   PaymentService(
@@ -538,9 +520,7 @@ final _cblApprovedServices = [
     description:
         'منصة الدفع الأولى. توفر خدمات الدفع عبر الإنترنت والتحويلات المالية.',
     icon: Icons.play_arrow_outlined,
-    color: const Color(0xFFCDDC39),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Online Payment', 'Transfer', 'Mobile'],
   ),
   PaymentService(
@@ -549,9 +529,7 @@ final _cblApprovedServices = [
     description:
         'خدمة المساهمات والدفع. تدعم الدفع عبر الإنترنت والتحويلات المالية.',
     icon: Icons.group_add_outlined,
-    color: const Color(0xFF03A9F4),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Donation', 'Payment', 'Online'],
   ),
 ];
@@ -563,9 +541,7 @@ final _nationalInfrastructure = [
     description:
         ' بوابة الدفع الرسمية من البنك المركزي Libyan. تدعم التحويلات الفورية والدفع عبر المحافظ الرقمية.',
     icon: Icons.account_balance_outlined,
-    color: const Color(0xFF1565C0),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['CBL Official', 'Bearer Token', 'Webhooks', 'Two-step'],
   ),
   PaymentService(
@@ -574,9 +550,7 @@ final _nationalInfrastructure = [
     description:
         'منصة الدفع المتعدد. تدعم Moamalat, MobiCash, Edfali, OnePay والمزيد.',
     icon: Icons.hub_outlined,
-    color: const Color(0xFF7B1FA2),
     status: 'متاح',
-    statusColor: const Color(0xFF4CAF50),
     features: ['Multi-gateway', 'Sanctum Auth', 'Free', 'Laravel'],
   ),
 ];
@@ -587,9 +561,7 @@ final _paymentGateways = [
     nameEn: 'Unified Gateway',
     description: ' بوابة الدفع الموحدة. تجمع جميع خدمات الدفع في واجهة واحدة.',
     icon: Icons.merge_outlined,
-    color: const Color(0xFF0277BD),
     status: 'قريباً',
-    statusColor: const Color(0xFFFFC107),
     features: ['Unified API', 'All Services', 'Single Integration'],
   ),
   PaymentService(
@@ -598,10 +570,7 @@ final _paymentGateways = [
     description:
         'مركز الدفع المحلي. يوفر واجهة موحدة لجميع خدمات الدفع الليبية.',
     icon: Icons.location_on_outlined,
-    color: const Color(0xFF558B2F),
     status: 'قريباً',
-    statusColor: const Color(0xFFFFC107),
     features: ['Local Focus', 'Unified', 'All Banks'],
   ),
 ];
-
