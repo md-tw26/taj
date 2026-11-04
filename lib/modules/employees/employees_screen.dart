@@ -62,21 +62,23 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 ),
                 Divider(height: 1, color: taj.divider),
                 Expanded(
-                  child: _section == _Section.employees
-                      ? _employeesBody(c.maxWidth, c.maxHeight)
-                      : _PayrollRun(
-                          store: _store,
-                          width: c.maxWidth,
-                          selected: _selected,
-                          branchFilter: _branchFilter,
-                          onToggle: (id) => setState(() {
-                            _selected.contains(id)
-                                ? _selected.remove(id)
-                                : _selected.add(id);
-                          }),
-                          onBranch: (v) => setState(() => _branchFilter = v),
-                          onClear: () => setState(_selected.clear),
-                        ),
+                  child:
+                      _section == _Section.employees
+                          ? _employeesBody(c.maxWidth, c.maxHeight)
+                          : _PayrollRun(
+                            store: _store,
+                            width: c.maxWidth,
+                            selected: _selected,
+                            branchFilter: _branchFilter,
+                            onToggle:
+                                (id) => setState(() {
+                                  _selected.contains(id)
+                                      ? _selected.remove(id)
+                                      : _selected.add(id);
+                                }),
+                            onBranch: (v) => setState(() => _branchFilter = v),
+                            onClear: () => setState(_selected.clear),
+                          ),
                 ),
               ],
             ),
@@ -86,20 +88,23 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     );
   }
 
-  List<DemoEmployee> _visible() => _store.employees.where((e) {
+  List<DemoEmployee> _visible() =>
+      _store.employees.where((e) {
         if (_branchFilter != null && e.branchId != _branchFilter) return false;
         if (_statusFilter == 'paid' && !_store.isSalaryPaid(e.id)) return false;
-        if (_statusFilter == 'unpaid' && _store.isSalaryPaid(e.id)) return false;
+        if (_statusFilter == 'unpaid' && _store.isSalaryPaid(e.id))
+          return false;
         return true;
       }).toList();
 
   Widget _employeesBody(double width, double height) {
     final master = width >= AppBreakpoints.employeeSplit;
     final employees = _visible();
-    final selected = (_selectedId != null &&
-            _store.employees.any((e) => e.id == _selectedId))
-        ? _selectedId
-        : null;
+    final selected =
+        (_selectedId != null &&
+                _store.employees.any((e) => e.id == _selectedId))
+            ? _selectedId
+            : null;
 
     if (!master) {
       // Single pane: a selected employee opens the profile full-page.
@@ -111,7 +116,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
           height: height,
           showBack: true,
           onBack: () => setState(() => _profilePushed = false),
-          onEdit: () => _openEmployeeDialog(edit: _store.employeeById(selected)),
+          onEdit:
+              () => _openEmployeeDialog(edit: _store.employeeById(selected)),
           onPay: () => _openPayDialog(selected),
         );
       }
@@ -125,16 +131,19 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         onBranch: (v) => setState(() => _branchFilter = v),
         onStatus: (v) => setState(() => _statusFilter = v),
         onAdd: () => _openEmployeeDialog(),
-        onTap: (id) => setState(() {
-          _selectedId = id;
-          _profilePushed = true;
-        }),
+        onTap:
+            (id) => setState(() {
+              _selectedId = id;
+              _profilePushed = true;
+            }),
       );
     }
 
     // Master-detail.
     final paneWidth = (width * 0.30).clamp(
-        AppBreakpoints.employeeListPaneMin, AppBreakpoints.employeeListPaneMax);
+      AppBreakpoints.employeeListPaneMin,
+      AppBreakpoints.employeeListPaneMax,
+    );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -155,22 +164,26 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         ),
         Container(width: 1, color: context.taj.divider),
         Expanded(
-          child: selected == null
-              ? const TajEmptyState(
-                  icon: Icons.badge_outlined,
-                  title: 'اختر موظفًا',
-                  message: 'اختر موظفًا من القائمة لعرض ملفه وراتبه.')
-              : _EmployeeProfile(
-                  store: _store,
-                  employeeId: selected,
-                  width: width - paneWidth.toDouble(),
-                  height: height,
-                  showBack: false,
-                  onBack: () {},
-                  onEdit: () =>
-                      _openEmployeeDialog(edit: _store.employeeById(selected)),
-                  onPay: () => _openPayDialog(selected),
-                ),
+          child:
+              selected == null
+                  ? const TajEmptyState(
+                    icon: Icons.badge_outlined,
+                    title: 'اختر موظفًا',
+                    message: 'اختر موظفًا من القائمة لعرض ملفه وراتبه.',
+                  )
+                  : _EmployeeProfile(
+                    store: _store,
+                    employeeId: selected,
+                    width: width - paneWidth.toDouble(),
+                    height: height,
+                    showBack: false,
+                    onBack: () {},
+                    onEdit:
+                        () => _openEmployeeDialog(
+                          edit: _store.employeeById(selected),
+                        ),
+                    onPay: () => _openPayDialog(selected),
+                  ),
         ),
       ],
     );
@@ -243,19 +256,25 @@ class _SectionChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border:
-                Border.all(color: selected ? taj.primary.light : taj.divider),
+            border: Border.all(
+              color: selected ? taj.primary.light : taj.divider,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon,
-                  size: 17,
-                  color: selected ? taj.primary.dark : taj.textSecondary),
+              Icon(
+                icon,
+                size: 17,
+                color: selected ? taj.primary.dark : taj.textSecondary,
+              ),
               const SizedBox(width: 7),
-              Text(label,
-                  style: text.labelLarge?.copyWith(
-                      color: selected ? taj.primary.dark : taj.textPrimary)),
+              Text(
+                label,
+                style: text.labelLarge?.copyWith(
+                  color: selected ? taj.primary.dark : taj.textPrimary,
+                ),
+              ),
             ],
           ),
         ),
@@ -295,7 +314,8 @@ class _EmployeesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final compactPane = width < AppBreakpoints.phone; // list-pane cards vs table
+    final compactPane =
+        width < AppBreakpoints.phone; // list-pane cards vs table
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -305,10 +325,12 @@ class _EmployeesList extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('الموظفون',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.titleMedium),
+                child: Text(
+                  'الموظفون',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium,
+                ),
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
@@ -353,26 +375,38 @@ class _EmployeesList extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: employees.isEmpty
-              ? const TajEmptyState(
-                  icon: Icons.badge_outlined,
-                  title: 'لا موظفين',
-                  message: 'لا يوجد موظفون مطابقون للفلاتر الحالية.')
-              : compactPane
+          child:
+              employees.isEmpty
+                  ? LayoutBuilder(
+                    builder:
+                        (context, c) => SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: c.maxHeight),
+                            child: const TajEmptyState(
+                              icon: Icons.badge_outlined,
+                              title: 'لا موظفين',
+                              message:
+                                  'لا يوجد موظفون مطابقون للفلاتر الحالية.',
+                            ),
+                          ),
+                        ),
+                  )
+                  : compactPane
                   ? _EmployeeCards(
+                    store: store,
+                    employees: employees,
+                    selectedId: selectedId,
+                    onTap: onTap,
+                  )
+                  : Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _EmployeeTable(
                       store: store,
                       employees: employees,
                       selectedId: selectedId,
-                      onTap: onTap)
-                  : Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: _EmployeeTable(
-                        store: store,
-                        employees: employees,
-                        selectedId: selectedId,
-                        onTap: onTap,
-                      ),
+                      onTap: onTap,
                     ),
+                  ),
         ),
       ],
     );
@@ -387,41 +421,58 @@ class _SummaryCards extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     final emps = store.employees;
-    final totalPayroll =
-        emps.fold<double>(0, (s, e) => s + store.employeeNet(e.id));
+    final totalPayroll = emps.fold<double>(
+      0,
+      (s, e) => s + store.employeeNet(e.id),
+    );
     final paid = emps.where((e) => store.isSalaryPaid(e.id)).length;
     final unpaid = emps.length - paid;
     final tiles = <Widget>[
       _SummaryTile(
-          label: 'الموظفون',
-          valueText: '${emps.length}',
-          icon: Icons.groups_outlined,
-          swatch: taj.primary),
+        label: 'الموظفون',
+        valueText: '${emps.length}',
+        icon: Icons.groups_outlined,
+        swatch: taj.primary,
+      ),
       _SummaryTile(
-          label: 'إجمالي الرواتب',
-          value: totalPayroll,
-          icon: Icons.payments_outlined,
-          swatch: taj.info),
+        label: 'إجمالي الرواتب',
+        value: totalPayroll,
+        icon: Icons.payments_outlined,
+        swatch: taj.info,
+      ),
       _SummaryTile(
-          label: 'مدفوع',
-          valueText: '$paid',
-          icon: Icons.check_circle_outline_rounded,
-          swatch: taj.success),
+        label: 'مدفوع',
+        valueText: '$paid',
+        icon: Icons.check_circle_outline_rounded,
+        swatch: taj.success,
+      ),
       _SummaryTile(
-          label: 'غير مدفوع',
-          valueText: '$unpaid',
-          icon: Icons.pending_outlined,
-          swatch: taj.warning),
+        label: 'غير مدفوع',
+        valueText: '$unpaid',
+        icon: Icons.pending_outlined,
+        swatch: taj.warning,
+      ),
     ];
+    // On a short (landscape-phone) viewport, pack the tiles into fewer rows so
+    // the list below still gets room — otherwise the fixed header chrome
+    // overflows at e.g. 568×320.
+    final short = MediaQuery.sizeOf(context).height < 420;
     return LayoutBuilder(
       builder: (context, c) {
-        final cols = c.maxWidth >= 1040
-            ? 4
-            : c.maxWidth >= 760
+        final cols =
+            short
+                ? (c.maxWidth >= 480
+                    ? 4
+                    : c.maxWidth >= 240
+                    ? 2
+                    : 1)
+                : c.maxWidth >= 1040
+                ? 4
+                : c.maxWidth >= 760
                 ? 3
                 : c.maxWidth >= 400
-                    ? 2
-                    : 1;
+                ? 2
+                : 1;
         const gap = 12.0;
         final w = (c.maxWidth - gap * (cols - 1)) / cols;
         return Wrap(
@@ -470,22 +521,30 @@ class _SummaryTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                ),
                 const SizedBox(height: 3),
                 if (value != null)
                   _Money(
-                      value: value!,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      maxLines: 2,
-                      color: taj.textPrimary)
+                    value: value!,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    maxLines: 2,
+                    color: taj.textPrimary,
+                  )
                 else
-                  Text(valueText ?? '',
-                      style: AppThemes.numeralStyle(context,
-                          fontSize: 18, fontWeight: FontWeight.w800)),
+                  Text(
+                    valueText ?? '',
+                    style: AppThemes.numeralStyle(
+                      context,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -554,29 +613,35 @@ class _EmployeeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(employee.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  employee.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 2),
-                Text(employee.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+                Text(
+                  employee.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                ),
                 const SizedBox(height: 6),
                 _PayStatusBadge(paid: paid),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Text('الصافي: ',
-                        style:
-                            text.bodySmall?.copyWith(color: taj.textSecondary)),
+                    Text(
+                      'الصافي: ',
+                      style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                    ),
                     Expanded(
                       child: _Money(
-                          value: net,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: taj.textPrimary),
+                        value: net,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: taj.textPrimary,
+                      ),
                     ),
                   ],
                 ),
@@ -624,29 +689,37 @@ class _EmployeeTable extends StatelessWidget {
                 _Avatar(employee: e, size: 30),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(e.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  child: Text(
+                    e.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
             cells: [
-              Text(e.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall),
-              Text(_branchCity(store, e.branchId),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(color: taj.textSecondary)),
+              Text(
+                e.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodySmall,
+              ),
+              Text(
+                _branchCity(store, e.branchId),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodySmall?.copyWith(color: taj.textSecondary),
+              ),
               _Money(
-                  value: store.employeeNet(e.id),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  maxChars: 12,
-                  color: taj.textPrimary),
+                value: store.employeeNet(e.id),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                maxChars: 12,
+                color: taj.textPrimary,
+              ),
               _PayStatusBadge(paid: store.isSalaryPaid(e.id)),
             ],
           ),
@@ -684,7 +757,10 @@ class _EmployeeProfile extends StatelessWidget {
     final taj = context.taj;
     final e = store.employeeById(employeeId);
     if (e == null) {
-      return const TajEmptyState(icon: Icons.badge_outlined, title: 'غير موجود');
+      return const TajEmptyState(
+        icon: Icons.badge_outlined,
+        title: 'غير موجود',
+      );
     }
     final phone = width < AppBreakpoints.phone;
     final compact = phone || height < 520;
@@ -729,7 +805,12 @@ class _EmployeeProfile extends StatelessWidget {
             ),
           ),
           if (phone)
-            _ProfileBottomBar(onEdit: onEdit, onPay: onPay, store: store, employeeId: employeeId),
+            _ProfileBottomBar(
+              onEdit: onEdit,
+              onPay: onPay,
+              store: store,
+              employeeId: employeeId,
+            ),
         ],
       ),
     );
@@ -780,22 +861,26 @@ class _ProfileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(employee.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.titleMedium),
+              Text(
+                employee.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: text.titleMedium,
+              ),
               const SizedBox(height: 2),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text(employee.title,
-                      style:
-                          text.bodySmall?.copyWith(color: taj.textSecondary)),
-                  Text(_branchCity(store, employee.branchId),
-                      style:
-                          text.bodySmall?.copyWith(color: taj.textDisabled)),
+                  Text(
+                    employee.title,
+                    style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                  ),
+                  Text(
+                    _branchCity(store, employee.branchId),
+                    style: text.bodySmall?.copyWith(color: taj.textDisabled),
+                  ),
                   _PayStatusBadge(paid: paid),
                 ],
               ),
@@ -816,70 +901,72 @@ class _ProfileHeader extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('صافي الراتب',
-              style: text.bodySmall?.copyWith(color: taj.primary.dark)),
+          Text(
+            'صافي الراتب',
+            style: text.bodySmall?.copyWith(color: taj.primary.dark),
+          ),
           const SizedBox(height: 2),
           _Money(
-              value: net,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              maxLines: 2,
-              color: taj.primary.dark),
+            value: net,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            maxLines: 2,
+            color: taj.primary.dark,
+          ),
         ],
       ),
     );
 
-    final actions = compact
-        ? const SizedBox.shrink()
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('تعديل'),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: paid ? null : onPay,
-                icon: const Icon(Icons.payments_outlined, size: 18),
-                label: const Text('دفع الراتب'),
-              ),
-            ],
-          );
+    final actions =
+        compact
+            ? const SizedBox.shrink()
+            : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('تعديل'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: paid ? null : onPay,
+                  icon: const Icon(Icons.payments_outlined, size: 18),
+                  label: const Text('دفع الراتب'),
+                ),
+              ],
+            );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: compact
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                identity,
-                const SizedBox(height: 12),
-                netCard,
-              ],
-            )
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(child: identity),
-                const SizedBox(width: 12),
-                netCard,
-                const SizedBox(width: 12),
-                actions,
-              ],
-            ),
+      child:
+          compact
+              ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [identity, const SizedBox(height: 12), netCard],
+              )
+              : Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: identity),
+                  const SizedBox(width: 12),
+                  netCard,
+                  const SizedBox(width: 12),
+                  actions,
+                ],
+              ),
     );
   }
 }
 
 class _ProfileBottomBar extends StatelessWidget {
-  const _ProfileBottomBar(
-      {required this.onEdit,
-      required this.onPay,
-      required this.store,
-      required this.employeeId});
+  const _ProfileBottomBar({
+    required this.onEdit,
+    required this.onPay,
+    required this.store,
+    required this.employeeId,
+  });
   final VoidCallback onEdit;
   final VoidCallback onPay;
   final DemoStore store;
@@ -923,8 +1010,11 @@ class _ProfileBottomBar extends StatelessWidget {
 }
 
 class _SalaryBreakdownTab extends StatelessWidget {
-  const _SalaryBreakdownTab(
-      {required this.store, required this.employee, required this.width});
+  const _SalaryBreakdownTab({
+    required this.store,
+    required this.employee,
+    required this.width,
+  });
   final DemoStore store;
   final DemoEmployee employee;
   final double width;
@@ -957,11 +1047,8 @@ class _SalaryBreakdownTab extends StatelessWidget {
     final twoCol = width >= AppBreakpoints.phone;
     final threeCol = width >= AppBreakpoints.employeeSplit;
 
-    Widget group(String title, List<_Kv> rows, Color accent) => _KvGroup(
-          title: title,
-          rows: rows,
-          accent: accent,
-        );
+    Widget group(String title, List<_Kv> rows, Color accent) =>
+        _KvGroup(title: title, rows: rows, accent: accent);
 
     final netBox = Container(
       width: double.infinity,
@@ -974,16 +1061,19 @@ class _SalaryBreakdownTab extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text('صافي الراتب',
-                style: text.titleMedium?.copyWith(color: taj.primary.dark)),
+            child: Text(
+              'صافي الراتب',
+              style: text.titleMedium?.copyWith(color: taj.primary.dark),
+            ),
           ),
           const SizedBox(width: 12),
           _Money(
-              value: net,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              maxLines: 2,
-              color: taj.primary.dark),
+            value: net,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            maxLines: 2,
+            color: taj.primary.dark,
+          ),
         ],
       ),
     );
@@ -997,8 +1087,7 @@ class _SalaryBreakdownTab extends StatelessWidget {
             children: [
               Expanded(child: group('الاستحقاقات', earnings, taj.success.main)),
               const SizedBox(width: 12),
-              Expanded(
-                  child: group('الاستقطاعات', deductions, taj.error.main)),
+              Expanded(child: group('الاستقطاعات', deductions, taj.error.main)),
               const SizedBox(width: 12),
               Expanded(child: netBox),
             ],
@@ -1009,8 +1098,7 @@ class _SalaryBreakdownTab extends StatelessWidget {
             children: [
               Expanded(child: group('الاستحقاقات', earnings, taj.success.main)),
               const SizedBox(width: 12),
-              Expanded(
-                  child: group('الاستقطاعات', deductions, taj.error.main)),
+              Expanded(child: group('الاستقطاعات', deductions, taj.error.main)),
             ],
           )
         else ...[
@@ -1018,10 +1106,7 @@ class _SalaryBreakdownTab extends StatelessWidget {
           const SizedBox(height: 12),
           group('الاستقطاعات', deductions, taj.error.main),
         ],
-        if (!threeCol) ...[
-          const SizedBox(height: 12),
-          netBox,
-        ],
+        if (!threeCol) ...[const SizedBox(height: 12), netBox],
       ],
     );
   }
@@ -1035,8 +1120,11 @@ class _Kv {
 }
 
 class _KvGroup extends StatelessWidget {
-  const _KvGroup(
-      {required this.title, required this.rows, required this.accent});
+  const _KvGroup({
+    required this.title,
+    required this.rows,
+    required this.accent,
+  });
   final String title;
   final List<_Kv> rows;
   final Color accent;
@@ -1062,8 +1150,10 @@ class _KvGroup extends StatelessWidget {
               children: [
                 Container(width: 4, height: 16, color: accent),
                 const SizedBox(width: 8),
-                Text(title,
-                    style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
               ],
             ),
           ),
@@ -1092,21 +1182,24 @@ class _KvRow extends StatelessWidget {
         children: [
           // Label wraps to two lines; never pushes the value off-screen.
           Expanded(
-            child: Text(kv.label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: text.bodyMedium?.copyWith(
-                    fontWeight:
-                        kv.emphasize ? FontWeight.w800 : FontWeight.w400,
-                    color: kv.emphasize ? taj.textPrimary : taj.textSecondary)),
+            child: Text(
+              kv.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: text.bodyMedium?.copyWith(
+                fontWeight: kv.emphasize ? FontWeight.w800 : FontWeight.w400,
+                color: kv.emphasize ? taj.textPrimary : taj.textSecondary,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           _Money(
-              value: kv.value,
-              fontSize: 14,
-              fontWeight: kv.emphasize ? FontWeight.w800 : FontWeight.w700,
-              maxChars: 13,
-              color: taj.textPrimary),
+            value: kv.value,
+            fontSize: 14,
+            fontWeight: kv.emphasize ? FontWeight.w800 : FontWeight.w700,
+            maxChars: 13,
+            color: taj.textPrimary,
+          ),
         ],
       ),
     );
@@ -1127,8 +1220,12 @@ class _AdvancesTab extends StatelessWidget {
     final withdrawals =
         txns.where((t) => t.type == DemoPayrollTxnType.withdrawal).toList();
 
-    Widget section(String title, List<DemoPayrollTxn> list, TajSwatch swatch,
-        DemoPayrollTxnType type) {
+    Widget section(
+      String title,
+      List<DemoPayrollTxn> list,
+      TajSwatch swatch,
+      DemoPayrollTxnType type,
+    ) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -1136,12 +1233,15 @@ class _AdvancesTab extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child: Text(title,
-                      style:
-                          text.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
+                child: Text(
+                  title,
+                  style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
               TextButton.icon(
-                onPressed: () =>
-                    showPayrollTxnDialog(context, store, employee.id, type),
+                onPressed:
+                    () =>
+                        showPayrollTxnDialog(context, store, employee.id, type),
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('إضافة'),
               ),
@@ -1151,8 +1251,10 @@ class _AdvancesTab extends StatelessWidget {
           if (list.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text('لا يوجد',
-                  style: text.bodySmall?.copyWith(color: taj.textDisabled)),
+              child: Text(
+                'لا يوجد',
+                style: text.bodySmall?.copyWith(color: taj.textDisabled),
+              ),
             )
           else
             for (final t in list) _TxnRow(txn: t, swatch: swatch),
@@ -1167,8 +1269,12 @@ class _AdvancesTab extends StatelessWidget {
       children: [
         section('السلف', advances, taj.warning, DemoPayrollTxnType.advance),
         const SizedBox(height: 16),
-        section('السحوبات', withdrawals, taj.info,
-            DemoPayrollTxnType.withdrawal),
+        section(
+          'السحوبات',
+          withdrawals,
+          taj.info,
+          DemoPayrollTxnType.withdrawal,
+        ),
       ],
     );
   }
@@ -1198,24 +1304,31 @@ class _TxnRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(txn.note.isEmpty ? _fmtDate(txn.date) : txn.note,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodyMedium),
-                Text(_fmtDate(txn.date),
-                    style: AppThemes.numeralStyle(context,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: taj.textDisabled)),
+                Text(
+                  txn.note.isEmpty ? _fmtDate(txn.date) : txn.note,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyMedium,
+                ),
+                Text(
+                  _fmtDate(txn.date),
+                  style: AppThemes.numeralStyle(
+                    context,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: taj.textDisabled,
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 10),
           _Money(
-              value: txn.amount,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: taj.accentFor(swatch)),
+            value: txn.amount,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: taj.accentFor(swatch),
+          ),
         ],
       ),
     );
@@ -1261,8 +1374,11 @@ class _LinkedExpensesTab extends StatelessWidget {
                   color: taj.success.lighter,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.payments_outlined,
-                    size: 19, color: taj.success.dark),
+                child: Icon(
+                  Icons.payments_outlined,
+                  size: 19,
+                  color: taj.success.dark,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1270,25 +1386,33 @@ class _LinkedExpensesTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('راتب — ${_branchCity(store, x.branchId)}',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    Text(_fmtDate(x.date),
-                        style: AppThemes.numeralStyle(context,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: taj.textSecondary)),
+                    Text(
+                      'راتب — ${_branchCity(store, x.branchId)}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      _fmtDate(x.date),
+                      style: AppThemes.numeralStyle(
+                        context,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: taj.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 10),
               _Money(
-                  value: x.amount,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: taj.textPrimary),
+                value: x.amount,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: taj.textPrimary,
+              ),
             ],
           ),
         );
@@ -1324,9 +1448,10 @@ class _PayrollRun extends StatelessWidget {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     final phone = width < AppBreakpoints.phone;
-    final employees = store.employees
-        .where((e) => branchFilter == null || e.branchId == branchFilter)
-        .toList();
+    final employees =
+        store.employees
+            .where((e) => branchFilter == null || e.branchId == branchFilter)
+            .toList();
     final selectedNet = employees
         .where((e) => selected.contains(e.id))
         .fold<double>(0, (s, e) => s + store.employeeNet(e.id));
@@ -1339,10 +1464,12 @@ class _PayrollRun extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('مسير رواتب ${_monthLabel(DateTime.now())}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.titleMedium),
+                child: Text(
+                  'مسير رواتب ${_monthLabel(DateTime.now())}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium,
+                ),
               ),
               const SizedBox(width: 8),
               _FilterPill<String?>(
@@ -1358,45 +1485,52 @@ class _PayrollRun extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: employees.isEmpty
-              ? const TajEmptyState(
-                  icon: Icons.payments_outlined, title: 'لا موظفين')
-              : phone
+          child:
+              employees.isEmpty
+                  ? const TajEmptyState(
+                    icon: Icons.payments_outlined,
+                    title: 'لا موظفين',
+                  )
+                  : phone
                   ? _PayrollCards(
+                    store: store,
+                    employees: employees,
+                    selected: selected,
+                    onToggle: onToggle,
+                  )
+                  : Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: _PayrollTable(
                       store: store,
                       employees: employees,
                       selected: selected,
-                      onToggle: onToggle)
-                  : Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: _PayrollTable(
-                        store: store,
-                        employees: employees,
-                        selected: selected,
-                        onToggle: onToggle,
-                      ),
+                      onToggle: onToggle,
                     ),
+                  ),
         ),
         _PayrollActionBar(
           store: store,
           count: selected.length,
           totalNet: selectedNet,
           onClear: onClear,
-          onPay: selected.isEmpty
-              ? null
-              : () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final ids = selected.toList();
-                  for (final id in ids) {
-                    await store.paySalary(id);
-                  }
-                  onClear();
-                  messenger.showSnackBar(SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: taj.success.dark,
-                    content: Text('تم دفع ${ids.length} راتب'),
-                  ));
-                },
+          onPay:
+              selected.isEmpty
+                  ? null
+                  : () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final ids = selected.toList();
+                    for (final id in ids) {
+                      await store.paySalary(id);
+                    }
+                    onClear();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: taj.success.dark,
+                        content: Text('تم دفع ${ids.length} راتب'),
+                      ),
+                    );
+                  },
         ),
       ],
     );
@@ -1452,21 +1586,25 @@ class _PayrollTable extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: Text(e.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  child: Text(
+                    e.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
             cells: [
               _Money(
-                  value: store.employeeNet(e.id),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  maxChars: 12,
-                  color: taj.textPrimary),
+                value: store.employeeNet(e.id),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                maxChars: 12,
+                color: taj.textPrimary,
+              ),
               _PayStatusBadge(paid: store.isSalaryPaid(e.id)),
               _num(context, e.baseSalary),
               _num(context, e.allowances),
@@ -1483,11 +1621,12 @@ class _PayrollTable extends StatelessWidget {
   }
 
   Widget _num(BuildContext context, double v) => _Money(
-      value: v,
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      maxChars: 12,
-      color: context.taj.textSecondary);
+    value: v,
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    maxChars: 12,
+    color: context.taj.textSecondary,
+  );
 }
 
 class _PayrollCards extends StatelessWidget {
@@ -1530,25 +1669,32 @@ class _PayrollCards extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(e.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style:
-                            text.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                      e.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     _PayStatusBadge(paid: store.isSalaryPaid(e.id)),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Text('الصافي: ',
-                            style: text.bodySmall
-                                ?.copyWith(color: taj.textSecondary)),
+                        Text(
+                          'الصافي: ',
+                          style: text.bodySmall?.copyWith(
+                            color: taj.textSecondary,
+                          ),
+                        ),
                         Expanded(
                           child: _Money(
-                              value: store.employeeNet(e.id),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: taj.textPrimary),
+                            value: store.employeeNet(e.id),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: taj.textPrimary,
+                          ),
                         ),
                       ],
                     ),
@@ -1595,24 +1741,29 @@ class _PayrollActionBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('محدد: $count',
-                      style:
-                          text.bodySmall?.copyWith(color: taj.textSecondary)),
+                  Text(
+                    'محدد: $count',
+                    style: text.bodySmall?.copyWith(color: taj.textSecondary),
+                  ),
                   Row(
                     children: [
                       Flexible(
-                        child: Text('الإجمالي: ',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.bodyMedium
-                                ?.copyWith(color: taj.textSecondary)),
+                        child: Text(
+                          'الإجمالي: ',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodyMedium?.copyWith(
+                            color: taj.textSecondary,
+                          ),
+                        ),
                       ),
                       Flexible(
                         child: _Money(
-                            value: totalNet,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: taj.textPrimary),
+                          value: totalNet,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: taj.textPrimary,
+                        ),
                       ),
                     ],
                   ),
@@ -1623,10 +1774,13 @@ class _PayrollActionBar extends StatelessWidget {
                 icon: const Icon(Icons.payments_outlined, size: 18),
                 label: const Text('دفع المحدد'),
               );
-              final clearBtn = count > 0
-                  ? TextButton(
-                      onPressed: onClear, child: const Text('إلغاء'))
-                  : null;
+              final clearBtn =
+                  count > 0
+                      ? TextButton(
+                        onPressed: onClear,
+                        child: const Text('إلغاء'),
+                      )
+                      : null;
               // Narrow: stack the summary above full-width actions so a wide
               // button never squeezes the totals off-screen.
               if (c.maxWidth < 480) {
@@ -1680,11 +1834,15 @@ class _Avatar extends StatelessWidget {
         height: size,
         color: taj.primary.lighter,
         alignment: Alignment.center,
-        child: Text(employee.initial,
-            style: AppThemes.numeralStyle(context,
-                fontSize: size * 0.4,
-                fontWeight: FontWeight.w700,
-                color: taj.primary.dark)),
+        child: Text(
+          employee.initial,
+          style: AppThemes.numeralStyle(
+            context,
+            fontSize: size * 0.4,
+            fontWeight: FontWeight.w700,
+            color: taj.primary.dark,
+          ),
+        ),
       ),
     );
   }
@@ -1731,8 +1889,12 @@ class _Money extends StatelessWidget {
         maxLines: maxLines,
         softWrap: maxLines > 1,
         overflow: maxLines > 1 ? TextOverflow.clip : TextOverflow.ellipsis,
-        style: AppThemes.numeralStyle(context,
-            fontSize: fontSize, fontWeight: fontWeight, color: color),
+        style: AppThemes.numeralStyle(
+          context,
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          color: color,
+        ),
       ),
     );
   }
@@ -1816,15 +1978,20 @@ class _FinTableState extends State<_FinTable> {
         final restWidth = rawRest + slack;
 
         Widget headerCell(_FinCol col) => Align(
-              alignment: col.numeric
+          alignment:
+              col.numeric
                   ? AlignmentDirectional.centerEnd
                   : AlignmentDirectional.centerStart,
-              child: Text(col.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(
-                      color: taj.textSecondary, fontWeight: FontWeight.w600)),
-            );
+          child: Text(
+            col.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall?.copyWith(
+              color: taj.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
 
         final header = DecoratedBox(
           decoration: BoxDecoration(
@@ -1838,8 +2005,10 @@ class _FinTableState extends State<_FinTable> {
                 SizedBox(
                   width: frozenW,
                   child: Padding(
-                    padding:
-                        const EdgeInsetsDirectional.only(start: 12, end: 12),
+                    padding: const EdgeInsetsDirectional.only(
+                      start: 12,
+                      end: 12,
+                    ),
                     child: headerCell(widget.frozenCol),
                   ),
                 ),
@@ -1857,7 +2026,8 @@ class _FinTableState extends State<_FinTable> {
                               width: effWidths[i],
                               child: Padding(
                                 padding: const EdgeInsetsDirectional.only(
-                                    end: 12),
+                                  end: 12,
+                                ),
                                 child: headerCell(widget.restCols[i]),
                               ),
                             ),
@@ -1885,7 +2055,9 @@ class _FinTableState extends State<_FinTable> {
                         onTap: r.onTap,
                         child: Padding(
                           padding: const EdgeInsetsDirectional.only(
-                              start: 12, end: 12),
+                            start: 12,
+                            end: 12,
+                          ),
                           child: r.frozen,
                         ),
                       ),
@@ -1910,16 +2082,19 @@ class _FinTableState extends State<_FinTable> {
                                   SizedBox(
                                     width: effWidths[i],
                                     child: Padding(
-                                      padding:
-                                          const EdgeInsetsDirectional.only(
-                                              end: 12),
+                                      padding: const EdgeInsetsDirectional.only(
+                                        end: 12,
+                                      ),
                                       child: Align(
-                                        alignment: widget.restCols[i].numeric
-                                            ? AlignmentDirectional.centerEnd
-                                            : AlignmentDirectional.centerStart,
-                                        child: i < r.cells.length
-                                            ? r.cells[i]
-                                            : const SizedBox(),
+                                        alignment:
+                                            widget.restCols[i].numeric
+                                                ? AlignmentDirectional.centerEnd
+                                                : AlignmentDirectional
+                                                    .centerStart,
+                                        child:
+                                            i < r.cells.length
+                                                ? r.cells[i]
+                                                : const SizedBox(),
                                       ),
                                     ),
                                   ),
@@ -1948,8 +2123,11 @@ class _FinTableState extends State<_FinTable> {
     );
   }
 
-  Widget _rowBox(
-      {required Widget child, bool selected = false, VoidCallback? onTap}) {
+  Widget _rowBox({
+    required Widget child,
+    bool selected = false,
+    VoidCallback? onTap,
+  }) {
     final taj = context.taj;
     final row = Container(
       height: _rowHeight,
@@ -1962,7 +2140,10 @@ class _FinTableState extends State<_FinTable> {
     );
     if (onTap == null) return row;
     return GestureDetector(
-        onTap: onTap, behavior: HitTestBehavior.opaque, child: row);
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: row,
+    );
   }
 }
 
@@ -1982,14 +2163,17 @@ class _FilterPill<T> extends StatelessWidget {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     final current =
-        options.firstWhere((o) => o.$1 == value, orElse: () => options.first).$2;
+        options
+            .firstWhere((o) => o.$1 == value, orElse: () => options.first)
+            .$2;
     return PopupMenuButton<T>(
       onSelected: onSelected,
       position: PopupMenuPosition.under,
-      itemBuilder: (_) => [
-        for (final o in options)
-          PopupMenuItem<T>(value: o.$1, child: Text(o.$2)),
-      ],
+      itemBuilder:
+          (_) => [
+            for (final o in options)
+              PopupMenuItem<T>(value: o.$1, child: Text(o.$2)),
+          ],
       child: Container(
         height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -2004,14 +2188,19 @@ class _FilterPill<T> extends StatelessWidget {
             Icon(icon, size: 16, color: taj.textSecondary),
             const SizedBox(width: 6),
             Flexible(
-              child: Text(current,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.labelMedium?.copyWith(color: taj.textPrimary)),
+              child: Text(
+                current,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.labelMedium?.copyWith(color: taj.textPrimary),
+              ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.arrow_drop_down_rounded,
-                size: 18, color: taj.textSecondary),
+            Icon(
+              Icons.arrow_drop_down_rounded,
+              size: 18,
+              color: taj.textSecondary,
+            ),
           ],
         ),
       ),
@@ -2019,17 +2208,23 @@ class _FilterPill<T> extends StatelessWidget {
   }
 }
 
-String _branchCity(DemoStore store, String branchId) => store.branches
-    .firstWhere((b) => b.id == branchId,
-        orElse: () => store.branches.isEmpty
-            ? const DemoBranch(id: '', name: '—', city: '—')
-            : store.branches.first)
-    .city;
+String _branchCity(DemoStore store, String branchId) =>
+    store.branches
+        .firstWhere(
+          (b) => b.id == branchId,
+          orElse:
+              () =>
+                  store.branches.isEmpty
+                      ? const DemoBranch(id: '', name: '—', city: '—')
+                      : store.branches.first,
+        )
+        .city;
 
 String _fmtDate(DateTime d) =>
     '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
 
-String _monthLabel(DateTime d) => '${d.year}/${d.month.toString().padLeft(2, '0')}';
+String _monthLabel(DateTime d) =>
+    '${d.year}/${d.month.toString().padLeft(2, '0')}';
 
 // ---------------------------------------------------------------------------
 // Dialogs
@@ -2046,35 +2241,44 @@ Future<T?> _empDialog<T>(
     builder: (ctx) {
       final size = MediaQuery.sizeOf(ctx);
       final phone = size.width < AppBreakpoints.phone;
-      final dialogW = phone
-          ? size.width
-          : math.min(AppBreakpoints.employeeFormMaxWidth, size.width - 48);
+      final dialogW =
+          phone
+              ? size.width
+              : math.min(AppBreakpoints.employeeFormMaxWidth, size.width - 48);
       return StatefulBuilder(
         builder: (ctx, setLocal) {
           final taj = ctx.taj;
           final insets = MediaQuery.viewInsetsOf(ctx).bottom;
           final maxH = (size.height - insets) * 0.92;
           return Dialog(
-            insetPadding:
-                EdgeInsets.symmetric(horizontal: phone ? 8 : 24, vertical: 24),
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: phone ? 8 : 24,
+              vertical: 24,
+            ),
             backgroundColor: taj.paper,
             child: Padding(
               padding: EdgeInsets.only(bottom: insets),
               child: ConstrainedBox(
-                constraints:
-                    BoxConstraints(maxWidth: dialogW, maxHeight: maxH),
+                constraints: BoxConstraints(maxWidth: dialogW, maxHeight: maxH),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(20, 14, 8, 8),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        20,
+                        14,
+                        8,
+                        8,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
-                              child: Text(title,
-                                  style: Theme.of(ctx).textTheme.titleLarge)),
+                            child: Text(
+                              title,
+                              style: Theme.of(ctx).textTheme.titleLarge,
+                            ),
+                          ),
                           IconButton(
                             onPressed: () => Navigator.of(ctx).pop(),
                             icon: const Icon(Icons.close_rounded),
@@ -2111,8 +2315,11 @@ Future<T?> _empDialog<T>(
   );
 }
 
-Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
-    {DemoEmployee? edit}) async {
+Future<void> showEmployeeDialog(
+  BuildContext context,
+  DemoStore store, {
+  DemoEmployee? edit,
+}) async {
   final name = TextEditingController(text: edit?.name ?? '');
   final title = TextEditingController(text: edit?.title ?? '');
   final phone = TextEditingController(text: edit?.phone ?? '');
@@ -2122,7 +2329,8 @@ Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
   final commissions = TextEditingController(text: _init(edit?.commissions));
   final overtime = TextEditingController(text: _init(edit?.overtime));
   final deductions = TextEditingController(text: _init(edit?.deductions));
-  String branchId = edit?.branchId ??
+  String branchId =
+      edit?.branchId ??
       (store.branches.isNotEmpty ? store.branches.first.id : 'b1');
 
   await _empDialog<void>(
@@ -2130,31 +2338,39 @@ Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
     title: edit == null ? 'موظف جديد' : 'تعديل الموظف',
     body: (ctx, setLocal) {
       final twoCol = MediaQuery.sizeOf(ctx).width >= AppBreakpoints.phone;
-      Widget field(String label, TextEditingController c,
-              {bool number = false}) =>
-          _LabeledField(
-            label: label,
-            child: TextField(
-              controller: c,
-              keyboardType: number
+      Widget field(
+        String label,
+        TextEditingController c, {
+        bool number = false,
+      }) => _LabeledField(
+        label: label,
+        child: TextField(
+          controller: c,
+          keyboardType:
+              number
                   ? const TextInputType.numberWithOptions(decimal: true)
                   : null,
-              style: number ? AppThemes.numeralStyle(ctx, fontSize: 15) : null,
-              decoration: InputDecoration(
-                  isDense: true, suffixText: number ? 'د.ل' : null),
-            ),
-          );
-      Widget pair(Widget a, Widget b) => twoCol
-          ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(child: a),
-              const SizedBox(width: 12),
-              Expanded(child: b)
-            ])
-          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              a,
-              const SizedBox(height: 12),
-              b
-            ]);
+          style: number ? AppThemes.numeralStyle(ctx, fontSize: 15) : null,
+          decoration: InputDecoration(
+            isDense: true,
+            suffixText: number ? 'د.ل' : null,
+          ),
+        ),
+      );
+      Widget pair(Widget a, Widget b) =>
+          twoCol
+              ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: a),
+                  const SizedBox(width: 12),
+                  Expanded(child: b),
+                ],
+              )
+              : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [a, const SizedBox(height: 12), b],
+              );
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2176,72 +2392,95 @@ Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
             field('الهاتف', phone),
           ),
           const SizedBox(height: 12),
-          pair(field('الراتب الأساسي', base, number: true),
-              field('البدلات', allowances, number: true)),
+          pair(
+            field('الراتب الأساسي', base, number: true),
+            field('البدلات', allowances, number: true),
+          ),
           const SizedBox(height: 12),
-          pair(field('المكافآت', bonuses, number: true),
-              field('العمولات', commissions, number: true)),
+          pair(
+            field('المكافآت', bonuses, number: true),
+            field('العمولات', commissions, number: true),
+          ),
           const SizedBox(height: 12),
-          pair(field('الوقت الإضافي', overtime, number: true),
-              field('الاستقطاعات', deductions, number: true)),
+          pair(
+            field('الوقت الإضافي', overtime, number: true),
+            field('الاستقطاعات', deductions, number: true),
+          ),
         ],
       );
     },
-    actions: (ctx) => [
-      TextButton(
-          onPressed: () => Navigator.of(ctx).pop(), child: const Text('إلغاء')),
-      const SizedBox(width: 8),
-      FilledButton(
-        onPressed: () async {
-          final messenger = ScaffoldMessenger.of(ctx);
-          final navigator = Navigator.of(ctx);
-          double p(TextEditingController c) =>
-              double.tryParse(c.text.trim()) ?? 0;
-          if (name.text.trim().isEmpty) {
-            messenger.showSnackBar(const SnackBar(
-                behavior: SnackBarBehavior.floating,
-                content: Text('الاسم مطلوب')));
-            return;
-          }
-          if (edit == null) {
-            await store.addEmployee(DemoEmployee(
-              id: store.nextEmployeeId,
-              name: name.text.trim(),
-              title: title.text.trim(),
-              branchId: branchId,
-              hireDate: DateTime.now(),
-              phone: phone.text.trim(),
-              baseSalary: p(base),
-              allowances: p(allowances),
-              bonuses: p(bonuses),
-              commissions: p(commissions),
-              overtime: p(overtime),
-              deductions: p(deductions),
-            ));
-          } else {
-            await store.updateEmployee(edit.copyWith(
-              name: name.text.trim(),
-              title: title.text.trim(),
-              branchId: branchId,
-              phone: phone.text.trim(),
-              baseSalary: p(base),
-              allowances: p(allowances),
-              bonuses: p(bonuses),
-              commissions: p(commissions),
-              overtime: p(overtime),
-              deductions: p(deductions),
-            ));
-          }
-          navigator.pop();
-        },
-        child: const Text('حفظ'),
-      ),
-    ],
+    actions:
+        (ctx) => [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(ctx);
+              final navigator = Navigator.of(ctx);
+              double p(TextEditingController c) =>
+                  double.tryParse(c.text.trim()) ?? 0;
+              if (name.text.trim().isEmpty) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    behavior: SnackBarBehavior.floating,
+                    content: Text('الاسم مطلوب'),
+                  ),
+                );
+                return;
+              }
+              if (edit == null) {
+                await store.addEmployee(
+                  DemoEmployee(
+                    id: store.nextEmployeeId,
+                    name: name.text.trim(),
+                    title: title.text.trim(),
+                    branchId: branchId,
+                    hireDate: DateTime.now(),
+                    phone: phone.text.trim(),
+                    baseSalary: p(base),
+                    allowances: p(allowances),
+                    bonuses: p(bonuses),
+                    commissions: p(commissions),
+                    overtime: p(overtime),
+                    deductions: p(deductions),
+                  ),
+                );
+              } else {
+                await store.updateEmployee(
+                  edit.copyWith(
+                    name: name.text.trim(),
+                    title: title.text.trim(),
+                    branchId: branchId,
+                    phone: phone.text.trim(),
+                    baseSalary: p(base),
+                    allowances: p(allowances),
+                    bonuses: p(bonuses),
+                    commissions: p(commissions),
+                    overtime: p(overtime),
+                    deductions: p(deductions),
+                  ),
+                );
+              }
+              navigator.pop();
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
   );
 
   for (final c in [
-    name, title, phone, base, allowances, bonuses, commissions, overtime,
-    deductions
+    name,
+    title,
+    phone,
+    base,
+    allowances,
+    bonuses,
+    commissions,
+    overtime,
+    deductions,
   ]) {
     c.dispose();
   }
@@ -2249,71 +2488,93 @@ Future<void> showEmployeeDialog(BuildContext context, DemoStore store,
 
 String _init(double? v) => (v == null || v == 0) ? '' : arNum(v);
 
-Future<void> showPayrollTxnDialog(BuildContext context, DemoStore store,
-    String employeeId, DemoPayrollTxnType type) async {
+Future<void> showPayrollTxnDialog(
+  BuildContext context,
+  DemoStore store,
+  String employeeId,
+  DemoPayrollTxnType type,
+) async {
   final amount = TextEditingController();
   final note = TextEditingController();
   final label = type == DemoPayrollTxnType.advance ? 'سلفة' : 'سحب';
   await _empDialog<void>(
     context,
     title: 'إضافة $label',
-    body: (ctx, setLocal) => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _LabeledField(
-          label: 'المبلغ',
-          child: TextField(
-            controller: amount,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: AppThemes.numeralStyle(ctx, fontSize: 16),
-            decoration: const InputDecoration(hintText: '0', suffixText: 'د.ل'),
+    body:
+        (ctx, setLocal) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _LabeledField(
+              label: 'المبلغ',
+              child: TextField(
+                controller: amount,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: AppThemes.numeralStyle(ctx, fontSize: 16),
+                decoration: const InputDecoration(
+                  hintText: '0',
+                  suffixText: 'د.ل',
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _LabeledField(
+              label: 'ملاحظة (اختياري)',
+              child: TextField(
+                controller: note,
+                maxLines: 2,
+                decoration: const InputDecoration(hintText: '…'),
+              ),
+            ),
+          ],
+        ),
+    actions:
+        (ctx) => [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('إلغاء'),
           ),
-        ),
-        const SizedBox(height: 12),
-        _LabeledField(
-          label: 'ملاحظة (اختياري)',
-          child: TextField(
-              controller: note,
-              maxLines: 2,
-              decoration: const InputDecoration(hintText: '…')),
-        ),
-      ],
-    ),
-    actions: (ctx) => [
-      TextButton(
-          onPressed: () => Navigator.of(ctx).pop(), child: const Text('إلغاء')),
-      const SizedBox(width: 8),
-      FilledButton(
-        onPressed: () async {
-          final messenger = ScaffoldMessenger.of(ctx);
-          final navigator = Navigator.of(ctx);
-          final amt = double.tryParse(amount.text.trim()) ?? 0;
-          if (amt <= 0) {
-            messenger.showSnackBar(const SnackBar(
-                behavior: SnackBarBehavior.floating,
-                content: Text('المبلغ غير صالح')));
-            return;
-          }
-          await store.addPayrollTxn(DemoPayrollTxn(
-            id: 'PT-${DateTime.now().microsecondsSinceEpoch}',
-            employeeId: employeeId,
-            type: type,
-            amount: amt,
-            date: DateTime.now(),
-            note: note.text.trim(),
-          ));
-          navigator.pop();
-        },
-        child: const Text('حفظ'),
-      ),
-    ],
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(ctx);
+              final navigator = Navigator.of(ctx);
+              final amt = double.tryParse(amount.text.trim()) ?? 0;
+              if (amt <= 0) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    behavior: SnackBarBehavior.floating,
+                    content: Text('المبلغ غير صالح'),
+                  ),
+                );
+                return;
+              }
+              await store.addPayrollTxn(
+                DemoPayrollTxn(
+                  id: 'PT-${DateTime.now().microsecondsSinceEpoch}',
+                  employeeId: employeeId,
+                  type: type,
+                  amount: amt,
+                  date: DateTime.now(),
+                  note: note.text.trim(),
+                ),
+              );
+              navigator.pop();
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
   );
   amount.dispose();
   note.dispose();
 }
 
 Future<void> showPaySalaryDialog(
-    BuildContext context, DemoStore store, String employeeId) async {
+  BuildContext context,
+  DemoStore store,
+  String employeeId,
+) async {
   final e = store.employeeById(employeeId);
   if (e == null) return;
   await _empDialog<void>(
@@ -2327,11 +2588,14 @@ Future<void> showPaySalaryDialog(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('سيتم تسجيل مصروف راتب مرتبط بالموظف:',
-              style: text.bodyMedium),
+          Text('سيتم تسجيل مصروف راتب مرتبط بالموظف:', style: text.bodyMedium),
           const SizedBox(height: 6),
-          Text(e.name,
-              style: text.titleMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(
+            e.name,
+            style: text.titleMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
@@ -2342,41 +2606,49 @@ Future<void> showPaySalaryDialog(
             child: Row(
               children: [
                 Expanded(
-                    child: Text('صافي الراتب',
-                        style:
-                            text.titleMedium?.copyWith(color: taj.primary.dark))),
+                  child: Text(
+                    'صافي الراتب',
+                    style: text.titleMedium?.copyWith(color: taj.primary.dark),
+                  ),
+                ),
                 _Money(
-                    value: net,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    maxLines: 2,
-                    color: taj.primary.dark),
+                  value: net,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  maxLines: 2,
+                  color: taj.primary.dark,
+                ),
               ],
             ),
           ),
         ],
       );
     },
-    actions: (ctx) => [
-      TextButton(
-          onPressed: () => Navigator.of(ctx).pop(), child: const Text('إلغاء')),
-      const SizedBox(width: 8),
-      FilledButton(
-        onPressed: () async {
-          final messenger = ScaffoldMessenger.of(ctx);
-          final navigator = Navigator.of(ctx);
-          final success = ctx.taj.success.dark;
-          await store.paySalary(employeeId);
-          navigator.pop();
-          messenger.showSnackBar(SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: success,
-            content: const Text('تم دفع الراتب'),
-          ));
-        },
-        child: const Text('تأكيد الدفع'),
-      ),
-    ],
+    actions:
+        (ctx) => [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(ctx);
+              final navigator = Navigator.of(ctx);
+              final success = ctx.taj.success.dark;
+              await store.paySalary(employeeId);
+              navigator.pop();
+              messenger.showSnackBar(
+                SnackBar(
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: success,
+                  content: const Text('تم دفع الراتب'),
+                ),
+              );
+            },
+            child: const Text('تأكيد الدفع'),
+          ),
+        ],
   );
 }
 

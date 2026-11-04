@@ -31,6 +31,8 @@ import 'package:taj/modules/accounting/accounting_screen.dart';
 import 'package:taj/modules/employees/employees_screen.dart';
 import 'package:taj/modules/treasury/treasury_screen.dart';
 
+import 'package:taj/core/demo/demo_store.dart';
+
 import 'helpers/test_harness.dart';
 
 /// (label, logical width, logical height). Covers phones, tablets, laptops,
@@ -72,18 +74,18 @@ Future<void> _pumpAt(
 
 /// Wrap a bare module screen in a themed, RTL, localized MaterialApp so it has
 /// the same ambient context it gets inside the app shell.
-Widget _host(Widget screen) => MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppThemes.light(),
-      locale: const Locale('ar'),
-      supportedLocales: const [Locale('ar'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: withStore(Scaffold(body: screen)),
-    );
+Widget _host(Widget screen, {DemoStore? store}) => MaterialApp(
+  debugShowCheckedModeBanner: false,
+  theme: AppThemes.light(),
+  locale: const Locale('ar'),
+  supportedLocales: const [Locale('ar'), Locale('en')],
+  localizationsDelegates: const [
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  home: withStore(Scaffold(body: screen), store: store),
+);
 
 void main() {
   // Full app (shell + navigation chrome) in each role at every size.
@@ -151,6 +153,48 @@ void main() {
       for (final (label, w, h) in _sizes) {
         testWidgets('${entry.key} @ $label ($w×$h)', (tester) async {
           await _pumpAt(tester, w, h, _host(entry.value));
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+  });
+
+  // Every content screen on a fresh-install (empty) store — no crash, no
+  // overflow. This is the honest "nothing entered yet" state.
+  group('Content screens — empty store, no crash/overflow', () {
+    final screens = <String, Widget>{
+      'dashboard': const DashboardScreen(),
+      'pos-management': const PosManagementScreen(),
+      'products': const ProductsScreen(),
+      'inventory': const InventoryScreen(),
+      'sales': const SalesScreen(),
+      'purchases': const PurchasesScreen(),
+      'expenses': const ExpensesScreen(),
+      'treasury': const TreasuryScreen(),
+      'accounting': const AccountingScreen(),
+      'employees': const EmployeesScreen(),
+      'customers': const CustomersScreen(),
+      'reports': const ReportsScreen(),
+      'smart': const SmartReportsScreen(),
+      'assistant': const AssistantScreen(),
+      'settings': SettingsScreen(
+        currentPrimary: TajColors.primarySwatch,
+        onPrimaryChanged: (_) {},
+        onToggleTheme: () {},
+        chartStyle: ChartStyle.area,
+        onChartStyleChanged: (_) {},
+      ),
+    };
+
+    for (final entry in screens.entries) {
+      for (final (label, w, h) in _sizes) {
+        testWidgets('${entry.key} (empty) @ $label ($w×$h)', (tester) async {
+          await _pumpAt(
+            tester,
+            w,
+            h,
+            _host(entry.value, store: buildEmptyStore()),
+          );
           expect(tester.takeException(), isNull);
         });
       }

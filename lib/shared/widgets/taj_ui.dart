@@ -88,7 +88,10 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.taj.swatch(status);
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: icon == null ? 10 : 8, vertical: 5),
+      padding: EdgeInsets.symmetric(
+        horizontal: icon == null ? 10 : 8,
+        vertical: 5,
+      ),
       decoration: BoxDecoration(
         color: s.lighter,
         borderRadius: BorderRadius.circular(8),
@@ -140,8 +143,10 @@ class SectionHeading extends StatelessWidget {
         Text(title, style: text.headlineSmall),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
-          Text(subtitle!,
-              style: text.bodyMedium?.copyWith(color: taj.textSecondary)),
+          Text(
+            subtitle!,
+            style: text.bodyMedium?.copyWith(color: taj.textSecondary),
+          ),
         ],
       ],
     );
@@ -225,20 +230,33 @@ class KpiCard extends StatelessWidget {
                 const SizedBox(width: 12),
               ],
               Expanded(
-                child: Text(label,
-                    style: text.bodyMedium?.copyWith(color: taj.textSecondary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                child: Text(
+                  label,
+                  style: text.bodyMedium?.copyWith(color: taj.textSecondary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          Text(value, style: AppThemes.numeralStyle(context, fontSize: 26, fontWeight: FontWeight.w800)),
+          Text(
+            value,
+            style: AppThemes.numeralStyle(
+              context,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
               if (delta != null)
-                _DeltaChip(text: delta!, swatch: deltaSwatch, up: deltaPositive),
+                _DeltaChip(
+                  text: delta!,
+                  swatch: deltaSwatch,
+                  up: deltaPositive,
+                ),
               const SizedBox(width: 8),
               // Sparkline caps at 84px and right-aligns on wide cards, but is
               // free to shrink so a narrow KPI tile never overflows this row.
@@ -247,7 +265,10 @@ class KpiCard extends StatelessWidget {
                   child: Align(
                     alignment: AlignmentDirectional.centerEnd,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 84, maxHeight: 30),
+                      constraints: const BoxConstraints(
+                        maxWidth: 84,
+                        maxHeight: 30,
+                      ),
                       child: Sparkline(values: spark, color: taj.primary.main),
                     ),
                   ),
@@ -263,7 +284,11 @@ class KpiCard extends StatelessWidget {
 }
 
 class _DeltaChip extends StatelessWidget {
-  const _DeltaChip({required this.text, required this.swatch, required this.up});
+  const _DeltaChip({
+    required this.text,
+    required this.swatch,
+    required this.up,
+  });
   final String text;
   final TajSwatch swatch;
   final bool up;
@@ -279,12 +304,21 @@ class _DeltaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-              size: 13, color: swatch.dark),
+          Icon(
+            up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+            size: 13,
+            color: swatch.dark,
+          ),
           const SizedBox(width: 2),
-          Text(text,
-              style: AppThemes.numeralStyle(context,
-                  fontSize: 12, fontWeight: FontWeight.w700, color: swatch.dark)),
+          Text(
+            text,
+            style: AppThemes.numeralStyle(
+              context,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: swatch.dark,
+            ),
+          ),
         ],
       ),
     );
@@ -306,7 +340,9 @@ class Sparkline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => CustomPaint(
-      size: Size.infinite, painter: _SparkPainter(values, color, style));
+    size: Size.infinite,
+    painter: _SparkPainter(values, color, style),
+  );
 }
 
 class _SparkPainter extends CustomPainter {
@@ -345,21 +381,32 @@ class _SparkPainter extends CustomPainter {
     final dx = size.width / (values.length - 1);
     final pts = [
       for (var i = 0; i < values.length; i++)
-        Offset(i * dx, size.height - ((values[i] - minV) / range) * size.height),
+        Offset(
+          i * dx,
+          size.height - ((values[i] - minV) / range) * size.height,
+        ),
     ];
 
     final path = Path()..moveTo(pts.first.dx, pts.first.dy);
     for (var i = 0; i < pts.length - 1; i++) {
       final cx = (pts[i].dx + pts[i + 1].dx) / 2;
-      path.cubicTo(cx, pts[i].dy, cx, pts[i + 1].dy, pts[i + 1].dx, pts[i + 1].dy);
+      path.cubicTo(
+        cx,
+        pts[i].dy,
+        cx,
+        pts[i + 1].dy,
+        pts[i + 1].dx,
+        pts[i + 1].dy,
+      );
     }
 
     // Area fill only in area mode; the line stroke is shared with line mode.
     if (style == ChartStyle.area) {
-      final fill = Path.from(path)
-        ..lineTo(pts.last.dx, size.height)
-        ..lineTo(pts.first.dx, size.height)
-        ..close();
+      final fill =
+          Path.from(path)
+            ..lineTo(pts.last.dx, size.height)
+            ..lineTo(pts.first.dx, size.height)
+            ..close();
       canvas.drawPath(
         fill,
         Paint()
@@ -424,12 +471,14 @@ class TajEmptyState extends StatelessWidget {
               child: Icon(icon, size: 32, color: taj.textDisabled),
             ),
             const SizedBox(height: 16),
-            Text(title, style: text.titleMedium),
+            Text(title, style: text.titleMedium, textAlign: TextAlign.center),
             if (message != null) ...[
               const SizedBox(height: 6),
-              Text(message!,
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium?.copyWith(color: taj.textSecondary)),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: text.bodyMedium?.copyWith(color: taj.textSecondary),
+              ),
             ],
             if (actionLabel != null) ...[
               const SizedBox(height: 20),
@@ -460,9 +509,11 @@ class TajErrorState extends StatelessWidget {
           children: [
             Icon(Icons.error_outline_rounded, size: 40, color: taj.error.main),
             const SizedBox(height: 12),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: text.bodyLarge?.copyWith(color: taj.textPrimary)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: text.bodyLarge?.copyWith(color: taj.textPrimary),
+            ),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
               OutlinedButton.icon(
@@ -509,9 +560,10 @@ class _SkeletonBoxState extends State<SkeletonBox>
 
   @override
   Widget build(BuildContext context) {
-    final base = Theme.of(context).brightness == Brightness.dark
-        ? TajGrey.g700
-        : TajGrey.g200;
+    final base =
+        Theme.of(context).brightness == Brightness.dark
+            ? TajGrey.g700
+            : TajGrey.g200;
     return FadeTransition(
       opacity: Tween(begin: 0.45, end: 1.0).animate(_c),
       child: Container(

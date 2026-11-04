@@ -20,3 +20,9 @@ import '../fixtures/sample_data.dart';
 /// to test against a specific (e.g. empty) store instead.
 Widget withStore(Widget child, {DemoStore? store}) =>
     DemoStoreProvider(store: store ?? buildSampleStore(), child: child);
+
+/// A fresh-install store: the first-run defaults only (one branch, one cash
+/// box, the chart of accounts), with every business collection empty. Use it
+/// to prove screens render on an empty install without crashing or overflowing.
+DemoStore buildEmptyStore() =>
+    DemoStore(autoLoad: false, enablePersistence: false);
