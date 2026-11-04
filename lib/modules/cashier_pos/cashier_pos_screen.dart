@@ -14,7 +14,8 @@ import 'payment_services_panel.dart';
 
 /// Cashier POS screen — ultimate point of sale interface.
 /// Combines best practices from Odoo, Shopify, Dripos, LuoPos, CAKE POS, Mashgin.
-/// Features: category sidebar, grid/list toggle, quantity badges, smart search.
+/// Features: category sidebar with counts, grid/list toggle, stock badges,
+/// smart barcode search (Enter to add), held orders, discounts, and split tender.
 class CashierPosScreen extends StatefulWidget {
   const CashierPosScreen({
     super.key,
@@ -52,7 +53,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
 
   // Professional features state.
   final List<_HeldOrder> _heldOrders = [];
-  bool _shiftOpen = false;
+  bool _shiftOpen = true;
   String? _linkedCustomer;
   String? _editingLineId;
 
@@ -72,7 +73,9 @@ class _CashierPosScreenState extends State<CashierPosScreen>
     }
     _loadProfessionalMode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchFocusNode.requestFocus();
+      if (mounted) {
+        _searchFocusNode.requestFocus();
+      }
     });
   }
 
@@ -100,7 +103,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
     super.dispose();
   }
 
-  // ── Categories ──────────────────────────────────────────────────────────
+  // ── Products & Categories ───────────────────────────────────────────────
 
   List<_Product> get _products =>
       DemoStoreProvider.of(context).products
@@ -112,16 +115,30 @@ class _CashierPosScreenState extends State<CashierPosScreen>
               category: p.category,
               price: p.price,
               stock: p.stock,
+              reorderLevel: p.reorderLevel,
+              iconCode: p.iconCode,
             ),
           )
           .toList();
 
+  List<DemoCustomer> get _storeCustomers =>
+      DemoStoreProvider.of(context).customers;
+
   List<String> get _customers =>
-      DemoStoreProvider.of(context).customers.map((c) => c.name).toList();
+      _storeCustomers.map((c) => c.name).toList();
 
   List<String> get _categories {
-    final cats = _products.map((p) => p.category).toSet().toList();
+    final cats = _products.map((p) => p.category).where((c) => c.isNotEmpty).toSet().toList();
     return ['الكل', ...cats];
+  }
+
+  Map<String, int> get _categoryCounts {
+    final all = _products;
+    final counts = <String, int>{'الكل': all.length};
+    for (final p in all) {
+      counts[p.category] = (counts[p.category] ?? 0) + 1;
+    }
+    return counts;
   }
 
   // ── Filtered products ───────────────────────────────────────────────────
@@ -142,12 +159,41 @@ class _CashierPosScreenState extends State<CashierPosScreen>
     return list;
   }
 
+  // ── Barcode / Search Enter handler ──────────────────────────────────────
+
+  void _onSearchSubmitted(String value) {
+    final q = value.trim().toLowerCase();
+    if (q.isEmpty) return;
+
+    // 1. Exact barcode match across all products
+    final exactBarcode = _products.where((p) => p.barcode.toLowerCase() == q);
+    if (exactBarcode.isNotEmpty) {
+      _addToCart(exactBarcode.first.id);
+      _searchController.clear();
+      setState(() => _searchQuery = '');
+      _searchFocusNode.requestFocus();
+      return;
+    }
+
+    // 2. Single filtered match
+    final filtered = _filteredProducts;
+    if (filtered.length == 1) {
+      _addToCart(filtered.first.id);
+      _searchController.clear();
+      setState(() => _searchQuery = '');
+      _searchFocusNode.requestFocus();
+    }
+  }
+
   // ── Cart calculations ───────────────────────────────────────────────────
 
   /// Effective unit price for a cart line (list price or professional override).
-  double _linePrice(String productId) =>
-      _priceOverrides[productId] ??
-      _products.firstWhere((p) => p.id == productId).price;
+  double _linePrice(String productId) {
+    final override = _priceOverrides[productId];
+    if (override != null) return override;
+    final match = _products.where((p) => p.id == productId);
+    return match.isEmpty ? 0 : match.first.price;
+  }
 
   double get _subtotal =>
       _cart.entries.fold(0, (sum, e) => sum + (_linePrice(e.key) * e.value));
@@ -165,6 +211,37 @@ class _CashierPosScreenState extends State<CashierPosScreen>
   // ── Cart operations ─────────────────────────────────────────────────────
 
   void _addToCart(String productId) {
+    final match = _products.where((p) => p.id == productId);
+    if (match.isNotEmpty) {
+      final product = match.first;
+      final currentQty = _cart[productId] ?? 0;
+      if (product.stock <= 0) {
+        HapticFeedback.vibrate();
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('الصنف "${product.name}" نافد من المخزون'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        return;
+      }
+      if (currentQty >= product.stock) {
+        HapticFeedback.vibrate();
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                'الكمية المتاحة من "${product.name}" هي ${product.stock} فقط',
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        return;
+      }
+    }
     setState(() {
       _cart[productId] = (_cart[productId] ?? 0) + 1;
     });
@@ -172,9 +249,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
   }
 
   void _incrementQuantity(String productId) {
-    setState(() {
-      _cart[productId] = (_cart[productId] ?? 0) + 1;
-    });
+    _addToCart(productId);
   }
 
   void _decrementQuantity(String productId) {
@@ -182,6 +257,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
       final current = _cart[productId] ?? 0;
       if (current <= 1) {
         _cart.remove(productId);
+        _priceOverrides.remove(productId);
       } else {
         _cart[productId] = current - 1;
       }
@@ -191,12 +267,17 @@ class _CashierPosScreenState extends State<CashierPosScreen>
   void _removeFromCart(String productId) {
     setState(() {
       _cart.remove(productId);
+      _priceOverrides.remove(productId);
     });
   }
 
   void _clearCart() {
     setState(() {
       _cart.clear();
+      _priceOverrides.clear();
+      _discountPercent = 0;
+      _orderNote = '';
+      _linkedCustomer = null;
     });
   }
 
@@ -217,8 +298,12 @@ class _CashierPosScreenState extends State<CashierPosScreen>
       _cart
         ..clear()
         ..addAll(order.cart);
-      _discountPercent = 0;
-      _orderNote = '';
+      _priceOverrides
+        ..clear()
+        ..addAll(order.priceOverrides);
+      _discountPercent = order.discountPercent;
+      _orderNote = order.note;
+      _linkedCustomer = order.customerName;
     });
     _searchFocusNode.requestFocus();
   }
@@ -236,14 +321,17 @@ class _CashierPosScreenState extends State<CashierPosScreen>
   void _pickCustomer() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       useSafeArea: true,
       builder:
-          (_) => _CustomerPickerSheet(
+          (sheetCtx) => _CustomerPickerSheet(
             selected: _linkedCustomer,
-            customers: _customers,
+            customers: _storeCustomers,
             onSelect: (name) {
-              Navigator.of(context).pop();
-              setState(() => _linkedCustomer = name);
+              Navigator.of(sheetCtx).pop();
+              setState(() {
+                _linkedCustomer = (name == null || name.isEmpty) ? null : name;
+              });
             },
           ),
     );
@@ -255,16 +343,28 @@ class _CashierPosScreenState extends State<CashierPosScreen>
     if (_cart.isEmpty) return;
     HapticFeedback.mediumImpact();
     setState(() {
+      final nextIndex = _heldOrders.length + 1;
       _heldOrders.add(
         _HeldOrder(
-          id: 'H${_heldOrders.length + 1}',
-          name: 'طلب ${_heldOrders.length + 1}',
+          id: 'H${DateTime.now().millisecondsSinceEpoch}',
+          name:
+              _linkedCustomer != null
+                  ? 'طلب $_linkedCustomer'
+                  : 'طلب $nextIndex',
           itemCount: _itemCount,
-          subtotal: _subtotal,
+          subtotal: _discountedTotal,
           cart: Map<String, int>.from(_cart),
+          priceOverrides: Map<String, double>.from(_priceOverrides),
+          discountPercent: _discountPercent,
+          note: _orderNote,
+          customerName: _linkedCustomer,
         ),
       );
       _cart.clear();
+      _priceOverrides.clear();
+      _discountPercent = 0;
+      _orderNote = '';
+      _linkedCustomer = null;
       _searchController.clear();
       _searchQuery = '';
       _selectedCategory = 'الكل';
@@ -285,10 +385,10 @@ class _CashierPosScreenState extends State<CashierPosScreen>
       isScrollControlled: true,
       useSafeArea: true,
       builder:
-          (_) => _SplitPaymentSheet(
+          (sheetCtx) => _SplitPaymentSheet(
             subtotal: _discountedTotal,
             onConfirm: (method, amounts) {
-              Navigator.of(context).pop();
+              Navigator.of(sheetCtx).pop();
               _showSuccessReceipt(method);
             },
           ),
@@ -328,13 +428,13 @@ class _CashierPosScreenState extends State<CashierPosScreen>
       isScrollControlled: true,
       useSafeArea: true,
       builder:
-          (_) => _ReportsSheet(
+          (sheetCtx) => _ReportsSheet(
             sales: _completedSales,
             totalSales: _completedSales.fold(0, (s, c) => s + c.total),
             cashTotal: _sessionCashTotal,
             itemCount: _completedSales.fold(0, (s, c) => s + c.itemCount),
             onCloseShift: () {
-              Navigator.of(context).pop();
+              Navigator.of(sheetCtx).pop();
               if (_shiftOpen) _toggleShift();
             },
           ),
@@ -345,27 +445,29 @@ class _CashierPosScreenState extends State<CashierPosScreen>
 
   void _editLine(String productId) {
     if (!_isProfessional) return;
-    final product = _products.firstWhere((p) => p.id == productId);
+    final match = _products.where((p) => p.id == productId);
+    if (match.isEmpty) return;
+    final product = match.first;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       builder:
-          (_) => _CartLineEditSheet(
+          (sheetCtx) => _CartLineEditSheet(
             product: product,
             initialQuantity: _cart[productId] ?? 1,
             initialPrice: _linePrice(productId),
             canChangePrice: widget.permissions.changePrice,
             onSave: (newQty, newPrice) {
-              Navigator.of(context).pop();
+              Navigator.of(sheetCtx).pop();
               setState(() {
-                if (newQty == 0) {
+                if (newQty <= 0) {
                   _cart.remove(productId);
                   _priceOverrides.remove(productId);
                 } else {
-                  _cart[productId] = newQty;
+                  _cart[productId] = newQty.clamp(1, product.stock > 0 ? product.stock : 999);
                   if (widget.permissions.changePrice) {
-                    if (newPrice != product.price) {
+                    if (newPrice != product.price && newPrice > 0) {
                       _priceOverrides[productId] = newPrice;
                     } else {
                       _priceOverrides.remove(productId);
@@ -375,7 +477,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
               });
             },
             onRemove: () {
-              Navigator.of(context).pop();
+              Navigator.of(sheetCtx).pop();
               setState(() {
                 _cart.remove(productId);
                 _priceOverrides.remove(productId);
@@ -399,8 +501,13 @@ class _CashierPosScreenState extends State<CashierPosScreen>
             itemCount: _itemCount,
             method: method,
             isProfessional: _isProfessional,
-            onConfirm: () {
+            customers: _customers,
+            initialCustomer: _linkedCustomer,
+            onConfirm: (selectedCustomer) {
               Navigator.of(ctx).pop();
+              if (selectedCustomer != null && selectedCustomer.isNotEmpty) {
+                setState(() => _linkedCustomer = selectedCustomer);
+              }
               _showSuccessReceipt(method);
             },
             onSplit:
@@ -434,15 +541,25 @@ class _CashierPosScreenState extends State<CashierPosScreen>
         }).toList();
     final itemCount = _itemCount;
     final note = _orderNote;
+    final customerName = _linkedCustomer;
     final store = DemoStoreProvider.of(context);
-    // Post against the current (first) branch — the per-till branch selector is
-    // out of scope, but this is a real branch id, not a hard-coded one.
     final branchId = store.branches.isEmpty ? null : store.branches.first.id;
+
+    // Resolve customerId if a customer is linked by name.
+    String? customerId;
+    if (customerName != null && customerName.isNotEmpty) {
+      final matched = store.customers.where((c) => c.name == customerName);
+      if (matched.isNotEmpty) {
+        customerId = matched.first.id;
+      }
+    }
+
     try {
       await store.addSale(
         quantities: Map<String, int>.from(_cart),
         paymentMethod: _demoPaymentMethod(method),
         branchId: branchId,
+        customerId: customerId,
         totalOverride: total,
       );
     } catch (error) {
@@ -469,6 +586,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
       _priceOverrides.clear();
       _discountPercent = 0;
       _orderNote = '';
+      _linkedCustomer = null;
     });
     _searchController.clear();
     _searchQuery = '';
@@ -483,8 +601,6 @@ class _CashierPosScreenState extends State<CashierPosScreen>
       builder:
           (ctx) => AlertDialog(
             content: ConstrainedBox(
-              // Cap the width on desktop but allow it to shrink on small phones
-              // (a hard width: 340 overflowed inside the dialog's inset margins).
               constraints: const BoxConstraints(maxWidth: 340),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -525,6 +641,18 @@ class _CashierPosScreenState extends State<CashierPosScreen>
                     textAlign: TextAlign.center,
                     style: TextStyle(color: context.taj.textSecondary),
                   ),
+                  if (customerName != null && customerName.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'العميل: $customerName',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.taj.primary.main,
+                      ),
+                    ),
+                  ],
                   if (soldLines.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Divider(height: 1, color: context.taj.divider),
@@ -614,6 +742,9 @@ class _CashierPosScreenState extends State<CashierPosScreen>
   Widget build(BuildContext context) {
     final taj = context.taj;
     final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.splitPane;
+    final allProducts = _products;
+    final lowStockCount =
+        allProducts.where((p) => p.stock <= p.reorderLevel).length;
 
     return Scaffold(
       backgroundColor: taj.background,
@@ -626,6 +757,8 @@ class _CashierPosScreenState extends State<CashierPosScreen>
               userName: widget.userName,
               isGridView: _isGridView,
               isProfessional: _isProfessional,
+              shiftOpen: _shiftOpen,
+              heldOrdersCount: _heldOrders.length,
               onToggleMode: _toggleProfessionalMode,
               onToggleTheme: widget.onToggleTheme,
               onLogout: widget.onLogout,
@@ -638,10 +771,13 @@ class _CashierPosScreenState extends State<CashierPosScreen>
               child:
                   isWide
                       ? _WideLayout(
+                        allProducts: allProducts,
                         products: _filteredProducts,
                         categories: _categories,
+                        categoryCounts: _categoryCounts,
                         selectedCategory: _selectedCategory,
                         isSidebarCollapsed: _isSidebarCollapsed,
+                        lowStockCount: lowStockCount,
                         cart: _cart,
                         subtotal: _subtotal,
                         itemCount: _itemCount,
@@ -657,6 +793,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
                         searchFocusNode: _searchFocusNode,
                         onSearchChanged:
                             (v) => setState(() => _searchQuery = v),
+                        onSearchSubmitted: _onSearchSubmitted,
                         onCategoryChanged:
                             (v) => setState(() => _selectedCategory = v),
                         onToggleSidebar:
@@ -695,6 +832,8 @@ class _CashierPosScreenState extends State<CashierPosScreen>
                         onEditLine: _editLine,
                         onRecallOrder: _recallOrder,
                         onLinkCustomer: _pickCustomer,
+                        onUnlinkCustomer:
+                            () => setState(() => _linkedCustomer = null),
                         discountPercent: _discountPercent,
                         onDiscountChanged: _setDiscount,
                         priceOverrides: _priceOverrides,
@@ -705,9 +844,12 @@ class _CashierPosScreenState extends State<CashierPosScreen>
                         sessionCashTotal: _sessionCashTotal,
                       )
                       : _NarrowLayout(
+                        allProducts: allProducts,
                         products: _filteredProducts,
                         categories: _categories,
+                        categoryCounts: _categoryCounts,
                         selectedCategory: _selectedCategory,
+                        lowStockCount: lowStockCount,
                         cart: _cart,
                         subtotal: _subtotal,
                         itemCount: _itemCount,
@@ -723,6 +865,7 @@ class _CashierPosScreenState extends State<CashierPosScreen>
                         searchFocusNode: _searchFocusNode,
                         onSearchChanged:
                             (v) => setState(() => _searchQuery = v),
+                        onSearchSubmitted: _onSearchSubmitted,
                         onCategoryChanged:
                             (v) => setState(() => _selectedCategory = v),
                         onAddToCart: _addToCart,
@@ -757,6 +900,8 @@ class _CashierPosScreenState extends State<CashierPosScreen>
                         onEditLine: _editLine,
                         onRecallOrder: _recallOrder,
                         onLinkCustomer: _pickCustomer,
+                        onUnlinkCustomer:
+                            () => setState(() => _linkedCustomer = null),
                         discountPercent: _discountPercent,
                         onDiscountChanged: _setDiscount,
                         priceOverrides: _priceOverrides,
@@ -789,6 +934,11 @@ enum PaymentMethod {
 }
 
 IconData _categoryIcon(String category) => switch (category) {
+  'الكل' => Icons.apps_rounded,
+  'عطور' => Icons.spa_outlined,
+  'بخور' => Icons.local_fire_department_outlined,
+  'زيوت' => Icons.water_drop_outlined,
+  'هدايا' => Icons.card_giftcard_outlined,
   'قمصان' => Icons.checkroom_outlined,
   'بناطيل' => Icons.style_outlined,
   'فساتين' => Icons.woman_outlined,
@@ -799,6 +949,13 @@ IconData _categoryIcon(String category) => switch (category) {
   _ => Icons.inventory_2_outlined,
 };
 
+IconData _productIcon(_Product product) {
+  if (product.iconCode.isNotEmpty) {
+    return demoIcon(product.iconCode);
+  }
+  return _categoryIcon(product.category);
+}
+
 // ── Top Bar ──────────────────────────────────────────────────────────────────
 
 class _TopBar extends StatelessWidget {
@@ -807,6 +964,8 @@ class _TopBar extends StatelessWidget {
     required this.userName,
     required this.isGridView,
     required this.isProfessional,
+    required this.shiftOpen,
+    required this.heldOrdersCount,
     required this.onToggleMode,
     required this.onToggleTheme,
     required this.onLogout,
@@ -818,6 +977,8 @@ class _TopBar extends StatelessWidget {
   final String userName;
   final bool isGridView;
   final bool isProfessional;
+  final bool shiftOpen;
+  final int heldOrdersCount;
   final VoidCallback onToggleMode;
   final VoidCallback onToggleTheme;
   final VoidCallback onLogout;
@@ -883,10 +1044,6 @@ class _TopBar extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, c) {
-        // The cashier bar carries a lot of controls. Below this width they can't
-        // all fit beside the operator name without overflowing, so the mode
-        // toggle collapses to a single icon and the low-frequency actions
-        // (reports / theme / logout) move into an overflow menu.
         final narrow = c.maxWidth < 720;
 
         return Container(
@@ -940,14 +1097,19 @@ class _TopBar extends StatelessWidget {
               Container(width: 1, height: 26, color: taj.divider),
               const SizedBox(width: 12),
 
-              // Local-storage badge (there is no server; data is stored on
-              // this device).
+              // Local-storage badge
               const _LocalBadge(),
+
+              if (!narrow && isProfessional) ...[
+                const SizedBox(width: 8),
+                _ShiftBadge(isOpen: shiftOpen),
+              ],
 
               const Spacer(),
 
               if (!narrow) ...[
                 modeToggle,
+                const SizedBox(width: 4),
                 viewToggle,
                 if (isProfessional && onOpenReports != null)
                   IconButton(
@@ -971,7 +1133,6 @@ class _TopBar extends StatelessWidget {
                   icon: const Icon(Icons.logout_outlined, size: 20),
                 ),
               ] else ...[
-                // Compact: single-icon mode toggle + view toggle + overflow menu.
                 IconButton(
                   tooltip: isProfessional ? 'الوضع المحترف' : 'الوضع البسيط',
                   onPressed: onToggleMode,
@@ -1074,14 +1235,57 @@ class _LocalBadge extends StatelessWidget {
   }
 }
 
+class _ShiftBadge extends StatelessWidget {
+  const _ShiftBadge({required this.isOpen});
+  final bool isOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final taj = context.taj;
+    final swatch = isOpen ? taj.success : taj.warning;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: swatch.lighter,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: swatch.dark,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            isOpen ? 'وردية نشطة' : 'وردية مغلقة',
+            style: TextStyle(
+              color: swatch.dark,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Wide Layout (Desktop) ────────────────────────────────────────────────────
 
 class _WideLayout extends StatelessWidget {
   const _WideLayout({
+    required this.allProducts,
     required this.products,
     required this.categories,
+    required this.categoryCounts,
     required this.selectedCategory,
     required this.isSidebarCollapsed,
+    required this.lowStockCount,
     required this.cart,
     required this.subtotal,
     required this.itemCount,
@@ -1096,6 +1300,7 @@ class _WideLayout extends StatelessWidget {
     required this.searchController,
     required this.searchFocusNode,
     required this.onSearchChanged,
+    required this.onSearchSubmitted,
     required this.onCategoryChanged,
     required this.onToggleSidebar,
     required this.onAddToCart,
@@ -1118,6 +1323,7 @@ class _WideLayout extends StatelessWidget {
     required this.onEditLine,
     required this.onRecallOrder,
     required this.onLinkCustomer,
+    required this.onUnlinkCustomer,
     required this.discountPercent,
     required this.onDiscountChanged,
     required this.priceOverrides,
@@ -1127,10 +1333,13 @@ class _WideLayout extends StatelessWidget {
     required this.sessionCashTotal,
   });
 
+  final List<_Product> allProducts;
   final List<_Product> products;
   final List<String> categories;
+  final Map<String, int> categoryCounts;
   final String selectedCategory;
   final bool isSidebarCollapsed;
+  final int lowStockCount;
   final Map<String, int> cart;
   final double subtotal;
   final int itemCount;
@@ -1145,6 +1354,7 @@ class _WideLayout extends StatelessWidget {
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
   final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onSearchSubmitted;
   final ValueChanged<String> onCategoryChanged;
   final VoidCallback onToggleSidebar;
   final ValueChanged<String> onAddToCart;
@@ -1167,6 +1377,7 @@ class _WideLayout extends StatelessWidget {
   final ValueChanged<String> onEditLine;
   final ValueChanged<_HeldOrder> onRecallOrder;
   final VoidCallback onLinkCustomer;
+  final VoidCallback onUnlinkCustomer;
   final double discountPercent;
   final ValueChanged<double> onDiscountChanged;
   final Map<String, double> priceOverrides;
@@ -1179,9 +1390,10 @@ class _WideLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Category Sidebar (collapsible, like Odoo)
+        // Category Sidebar (collapsible, with icons and counts)
         _CategorySidebar(
           categories: categories,
+          categoryCounts: categoryCounts,
           selectedCategory: selectedCategory,
           isCollapsed: isSidebarCollapsed,
           onCategoryChanged: onCategoryChanged,
@@ -1199,17 +1411,18 @@ class _WideLayout extends StatelessWidget {
             searchController: searchController,
             searchFocusNode: searchFocusNode,
             onSearchChanged: onSearchChanged,
+            onSearchSubmitted: onSearchSubmitted,
             onProductTap: onAddToCart,
             canChangePrice: canChangePrice,
           ),
         ),
 
-        // Cart / invoice (~44%, enlarged)
+        // Cart / invoice (~44%)
         Expanded(
           flex: 4,
           child: _CartSection(
-            products: products,
-            lowStockCount: products.where((p) => p.stock <= 5).length,
+            products: allProducts,
+            lowStockCount: lowStockCount,
             cart: cart,
             subtotal: subtotal,
             itemCount: itemCount,
@@ -1228,6 +1441,7 @@ class _WideLayout extends StatelessWidget {
             sessionCashTotal: sessionCashTotal,
             onRecallOrder: onRecallOrder,
             onLinkCustomer: onLinkCustomer,
+            onUnlinkCustomer: onUnlinkCustomer,
             onIncrement: onIncrement,
             onDecrement: onDecrement,
             onRemove: onRemove,
@@ -1257,6 +1471,7 @@ class _WideLayout extends StatelessWidget {
 class _CategorySidebar extends StatelessWidget {
   const _CategorySidebar({
     required this.categories,
+    required this.categoryCounts,
     required this.selectedCategory,
     required this.isCollapsed,
     required this.onCategoryChanged,
@@ -1264,6 +1479,7 @@ class _CategorySidebar extends StatelessWidget {
   });
 
   final List<String> categories;
+  final Map<String, int> categoryCounts;
   final String selectedCategory;
   final bool isCollapsed;
   final ValueChanged<String> onCategoryChanged;
@@ -1275,7 +1491,7 @@ class _CategorySidebar extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      width: isCollapsed ? 56 : 160,
+      width: isCollapsed ? 60 : 172,
       decoration: BoxDecoration(
         color: taj.paper,
         border: Border(left: BorderSide(color: taj.divider)),
@@ -1285,7 +1501,7 @@ class _CategorySidebar extends StatelessWidget {
           // Header with toggle
           Container(
             padding: EdgeInsets.symmetric(
-              horizontal: isCollapsed ? 4 : 8,
+              horizontal: isCollapsed ? 4 : 10,
               vertical: 10,
             ),
             decoration: BoxDecoration(
@@ -1297,11 +1513,11 @@ class _CategorySidebar extends StatelessWidget {
                   onPressed: onToggleCollapse,
                   icon: Icon(
                     isCollapsed
-                        ? Icons.chevron_right_rounded
-                        : Icons.chevron_left_rounded,
+                        ? Icons.chevron_left_rounded
+                        : Icons.chevron_right_rounded,
                     size: 20,
                   ),
-                  tooltip: isCollapsed ? 'توسيع' : 'طي',
+                  tooltip: isCollapsed ? 'توسيع الفئات' : 'طي الفئات',
                 ),
                 if (!isCollapsed) ...[
                   const SizedBox(width: 4),
@@ -1323,75 +1539,111 @@ class _CategorySidebar extends StatelessWidget {
           // Category list
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               itemCount: categories.length,
               itemBuilder: (_, i) {
                 final cat = categories[i];
                 final isSelected = cat == selectedCategory;
-                final catColor = _categoryColor(cat, taj);
+                final catColor = _tajCategoryColor(cat, taj);
+                final count = categoryCounts[cat] ?? 0;
 
-                return InkWell(
-                  onTap: () => onCategoryChanged(cat),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isCollapsed ? 0 : 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? catColor.lighter : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected ? catColor.main : Colors.transparent,
-                        width: isSelected ? 2 : 0,
+                return Tooltip(
+                  message: isCollapsed ? '$cat ($count)' : '',
+                  child: InkWell(
+                    onTap: () => onCategoryChanged(cat),
+                    borderRadius: BorderRadius.circular(10),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
                       ),
-                    ),
-                    child:
-                        isCollapsed
-                            ? Center(
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: catColor.main,
-                                  shape: BoxShape.circle,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCollapsed ? 0 : 10,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? catColor.lighter.withValues(
+                                  alpha: taj.isDark ? 0.22 : 0.75,
+                                )
+                                : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color:
+                              isSelected ? catColor.main : Colors.transparent,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child:
+                          isCollapsed
+                              ? Center(
+                                child: Icon(
+                                  _categoryIcon(cat),
+                                  size: 18,
+                                  color:
+                                      isSelected
+                                          ? taj.accentFor(catColor)
+                                          : taj.textSecondary,
                                 ),
-                              ),
-                            )
-                            : Row(
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: catColor.main,
-                                    shape: BoxShape.circle,
+                              )
+                              : Row(
+                                children: [
+                                  Icon(
+                                    _categoryIcon(cat),
+                                    size: 17,
+                                    color:
+                                        isSelected
+                                            ? taj.accentFor(catColor)
+                                            : taj.textSecondary,
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    cat,
-                                    style: TextStyle(
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      cat,
+                                      style: TextStyle(
+                                        color:
+                                            isSelected
+                                                ? taj.accentFor(catColor)
+                                                : taj.textPrimary,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
                                       color:
                                           isSelected
-                                              ? catColor.dark
-                                              : taj.textPrimary,
-                                      fontWeight:
-                                          isSelected
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
-                                      fontSize: 13,
+                                              ? catColor.main
+                                              : taj.background,
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
+                                    child: Text(
+                                      '$count',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color:
+                                            isSelected
+                                                ? catColor.contrastText
+                                                : taj.textSecondary,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
+                    ),
                   ),
                 );
               },
@@ -1401,18 +1653,18 @@ class _CategorySidebar extends StatelessWidget {
       ),
     );
   }
-
-  TajSwatch _categoryColor(String category, TajColors taj) =>
-      _tajCategoryColor(category, taj);
 }
 
 // ── Narrow Layout (Mobile) ───────────────────────────────────────────────────
 
 class _NarrowLayout extends StatelessWidget {
   const _NarrowLayout({
+    required this.allProducts,
     required this.products,
     required this.categories,
+    required this.categoryCounts,
     required this.selectedCategory,
+    required this.lowStockCount,
     required this.cart,
     required this.subtotal,
     required this.itemCount,
@@ -1427,6 +1679,7 @@ class _NarrowLayout extends StatelessWidget {
     required this.searchController,
     required this.searchFocusNode,
     required this.onSearchChanged,
+    required this.onSearchSubmitted,
     required this.onCategoryChanged,
     required this.onAddToCart,
     required this.onIncrement,
@@ -1448,6 +1701,7 @@ class _NarrowLayout extends StatelessWidget {
     required this.onEditLine,
     required this.onRecallOrder,
     required this.onLinkCustomer,
+    required this.onUnlinkCustomer,
     required this.discountPercent,
     required this.onDiscountChanged,
     required this.priceOverrides,
@@ -1457,9 +1711,12 @@ class _NarrowLayout extends StatelessWidget {
     required this.sessionCashTotal,
   });
 
+  final List<_Product> allProducts;
   final List<_Product> products;
   final List<String> categories;
+  final Map<String, int> categoryCounts;
   final String selectedCategory;
+  final int lowStockCount;
   final Map<String, int> cart;
   final double subtotal;
   final int itemCount;
@@ -1474,6 +1731,7 @@ class _NarrowLayout extends StatelessWidget {
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
   final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onSearchSubmitted;
   final ValueChanged<String> onCategoryChanged;
   final ValueChanged<String> onAddToCart;
   final ValueChanged<String> onIncrement;
@@ -1495,6 +1753,7 @@ class _NarrowLayout extends StatelessWidget {
   final ValueChanged<String> onEditLine;
   final ValueChanged<_HeldOrder> onRecallOrder;
   final VoidCallback onLinkCustomer;
+  final VoidCallback onUnlinkCustomer;
   final double discountPercent;
   final ValueChanged<double> onDiscountChanged;
   final Map<String, double> priceOverrides;
@@ -1510,6 +1769,7 @@ class _NarrowLayout extends StatelessWidget {
         // Category chips (horizontal scroll)
         _CategoryChips(
           categories: categories,
+          categoryCounts: categoryCounts,
           selectedCategory: selectedCategory,
           onCategoryChanged: onCategoryChanged,
         ),
@@ -1524,14 +1784,16 @@ class _NarrowLayout extends StatelessWidget {
             searchController: searchController,
             searchFocusNode: searchFocusNode,
             onSearchChanged: onSearchChanged,
+            onSearchSubmitted: onSearchSubmitted,
             onProductTap: onAddToCart,
             canChangePrice: canChangePrice,
           ),
         ),
-        if (cart.isNotEmpty)
+        if (cart.isNotEmpty || (isProfessional && heldOrders.isNotEmpty))
           _MobileCartBar(
             itemCount: itemCount,
-            subtotal: subtotal,
+            subtotal: subtotal * (1 - discountPercent.clamp(0, 100) / 100),
+            heldCount: isProfessional ? heldOrders.length : 0,
             onTap: () => _showCartSheet(context),
           ),
       ],
@@ -1545,14 +1807,14 @@ class _NarrowLayout extends StatelessWidget {
       useSafeArea: true,
       builder:
           (_) => DraggableScrollableSheet(
-            initialChildSize: 0.75,
-            minChildSize: 0.4,
+            initialChildSize: 0.78,
+            minChildSize: 0.45,
             maxChildSize: 0.95,
             expand: false,
             builder:
                 (ctx, controller) => _CartSection(
-                  products: products,
-                  lowStockCount: products.where((p) => p.stock <= 5).length,
+                  products: allProducts,
+                  lowStockCount: lowStockCount,
                   cart: cart,
                   subtotal: subtotal,
                   itemCount: itemCount,
@@ -1571,6 +1833,7 @@ class _NarrowLayout extends StatelessWidget {
                   sessionCashTotal: sessionCashTotal,
                   onRecallOrder: onRecallOrder,
                   onLinkCustomer: onLinkCustomer,
+                  onUnlinkCustomer: onUnlinkCustomer,
                   onIncrement: onIncrement,
                   onDecrement: onDecrement,
                   onRemove: onRemove,
@@ -1601,11 +1864,13 @@ class _MobileCartBar extends StatelessWidget {
   const _MobileCartBar({
     required this.itemCount,
     required this.subtotal,
+    this.heldCount = 0,
     required this.onTap,
   });
 
   final int itemCount;
   final double subtotal;
+  final int heldCount;
   final VoidCallback onTap;
 
   @override
@@ -1635,7 +1900,9 @@ class _MobileCartBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  '$itemCount منتج',
+                  itemCount > 0
+                      ? '$itemCount منتج'
+                      : '$heldCount طلب موقوف',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -1671,11 +1938,13 @@ class _MobileCartBar extends StatelessWidget {
 class _CategoryChips extends StatelessWidget {
   const _CategoryChips({
     required this.categories,
+    required this.categoryCounts,
     required this.selectedCategory,
     required this.onCategoryChanged,
   });
 
   final List<String> categories;
+  final Map<String, int> categoryCounts;
   final String selectedCategory;
   final ValueChanged<String> onCategoryChanged;
 
@@ -1684,26 +1953,27 @@ class _CategoryChips extends StatelessWidget {
     final taj = context.taj;
 
     return Container(
-      height: 44,
+      height: 46,
       decoration: BoxDecoration(
         color: taj.paper,
         border: Border(bottom: BorderSide(color: taj.divider)),
       ),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         itemCount: categories.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final cat = categories[i];
           final isSelected = cat == selectedCategory;
-          final catColor = _categoryColor(cat, taj);
+          final catColor = _tajCategoryColor(cat, taj);
+          final count = categoryCounts[cat] ?? 0;
 
           return GestureDetector(
             onTap: () => onCategoryChanged(cat),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: isSelected ? catColor.main : taj.background,
                 borderRadius: BorderRadius.circular(20),
@@ -1714,17 +1984,15 @@ class _CategoryChips extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (!isSelected) ...[
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: catColor.main,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
+                  Icon(
+                    _categoryIcon(cat),
+                    size: 14,
+                    color:
+                        isSelected
+                            ? catColor.contrastText
+                            : taj.accentFor(catColor),
+                  ),
+                  const SizedBox(width: 6),
                   Text(
                     cat,
                     style: TextStyle(
@@ -1732,6 +2000,18 @@ class _CategoryChips extends StatelessWidget {
                           isSelected ? catColor.contrastText : taj.textPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '($count)',
+                    style: TextStyle(
+                      color:
+                          isSelected
+                              ? catColor.contrastText.withValues(alpha: 0.85)
+                              : taj.textSecondary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
                     ),
                   ),
                 ],
@@ -1742,9 +2022,6 @@ class _CategoryChips extends StatelessWidget {
       ),
     );
   }
-
-  TajSwatch _categoryColor(String category, TajColors taj) =>
-      _tajCategoryColor(category, taj);
 }
 
 // ── Product Section ──────────────────────────────────────────────────────────
@@ -1758,6 +2035,7 @@ class _ProductSection extends StatelessWidget {
     required this.searchController,
     required this.searchFocusNode,
     required this.onSearchChanged,
+    required this.onSearchSubmitted,
     required this.onProductTap,
     this.canChangePrice = true,
   });
@@ -1769,6 +2047,7 @@ class _ProductSection extends StatelessWidget {
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
   final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onSearchSubmitted;
   final ValueChanged<String> onProductTap;
   final bool canChangePrice;
 
@@ -1778,16 +2057,18 @@ class _ProductSection extends StatelessWidget {
 
     return Column(
       children: [
-        // Search bar
+        // Search bar (supports barcode Enter to auto-add)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: TextField(
             controller: searchController,
             focusNode: searchFocusNode,
             onChanged: onSearchChanged,
+            onSubmitted: onSearchSubmitted,
+            textInputAction: TextInputAction.search,
             style: const TextStyle(fontSize: 15),
             decoration: InputDecoration(
-              hintText: 'ابحث بالاسم أو الباركود...',
+              hintText: 'ابحث بالاسم أو امسح الباركود (Enter للإضافة)...',
               prefixIcon: const Icon(Icons.search_rounded, size: 22),
               suffixIcon:
                   searchQuery.isNotEmpty
@@ -1804,7 +2085,7 @@ class _ProductSection extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               filled: true,
-              fillColor: taj.background,
+              fillColor: taj.paper,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,
@@ -1818,32 +2099,35 @@ class _ProductSection extends StatelessWidget {
           child:
               products.isEmpty
                   ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off_rounded,
-                          size: 56,
-                          color: taj.textDisabled,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'لا توجد منتجات',
-                          style: TextStyle(
-                            color: taj.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 56,
+                            color: taj.textDisabled,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'جرّب البحث بالاسم أو الباركود',
-                          style: TextStyle(
-                            color: taj.textSecondary,
-                            fontSize: 14,
+                          const SizedBox(height: 16),
+                          Text(
+                            'لا توجد منتجات',
+                            style: TextStyle(
+                              color: taj.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'جرّب البحث بالاسم أو الباركود',
+                            style: TextStyle(
+                              color: taj.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   )
                   : isGridView
@@ -1851,10 +2135,10 @@ class _ProductSection extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 150,
-                          mainAxisExtent: 110,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
+                          maxCrossAxisExtent: 165,
+                          mainAxisExtent: 122,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
                         ),
                     itemCount: products.length,
                     itemBuilder:
@@ -1900,111 +2184,171 @@ class _ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
-    final categoryColor = _categoryColor(product.category, taj);
+    final categoryColor = _tajCategoryColor(product.category, taj);
     final inCart = quantityInCart > 0;
+    final outOfStock = product.stock <= 0;
+    final lowStock = !outOfStock && product.stock <= product.reorderLevel;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Material(
-      color: taj.paper,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
+    return Opacity(
+      opacity: outOfStock ? 0.6 : 1.0,
+      child: Material(
+        color: taj.paper,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: inCart ? categoryColor.main : taj.divider,
-              width: inCart ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Icon area — subtle category-tinted surface
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: categoryColor.lighter.withValues(
-                      alpha: isDark ? 0.16 : 0.55,
-                    ),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(11),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    _categoryIcon(product.category),
-                    size: 28,
-                    color: taj.accentFor(categoryColor),
-                  ),
-                ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: inCart ? categoryColor.main : taj.divider,
+                width: inCart ? 2 : 1,
               ),
-
-              // Details
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: taj.textPrimary,
-                        fontSize: 12,
-                        height: 1.3,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Icon area + stock/cart badges
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: categoryColor.lighter.withValues(
+                        alpha: isDark ? 0.16 : 0.55,
+                      ),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(11),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
+                    child: Stack(
                       children: [
-                        if (canChangePrice)
-                          Expanded(
-                            child: Text(
-                              '${arNum(product.price)} د.ل',
-                              style: TextStyle(
-                                color: taj.accentText,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                        Center(
+                          child: Icon(
+                            _productIcon(product),
+                            size: 28,
+                            color: taj.accentFor(categoryColor),
+                          ),
+                        ),
+                        if (outOfStock)
+                          PositionedDirectional(
+                            top: 0,
+                            start: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: taj.error.main,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'نفد',
+                                style: TextStyle(
+                                  color: taj.error.contrastText,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (lowStock)
+                          PositionedDirectional(
+                            top: 0,
+                            start: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: taj.warning.lighter,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '${product.stock}',
+                                style: TextStyle(
+                                  color: taj.warning.dark,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ),
                         if (inCart)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: categoryColor.main,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '$quantityInCart',
-                              style: TextStyle(
-                                color: categoryColor.contrastText,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                          PositionedDirectional(
+                            top: 0,
+                            end: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: categoryColor.main,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '$quantityInCart',
+                                style: TextStyle(
+                                  color: categoryColor.contrastText,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+
+                // Details
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: taj.textPrimary,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      if (canChangePrice)
+                        Text(
+                          '${arNum(product.price)} د.ل',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: taj.accentText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
-  TajSwatch _categoryColor(String category, TajColors taj) =>
-      _tajCategoryColor(category, taj);
 }
 
 // ── Product List Tile (List view) ───────────────────────────────────────────
@@ -2026,104 +2370,115 @@ class _ProductListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final categoryColor = _categoryColor(product.category, taj);
+    final categoryColor = _tajCategoryColor(product.category, taj);
     final inCart = quantityInCart > 0;
+    final outOfStock = product.stock <= 0;
 
-    return Material(
-      color: taj.paper,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
+    return Opacity(
+      opacity: outOfStock ? 0.6 : 1.0,
+      child: Material(
+        color: taj.paper,
         borderRadius: BorderRadius.circular(10),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: inCart ? categoryColor.main : taj.divider,
-              width: inCart ? 2 : 1,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: inCart ? categoryColor.main : taj.divider,
+                width: inCart ? 2 : 1,
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              // Category icon chip
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: categoryColor.lighter.withValues(
-                    alpha: isDark ? 0.18 : 0.5,
-                  ),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(
-                  _categoryIcon(product.category),
-                  size: 19,
-                  color: taj.accentFor(categoryColor),
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Product info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: taj.textPrimary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Price (only if the user has the sales.change_price permission)
-              if (canChangePrice)
-                Text(
-                  '${arNum(product.price)} د.ل',
-                  style: TextStyle(
-                    color: taj.accentText,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-
-              // Quantity badge
-              if (inCart) ...[
-                const SizedBox(width: 8),
+            child: Row(
+              children: [
+                // Category icon chip
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: categoryColor.main,
-                    borderRadius: BorderRadius.circular(8),
+                    color: categoryColor.lighter.withValues(
+                      alpha: isDark ? 0.18 : 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(9),
                   ),
-                  child: Text(
-                    '$quantityInCart',
+                  child: Icon(
+                    _productIcon(product),
+                    size: 19,
+                    color: taj.accentFor(categoryColor),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Product info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: taj.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        outOfStock
+                            ? 'نفد من المخزون'
+                            : 'المخزون: ${product.stock} • ${product.category}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color:
+                              outOfStock ? taj.error.main : taj.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Price
+                if (canChangePrice)
+                  Text(
+                    '${arNum(product.price)} د.ل',
                     style: TextStyle(
-                      color: categoryColor.contrastText,
-                      fontSize: 11,
+                      color: taj.accentText,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
+
+                // Quantity badge
+                if (inCart) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: categoryColor.main,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$quantityInCart',
+                      style: TextStyle(
+                        color: categoryColor.contrastText,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
     );
   }
-
-  TajSwatch _categoryColor(String category, TajColors taj) =>
-      _tajCategoryColor(category, taj);
 }
 
 // ── Cart Section ─────────────────────────────────────────────────────────────
@@ -2160,6 +2515,7 @@ class _CartSection extends StatelessWidget {
     required this.onEditLine,
     required this.onRecallOrder,
     required this.onLinkCustomer,
+    required this.onUnlinkCustomer,
     required this.discountPercent,
     required this.onDiscountChanged,
     required this.priceOverrides,
@@ -2200,6 +2556,7 @@ class _CartSection extends StatelessWidget {
   final ValueChanged<String> onEditLine;
   final ValueChanged<_HeldOrder> onRecallOrder;
   final VoidCallback onLinkCustomer;
+  final VoidCallback onUnlinkCustomer;
   final double discountPercent;
   final ValueChanged<double> onDiscountChanged;
   final Map<String, double> priceOverrides;
@@ -2215,8 +2572,6 @@ class _CartSection extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Cap the totals/footer so it scrolls internally on short windows
-        // instead of crushing the cart items area to zero (overflow fix).
         final maxFooterHeight = constraints.maxHeight * 0.52;
         return Container(
           decoration: BoxDecoration(
@@ -2246,8 +2601,6 @@ class _CartSection extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
 
-                    // Trailing tools scale down on very tight widths instead of
-                    // overflowing — the professional header carries several tools.
                     Expanded(
                       child: Align(
                         alignment: AlignmentDirectional.centerEnd,
@@ -2257,7 +2610,7 @@ class _CartSection extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // ── Professional: low-stock indicator (one chip) ──
+                              // ── Professional: low-stock indicator ──
                               if (isProfessional && lowStockCount > 0) ...[
                                 Tooltip(
                                   message: 'مخزون منخفض: $lowStockCount صنف',
@@ -2418,15 +2771,24 @@ class _CartSection extends StatelessWidget {
                             ),
                           ),
                         )
-                        : ListView.builder(
+                        : ListView.separated(
                           controller: scrollController,
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           itemCount: cart.length,
+                          separatorBuilder:
+                              (_, __) => Divider(
+                                height: 1,
+                                indent: 12,
+                                endIndent: 12,
+                                color: taj.divider.withValues(alpha: 0.5),
+                              ),
                           itemBuilder: (_, i) {
                             final entry = cart.entries.elementAt(i);
-                            final product = products.firstWhere(
+                            final match = products.where(
                               (p) => p.id == entry.key,
                             );
+                            if (match.isEmpty) return const SizedBox.shrink();
+                            final product = match.first;
                             return _CartItem(
                               product: product,
                               quantity: entry.value,
@@ -2517,89 +2879,95 @@ class _CartItem extends StatelessWidget {
     final isOverridden = unitPrice != null && unitPrice != product.price;
     final lineTotal = effectiveUnit * quantity;
 
-    return Container(
-      padding: const EdgeInsetsDirectional.only(
-        start: 12,
-        end: 12,
-        top: 6,
-        bottom: 6,
-      ),
-      child: Row(
-        children: [
-          // Name + price
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        product.name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: taj.textPrimary,
-                          fontSize: 13,
+    return InkWell(
+      onTap: onEditLine != null ? () => onEditLine!(product.id) : null,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(
+          start: 12,
+          end: 12,
+          top: 7,
+          bottom: 7,
+        ),
+        child: Row(
+          children: [
+            // Name + price
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          product.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: taj.textPrimary,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
+                      if (onEditLine != null)
+                        GestureDetector(
+                          onTap: () => onEditLine!(product.id),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            size: 15,
+                            color: taj.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
+                  Text(
+                    canChangePrice
+                        ? '${arNum(effectiveUnit)} د.ل × $quantity'
+                        : '× $quantity',
+                    style: TextStyle(
+                      color:
+                          isOverridden ? taj.primary.main : taj.textSecondary,
+                      fontWeight:
+                          isOverridden ? FontWeight.w700 : FontWeight.w400,
+                      fontSize: 11,
                     ),
-                    if (onEditLine != null)
-                      GestureDetector(
-                        onTap: () => onEditLine!(product.id),
-                        child: Icon(
-                          Icons.more_vert_rounded,
-                          size: 16,
-                          color: taj.textSecondary,
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Quantity controls
+            _QuantityCounter(
+              quantity: quantity,
+              onIncrement: onIncrement,
+              onDecrement: onDecrement,
+            ),
+            const SizedBox(width: 8),
+
+            // Line total + remove
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
                 Text(
-                  canChangePrice
-                      ? '${arNum(effectiveUnit)} د.ل × $quantity'
-                      : '× $quantity',
+                  arDinar(lineTotal),
                   style: TextStyle(
-                    color: isOverridden ? taj.primary.main : taj.textSecondary,
-                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: taj.textPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: onRemove,
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 14,
+                    color: taj.error.main,
                   ),
                 ),
               ],
             ),
-          ),
-
-          // Quantity controls
-          _QuantityCounter(
-            quantity: quantity,
-            onIncrement: onIncrement,
-            onDecrement: onDecrement,
-          ),
-          const SizedBox(width: 8),
-
-          // Line total + remove
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                arDinar(lineTotal),
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: taj.textPrimary,
-                  fontSize: 13,
-                ),
-              ),
-              GestureDetector(
-                onTap: onRemove,
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 14,
-                  color: taj.error.main,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2774,12 +3142,20 @@ class _CartTotals extends StatelessWidget {
           ],
 
           // Subtotal (+ discount row)
-          _TotalRow(label: 'المجموع', value: arDinar(subtotal)),
+          _TotalRow(
+            label: hasDiscount ? 'المجموع الفرعي' : 'المجموع',
+            value: arDinar(subtotal),
+          ),
           if (hasDiscount) ...[
             _TotalRow(
               label: 'خصم ${arNum(discountPercent.round())}%',
               value: '- ${arDinar(subtotal - _discountedTotal)}',
               valueColor: taj.error.main,
+            ),
+            _TotalRow(
+              label: 'الصافي للدفع',
+              value: arDinar(_discountedTotal),
+              valueColor: taj.accentText,
             ),
           ],
           const SizedBox(height: 12),
@@ -2962,27 +3338,51 @@ class _CartTotals extends StatelessWidget {
     final controller = TextEditingController(
       text: discountPercent > 0 ? discountPercent.round().toString() : '',
     );
+    const presets = [5.0, 10.0, 15.0, 20.0, 25.0];
     final value = await showDialog<double>(
       context: context,
       builder:
           (ctx) => AlertDialog(
             title: const Text('خصم على الفاتورة'),
-            content: TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              textDirection: TextDirection.rtl,
-              decoration: const InputDecoration(
-                labelText: 'نسبة الخصم %',
-                border: OutlineInputBorder(),
-                hintText: 'مثال: 10',
-              ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final p in presets)
+                      ActionChip(
+                        label: Text('${p.toInt()}%'),
+                        onPressed: () => Navigator.pop(ctx, p),
+                      ),
+                    if (discountPercent > 0)
+                      ActionChip(
+                        label: const Text('بدون خصم'),
+                        onPressed: () => Navigator.pop(ctx, 0.0),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  textDirection: TextDirection.rtl,
+                  decoration: const InputDecoration(
+                    labelText: 'نسبة الخصم %',
+                    border: OutlineInputBorder(),
+                    hintText: 'مثال: 10',
+                  ),
+                ),
+              ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('إلغاء'),
               ),
-              TextButton(
+              FilledButton(
                 onPressed:
                     () => Navigator.pop(
                       ctx,
@@ -3021,7 +3421,7 @@ class _CartTotals extends StatelessWidget {
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('إلغاء'),
               ),
-              TextButton(
+              FilledButton(
                 onPressed: () => Navigator.pop(ctx, controller.text),
                 child: const Text('حفظ'),
               ),
@@ -3033,8 +3433,7 @@ class _CartTotals extends StatelessWidget {
 }
 
 /// The big primary tender button. A full-width success bar that also shows the
-/// amount being charged on the trailing side — the single most-used control on
-/// the till, sized for fast, confident taps (spec §7.5 "huge pay buttons").
+/// amount being charged on the trailing side.
 class _PrimaryChargeButton extends StatelessWidget {
   const _PrimaryChargeButton({
     required this.amount,
@@ -3091,8 +3490,7 @@ class _PrimaryChargeButton extends StatelessWidget {
 }
 
 /// An equal-priority tender button — a neutral **soft** button (Minimals) with a
-/// leading icon chip and label. Neutral grey by policy; methods are told apart
-/// by their icon only (see [TajColors.neutralSwatch]).
+/// leading icon chip and label.
 class _PayButton extends StatelessWidget {
   const _PayButton({
     required this.label,
@@ -3191,8 +3589,7 @@ class _PaySectionLabel extends StatelessWidget {
 }
 
 /// A compact session KPI cell (label stacked over value) used by the
-/// professional Z-report mini strip. Both label and value ellipsize so the pair
-/// of cells stays inside a phone-width cart sheet.
+/// professional Z-report mini strip.
 class _SessionStat extends StatelessWidget {
   const _SessionStat({
     required this.icon,
@@ -3244,8 +3641,6 @@ class _SessionStat extends StatelessWidget {
 }
 
 /// A compact professional-mode action tile (discount / note / hold / split).
-/// Sits in a single 4-up toolbar and lights up with a semantic accent when its
-/// feature is active (e.g. a discount is applied or a note is attached).
 class _ProActionTile extends StatelessWidget {
   const _ProActionTile({
     required this.icon,
@@ -3348,6 +3743,8 @@ class _PaymentDialog extends StatefulWidget {
     required this.itemCount,
     required this.method,
     required this.onConfirm,
+    this.customers = const [],
+    this.initialCustomer,
     this.isProfessional = false,
     this.onSplit,
   });
@@ -3355,7 +3752,9 @@ class _PaymentDialog extends StatefulWidget {
   final double subtotal;
   final int itemCount;
   final PaymentMethod method;
-  final VoidCallback onConfirm;
+  final ValueChanged<String?> onConfirm;
+  final List<String> customers;
+  final String? initialCustomer;
   final bool isProfessional;
   final VoidCallback? onSplit;
 
@@ -3365,18 +3764,29 @@ class _PaymentDialog extends StatefulWidget {
 
 class _PaymentDialogState extends State<_PaymentDialog> {
   final _amountController = TextEditingController();
+  final _customerController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _amountController.text = widget.subtotal.toStringAsFixed(3);
+    if (widget.initialCustomer != null) {
+      _customerController.text = widget.initialCustomer!;
+    }
   }
 
   @override
   void dispose() {
     _amountController.dispose();
+    _customerController.dispose();
     super.dispose();
   }
+
+  double get _paidAmount =>
+      double.tryParse(_amountController.text.trim()) ?? widget.subtotal;
+
+  double get _changeDue =>
+      (_paidAmount - widget.subtotal).clamp(0, double.infinity);
 
   @override
   Widget build(BuildContext context) {
@@ -3395,92 +3805,135 @@ class _PaymentDialogState extends State<_PaymentDialog> {
 
     return AlertDialog(
       title: Text(methodName),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Amount
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: taj.background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Text('الإجمالي', style: TextStyle(color: taj.textSecondary)),
-                const SizedBox(height: 4),
-                Text(
-                  arDinar(widget.subtotal),
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: taj.accentText,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Amount
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: taj.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Text('الإجمالي', style: TextStyle(color: taj.textSecondary)),
+                    const SizedBox(height: 4),
+                    Text(
+                      arDinar(widget.subtotal),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: taj.accentText,
+                      ),
+                    ),
+                    Text(
+                      '${widget.itemCount} منتج',
+                      style: TextStyle(color: taj.textSecondary, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (widget.method == PaymentMethod.cash) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'المبلغ المدفوع',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _amountController,
+                  onChanged: (_) => setState(() {}),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    suffixText: 'د.ل',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-                Text(
-                  '${widget.itemCount} منتج',
-                  style: TextStyle(color: taj.textSecondary, fontSize: 13),
+                if (_changeDue > 0) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'الباقي للعميل: ${arDinar(_changeDue)}',
+                    style: TextStyle(
+                      color: taj.accentFor(taj.success),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
+
+              if (widget.method == PaymentMethod.credit) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'اسم العميل',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                if (widget.customers.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final c in widget.customers.take(4))
+                        ChoiceChip(
+                          label: Text(
+                            c,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          selected: _customerController.text == c,
+                          onSelected: (_) {
+                            setState(() => _customerController.text = c);
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                TextField(
+                  controller: _customerController,
+                  decoration: InputDecoration(
+                    hintText: 'أدخل اسم العميل',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
               ],
-            ),
+
+              if (widget.method == PaymentMethod.bank ||
+                  widget.method == PaymentMethod.bankTransfer) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'رقم المرجع',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'رقم عملية التحويل',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-
-          if (widget.method == PaymentMethod.cash) ...[
-            const SizedBox(height: 16),
-            Text(
-              'المبلغ المدفوع',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                suffixText: 'د.ل',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ],
-
-          if (widget.method == PaymentMethod.credit) ...[
-            const SizedBox(height: 16),
-            Text('اسم العميل', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'أدخل اسم العميل',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ],
-
-          if (widget.method == PaymentMethod.bank) ...[
-            const SizedBox(height: 16),
-            Text('رقم المرجع', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'رقم عملية التحويل',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
       actions: [
         if (widget.isProfessional && widget.onSplit != null)
           TextButton.icon(
-            onPressed: () {
-              Navigator.of(context).pop();
-              widget.onSplit!();
-            },
+            onPressed: widget.onSplit,
             icon: const Icon(Icons.account_balance_wallet_outlined, size: 16),
             label: const Text('تقسيم'),
           ),
@@ -3491,7 +3944,12 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         SizedBox(
           width: 140,
           child: FilledButton.icon(
-            onPressed: widget.onConfirm,
+            onPressed:
+                () => widget.onConfirm(
+                  _customerController.text.trim().isEmpty
+                      ? null
+                      : _customerController.text.trim(),
+                ),
             icon: const Icon(Icons.check_rounded),
             label: const Text('تأكيد'),
           ),
@@ -3512,6 +3970,7 @@ class _HeldOrdersBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final taj = context.taj;
     return Container(
+      width: double.infinity,
       padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 8),
       decoration: BoxDecoration(
         color: taj.background,
@@ -3551,6 +4010,7 @@ class _HeldOrdersBar extends StatelessWidget {
                       border: Border.all(color: taj.divider),
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.restore_rounded,
@@ -3629,6 +4089,15 @@ class _SplitPaymentSheetState extends State<_SplitPaymentSheet> {
     });
   }
 
+  void _fillRemaining(PaymentMethod method) {
+    final currentMethodVal = double.tryParse(_controllers[method]!.text) ?? 0;
+    final others = _totalEntered - currentMethodVal;
+    final needed = (widget.subtotal - others).clamp(0, double.infinity);
+    setState(() {
+      _controllers[method]!.text = needed.toStringAsFixed(0);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
@@ -3665,10 +4134,24 @@ class _SplitPaymentSheetState extends State<_SplitPaymentSheet> {
                     style: TextStyle(color: taj.textPrimary, fontSize: 13),
                   ),
                 ),
+                if (remaining > 0)
+                  TextButton(
+                    onPressed: () => _fillRemaining(m),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text(
+                      'المتبقي',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ),
+                const SizedBox(width: 6),
                 SizedBox(
-                  width: 90,
+                  width: 96,
                   child: TextField(
                     controller: _controllers[m],
+                    onChanged: (_) => setState(() {}),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -3696,7 +4179,7 @@ class _SplitPaymentSheetState extends State<_SplitPaymentSheet> {
                   'الباقي: ${arDinar(remaining)}',
                   style: TextStyle(
                     color:
-                        remaining < 0
+                        remaining <= 0
                             ? taj.accentFor(taj.success)
                             : taj.textPrimary,
                     fontSize: 14,
@@ -3713,7 +4196,16 @@ class _SplitPaymentSheetState extends State<_SplitPaymentSheet> {
                   _methods
                       .map((m) => double.tryParse(_controllers[m]!.text) ?? 0)
                       .toList();
-              widget.onConfirm(_methods.first, amounts);
+              // Pick the method with the largest entered amount as primary.
+              var primary = _methods.first;
+              var maxVal = -1.0;
+              for (var i = 0; i < _methods.length; i++) {
+                if (amounts[i] > maxVal) {
+                  maxVal = amounts[i];
+                  primary = _methods[i];
+                }
+              }
+              widget.onConfirm(primary, amounts);
             },
             style: FilledButton.styleFrom(
               backgroundColor: taj.primary.main,
@@ -3742,7 +4234,7 @@ class _SplitPaymentSheetState extends State<_SplitPaymentSheet> {
     PaymentMethod.bank => 'تحويل مصرفي',
     PaymentMethod.sadad => 'سداد',
     PaymentMethod.numoQr => 'NUMO QR',
-    _ => 'آخرى',
+    _ => 'أخرى',
   };
 }
 
@@ -4085,7 +4577,7 @@ class _ReportKpi extends StatelessWidget {
 
 // ── Cart Line Edit Sheet ───────────────────────────────────────────────────────
 
-class _CartLineEditSheet extends StatelessWidget {
+class _CartLineEditSheet extends StatefulWidget {
   const _CartLineEditSheet({
     required this.product,
     required this.initialQuantity,
@@ -4103,14 +4595,34 @@ class _CartLineEditSheet extends StatelessWidget {
   final VoidCallback onRemove;
 
   @override
+  State<_CartLineEditSheet> createState() => _CartLineEditSheetState();
+}
+
+class _CartLineEditSheetState extends State<_CartLineEditSheet> {
+  late final TextEditingController _qtyController;
+  late final TextEditingController _priceController;
+
+  @override
+  void initState() {
+    super.initState();
+    _qtyController = TextEditingController(
+      text: widget.initialQuantity.toString(),
+    );
+    _priceController = TextEditingController(
+      text: widget.initialPrice.toStringAsFixed(2),
+    );
+  }
+
+  @override
+  void dispose() {
+    _qtyController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final taj = context.taj;
-    final qtyController = TextEditingController(
-      text: initialQuantity.toString(),
-    );
-    final priceController = TextEditingController(
-      text: initialPrice.toStringAsFixed(3),
-    );
 
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(
@@ -4124,12 +4636,17 @@ class _CartLineEditSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            product.name,
+            widget.product.name,
             style: TextStyle(
               color: taj.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'السعر الأساسي: ${arDinar(widget.product.price)} • المتاح: ${widget.product.stock}',
+            style: TextStyle(color: taj.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 16),
           Row(
@@ -4141,12 +4658,10 @@ class _CartLineEditSheet extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                width: 120,
+                width: 140,
                 child: TextField(
-                  controller: qtyController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  controller: _qtyController,
+                  keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     isDense: true,
                     border: OutlineInputBorder(
@@ -4157,7 +4672,7 @@ class _CartLineEditSheet extends StatelessWidget {
               ),
             ],
           ),
-          if (canChangePrice) ...[
+          if (widget.canChangePrice) ...[
             const SizedBox(height: 12),
             Row(
               children: [
@@ -4168,15 +4683,14 @@ class _CartLineEditSheet extends StatelessWidget {
                   ),
                 ),
                 SizedBox(
-                  width: 120,
+                  width: 140,
                   child: TextField(
-                    controller: priceController,
+                    controller: _priceController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
                     decoration: InputDecoration(
                       isDense: true,
-                      prefixText: '${arNum(product.price)} ← ',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -4188,10 +4702,7 @@ class _CartLineEditSheet extends StatelessWidget {
           ],
           const SizedBox(height: 20),
           OutlinedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              onRemove();
-            },
+            onPressed: widget.onRemove,
             style: OutlinedButton.styleFrom(
               foregroundColor: taj.error.main,
               side: BorderSide(color: taj.error.main),
@@ -4202,14 +4713,14 @@ class _CartLineEditSheet extends StatelessWidget {
           FilledButton(
             onPressed: () {
               final qty =
-                  int.tryParse(qtyController.text.trim()) ?? initialQuantity;
+                  int.tryParse(_qtyController.text.trim()) ??
+                  widget.initialQuantity;
               final price =
-                  canChangePrice
-                      ? double.tryParse(priceController.text.trim()) ??
-                          initialPrice
-                      : initialPrice;
-              Navigator.of(context).pop();
-              onSave(qty, price);
+                  widget.canChangePrice
+                      ? double.tryParse(_priceController.text.trim()) ??
+                          widget.initialPrice
+                      : widget.initialPrice;
+              widget.onSave(qty, price);
             },
             style: FilledButton.styleFrom(
               backgroundColor: taj.primary.main,
@@ -4235,12 +4746,20 @@ class _HeldOrder {
     required this.itemCount,
     required this.subtotal,
     required this.cart,
+    this.priceOverrides = const {},
+    this.discountPercent = 0,
+    this.note = '',
+    this.customerName,
   });
   final String id;
   final String name;
   final int itemCount;
   final double subtotal;
   final Map<String, int> cart;
+  final Map<String, double> priceOverrides;
+  final double discountPercent;
+  final String note;
+  final String? customerName;
 }
 
 TajSwatch _tajCategoryColor(String category, TajColors taj) {
@@ -4276,6 +4795,8 @@ class _Product {
     required this.category,
     required this.price,
     this.stock = 999,
+    this.reorderLevel = 5,
+    this.iconCode = 'spa',
   });
   final String id;
   final String name;
@@ -4283,6 +4804,8 @@ class _Product {
   final String category;
   final double price;
   final int stock;
+  final int reorderLevel;
+  final String iconCode;
 }
 
 // ── Completed Sale (session tracking) ────────────────────────────────────────
@@ -4302,7 +4825,7 @@ class _CompletedSale {
 
 // ── Customer Picker Sheet ────────────────────────────────────────────────────
 
-class _CustomerPickerSheet extends StatelessWidget {
+class _CustomerPickerSheet extends StatefulWidget {
   const _CustomerPickerSheet({
     required this.selected,
     required this.customers,
@@ -4310,15 +4833,34 @@ class _CustomerPickerSheet extends StatelessWidget {
   });
 
   final String? selected;
-  final List<String> customers;
-  final ValueChanged<String> onSelect;
+  final List<DemoCustomer> customers;
+  final ValueChanged<String?> onSelect;
+
+  @override
+  State<_CustomerPickerSheet> createState() => _CustomerPickerSheetState();
+}
+
+class _CustomerPickerSheetState extends State<_CustomerPickerSheet> {
+  String _query = '';
 
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
+    final filtered =
+        widget.customers.where((c) {
+          if (_query.trim().isEmpty) return true;
+          final q = _query.trim().toLowerCase();
+          return c.name.toLowerCase().contains(q) || c.phone.contains(q);
+        }).toList();
+
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(16, 20, 16, 16),
+        padding: EdgeInsetsDirectional.fromSTEB(
+          16,
+          20,
+          16,
+          MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4338,51 +4880,93 @@ class _CustomerPickerSheet extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(color: taj.textSecondary, fontSize: 13),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            TextField(
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: 'ابحث باسم العميل أو الهاتف...',
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: customers.length,
-                separatorBuilder:
-                    (_, _) => Divider(height: 1, color: taj.divider),
-                itemBuilder: (_, i) {
-                  final name = customers[i];
-                  final isSelected = name == selected;
-                  return ListTile(
-                    dense: true,
-                    title: Text(
-                      name,
-                      style: TextStyle(
-                        color: taj.textPrimary,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: 14,
+              child:
+                  filtered.isEmpty
+                      ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Text(
+                          'لا يوجد عملاء مطابقون',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: taj.textSecondary),
+                        ),
+                      )
+                      : ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: filtered.length,
+                        separatorBuilder:
+                            (_, __) => Divider(height: 1, color: taj.divider),
+                        itemBuilder: (_, i) {
+                          final customer = filtered[i];
+                          final isSelected = customer.name == widget.selected;
+                          return ListTile(
+                            dense: true,
+                            leading: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: taj.primary.lighter,
+                              child: Icon(
+                                Icons.person_outline_rounded,
+                                size: 16,
+                                color: taj.primary.dark,
+                              ),
+                            ),
+                            title: Text(
+                              customer.name,
+                              style: TextStyle(
+                                color: taj.textPrimary,
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                            subtitle:
+                                customer.phone.isNotEmpty
+                                    ? Text(
+                                      customer.phone,
+                                      style: TextStyle(
+                                        color: taj.textSecondary,
+                                        fontSize: 11,
+                                      ),
+                                    )
+                                    : null,
+                            trailing:
+                                isSelected
+                                    ? Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 18,
+                                      color: taj.success.dark,
+                                    )
+                                    : null,
+                            onTap: () => widget.onSelect(customer.name),
+                          );
+                        },
                       ),
-                    ),
-                    trailing:
-                        isSelected
-                            ? Icon(
-                              Icons.check_circle_rounded,
-                              size: 18,
-                              color: taj.success.dark,
-                            )
-                            : null,
-                    onTap: () => onSelect(name),
-                  );
-                },
-              ),
             ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                onSelect('');
-              },
-              child: Text(
-                'إلغاء ربط العميل',
-                style: TextStyle(color: taj.error.main, fontSize: 13),
+            if (widget.selected != null) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => widget.onSelect(null),
+                child: Text(
+                  'إلغاء ربط العميل',
+                  style: TextStyle(color: taj.error.main, fontSize: 13),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
