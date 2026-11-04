@@ -6,7 +6,6 @@ import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
 import '../../core/theme/taj_colors.dart';
-import '../../shared/widgets/taj_filters.dart';
 import '../../shared/widgets/taj_table.dart';
 import '../../shared/widgets/taj_ui.dart';
 
@@ -89,16 +88,6 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const TajFilterBar(
-                  filters: [
-                    TajFilter(
-                      field: 'المورد',
-                      operator: 'هو',
-                      value: 'مؤسسة العطور',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 TajCard(
                   padding: EdgeInsets.zero,
                   child: TajTable(
@@ -180,22 +169,24 @@ class _PurchaseForm extends StatefulWidget {
 }
 
 class _PurchaseFormState extends State<_PurchaseForm> {
-  String _supplier = 'مؤسسة العطور';
+  // Supplier id (resolved against the store); starts empty so the first option
+  // is selected at build time. Lines start with a single blank row.
+  String? _supplierId;
   String _payment = 'آجل';
-  final List<_Line> _lines = [
-    _Line('عود ملكي', 10, 300),
-    _Line('بخور فاخر', 20, 110),
-  ];
+  final List<_Line> _lines = [_Line('', 1, 0)];
 
   double get _total => _lines.fold(0, (s, l) => s + l.total);
 
-  void _addLine() => setState(() => _lines.add(_Line('صنف جديد', 1, 0)));
+  void _addLine() => setState(() => _lines.add(_Line('', 1, 0)));
   void _removeLine(int i) => setState(() => _lines.removeAt(i));
 
   @override
   Widget build(BuildContext context) {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
+    final suppliers = DemoStoreProvider.of(context).suppliers;
+    final selectedSupplier =
+        _supplierId ?? (suppliers.isNotEmpty ? suppliers.first.id : null);
 
     return SafeArea(
       child: Column(
@@ -228,25 +219,16 @@ class _PurchaseFormState extends State<_PurchaseForm> {
                         children: [
                           _label('المورد'),
                           DropdownButtonFormField<String>(
-                            value: _supplier,
+                            value: selectedSupplier,
                             isExpanded: true,
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'مؤسسة العطور',
-                                child: Text('مؤسسة العطور'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'مستودع البخور',
-                                child: Text('مستودع البخور'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'شركة الزيوت',
-                                child: Text('شركة الزيوت'),
-                              ),
+                            items: [
+                              for (final s in suppliers)
+                                DropdownMenuItem(
+                                  value: s.id,
+                                  child: Text(s.name),
+                                ),
                             ],
-                            onChanged:
-                                (v) =>
-                                    setState(() => _supplier = v ?? _supplier),
+                            onChanged: (v) => setState(() => _supplierId = v),
                           ),
                         ],
                       ),
@@ -328,13 +310,14 @@ class _PurchaseFormState extends State<_PurchaseForm> {
               child: FilledButton(
                 onPressed: () async {
                   final store = DemoStoreProvider.of(context);
+                  if (store.suppliers.isEmpty) return;
                   final navigator = Navigator.of(context);
                   final messenger = ScaffoldMessenger.of(context);
-                  final supplier = store.suppliers.first;
+                  final supplierId = _supplierId ?? store.suppliers.first.id;
                   await store.addPurchase(
                     DemoPurchase(
-                      id: 'PUR-${210 + store.purchases.length}',
-                      supplierId: supplier.id,
+                      id: 'PUR-${DateTime.now().millisecondsSinceEpoch}',
+                      supplierId: supplierId,
                       date: DateTime.now(),
                       total: _total,
                       paid: _payment == 'نقدي',

@@ -40,32 +40,34 @@ flutter test           # اختبارات
 flutter analyze        # فحص الكود
 ```
 
-### نسخة ويب ثابتة (عرض/لقطات)
-
-```bash
-flutter build web --release --target lib/screenshot_main.dart
-python3 -m http.server 8099 --directory build/web
-# ثم افتح: http://localhost:8099/?screen=cashier&dark=1&cart=1&pro=1
-```
-
-معاملات الواجهة التجريبية: `screen=login|cashier|merchant|admin` · `dark=1` · `cart=1` · `pro=1` · `reports=1`.
+> البيانات تُحفظ محليًا على الجهاز عبر `shared_preferences` (لا يوجد خادم).
+> يبدأ التثبيت الجديد فارغًا: أضِف صنفًا ثم بِعه من الكاشير ليظهر في المبيعات
+> ولوحة التحكم والتقارير.
 
 ## 📁 البنية
 
 ```
 lib/
-├── main.dart                     # نقطة الدخول + توجيه الأدوار
-├── core/                         # الموضوع، التنسيق (arNum/arDinar)، صوت البيع
+├── main.dart                     # نقطة الدخول + توجيه الأدوار + سياق الجلسة
+├── core/
+│   ├── demo/                     # المخزن المركزي (DemoStore) + النماذج + القيم الافتراضية
 │   ├── theme/                    # ألوان Taj + ثيمات فاتح/داكن
-│   ├── format.dart               # تنسيق الأرقام والدينار العربي
+│   ├── branches.dart             # قيمة الفرع المختار (المصدر الفعلي: المخزن)
+│   ├── format.dart               # تنسيق الأرقام والدينار العربي (arNum/arDinar)
+│   ├── responsive.dart           # عتبات التجاوب (AppBreakpoints)
 │   ├── sale_sound.dart           # صوت البيع (مقاوم للفشل)
 │   └── user_role.dart            # الأدوار والصلاحيات
-└── modules/
-    ├── auth/                     # شاشة تسجيل الدخول
-    ├── cashier_pos/              # واجهة الكاشير (POS)
-    ├── merchant_pos/             # واجهة التاجر
-    └── admin/                    # لوحة التحكم
+├── shared/widgets/               # app_shell، taj_ui، taj_table، taj_filters
+└── modules/                      # auth, cashier_pos, merchant_pos, dashboard,
+                                  # products, inventory, sales, purchases,
+                                  # customers, expenses, treasury, accounting,
+                                  # employees, reports, smart_reports, assistant,
+                                  # notifications, pos_management, day_closing,
+                                  # users, settings
 ```
+
+> بيانات الاختبار (أصناف/عملاء/… تجريبية) تعيش في `test/fixtures/sample_data.dart`
+> ولا تُستورد أبدًا في كود الإنتاج.
 
 ## 🛠️ آخر الإصلاحات والتعديلات
 
@@ -74,11 +76,6 @@ lib/
 - **تكبير قسم الفاتورة**: نسبة العرض أصبحت منتجات 56% / فاتورة 44% (بدل 60/40).
 - **ميزات جديدة**: تقرير الجلسة، ملخص الجلسة، خصم الفاتورة، ملاحظة الطلب، ربط عميل، تعديل سعر البند، حفظ الوضع الاحترافي.
 
-## 📄 توثيق إضافي
-
-- `LOGIN_CREDENTIALS.md` — تفاصيل حسابات الدخول والصلاحيات.
-- `TAJ-Development-Fix-Plan.md` — خطة التطوير ومراحل الإصلاح.
-
 ## 🧰 التقنيات
 
-Flutter · Dart · `audioplayers` (صوت البيع) · `shared_preferences` (حفظ التفضيلات) · `google_fonts` (خط Tajawal) · RTL عربي كامل.
+Flutter · Dart · `audioplayers` (صوت البيع) · `shared_preferences` (التخزين المحلي) · `google_fonts` (خطوط عربية) · `intl` · RTL عربي كامل.

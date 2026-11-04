@@ -743,7 +743,10 @@ class _InteractiveChartState extends State<_InteractiveChart> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: taj.isDark ? taj.paper : const Color(0xF21C252E),
+              // Dark tooltip surface in both themes (paper is already dark in
+              // dark mode; textPrimary is the dark ink in light mode) so the
+              // white label text stays readable — no raw hex.
+              color: taj.isDark ? taj.paper : taj.textPrimary,
               borderRadius: BorderRadius.circular(8),
               boxShadow: AppThemes.cardShadow(context),
             ),
@@ -1150,6 +1153,9 @@ class _DonutPainter extends CustomPainter {
     assert(rect.width >= 0);
   }
 
+  // Readable ink over an arbitrary series colour: near-black on light fills,
+  // white on dark ones. Absolute values on purpose — this is a luminance
+  // contrast pick, not a themeable surface.
   Color _contrast(Color bg) {
     final b = bg.computeLuminance();
     return b > 0.5 ? const Color(0xFF212B36) : Colors.white;

@@ -33,6 +33,24 @@ class DemoStore extends ChangeNotifier {
   /// if the session hasn't set one (e.g. during tests).
   String get _actor => currentUser.isEmpty ? 'مستخدم النظام' : currentUser;
 
+  /// Next sequence number for a prefixed id (e.g. `INV-`), computed from the
+  /// largest existing one so it never collides after a deletion (unlike a
+  /// `length + 1` scheme). [floor] is the lowest number to start from.
+  static String nextPrefixedId(
+    Iterable<String> ids,
+    String prefix, {
+    int floor = 0,
+  }) {
+    var mx = floor;
+    for (final id in ids) {
+      if (id.startsWith(prefix)) {
+        final n = int.tryParse(id.substring(prefix.length));
+        if (n != null && n > mx) mx = n;
+      }
+    }
+    return '$prefix${mx + 1}';
+  }
+
   static const _storageKey = 'taj_store_v2';
 
   /// The pre-cleanup key. Its blob was demo data mixed with any real edits, so
@@ -417,7 +435,7 @@ class DemoStore extends ChangeNotifier {
         }).toList();
     sales = [
       DemoSale(
-        id: 'INV-${1049 + sales.length}',
+        id: nextPrefixedId(sales.map((s) => s.id), 'INV-', floor: 1048),
         branchId: resolvedBranchId,
         date: DateTime.now(),
         lines: lines,
@@ -598,7 +616,9 @@ class DemoStore extends ChangeNotifier {
       throw StateError('المبلغ غير صالح');
     }
     final ref =
-        reference.isEmpty ? 'TRF-${treasuryMovements.length + 1}' : reference;
+        reference.isEmpty
+            ? nextPrefixedId(treasuryMovements.map((m) => m.id), 'TRF-')
+            : reference;
     final when = date ?? DateTime.now();
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final out = DemoTreasuryMovement(

@@ -87,8 +87,9 @@ class ThemePreviewMini extends StatelessWidget {
                     width: 18,
                     height: 18,
                     decoration: BoxDecoration(
-                        color: primary.main,
-                        borderRadius: BorderRadius.circular(5)),
+                      color: primary.main,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Container(width: 70, height: 8, color: taj.divider),
@@ -105,14 +106,18 @@ class ThemePreviewMini extends StatelessWidget {
                   Container(
                     width: 56,
                     color: taj.paper,
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 8,
+                    ),
                     child: Column(
                       children: [
                         for (var i = 0; i < 4; i++) ...[
                           Container(
                             height: 12,
                             decoration: BoxDecoration(
-                              color: i == 0 ? primary.lighter : Colors.transparent,
+                              color:
+                                  i == 0 ? primary.lighter : Colors.transparent,
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -132,7 +137,11 @@ class ThemePreviewMini extends StatelessWidget {
                             children: [
                               _MiniKpi(primary: primary, taj: taj),
                               const SizedBox(width: 8),
-                              _MiniKpi(primary: primary, taj: taj, filled: true),
+                              _MiniKpi(
+                                primary: primary,
+                                taj: taj,
+                                filled: true,
+                              ),
                             ],
                           ),
                           const SizedBox(height: 10),
@@ -167,7 +176,11 @@ class ThemePreviewMini extends StatelessWidget {
 }
 
 class _MiniKpi extends StatelessWidget {
-  const _MiniKpi({required this.primary, required this.taj, this.filled = false});
+  const _MiniKpi({
+    required this.primary,
+    required this.taj,
+    this.filled = false,
+  });
   final TajSwatch primary;
   final TajColors taj;
   final bool filled;
@@ -188,14 +201,18 @@ class _MiniKpi extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-                width: 34,
-                height: 6,
-                color: (filled ? Colors.white : taj.divider).withValues(alpha: 0.7)),
+              width: 34,
+              height: 6,
+              color: (filled ? Colors.white : taj.divider).withValues(
+                alpha: 0.7,
+              ),
+            ),
             const SizedBox(height: 6),
             Container(
-                width: 22,
-                height: 8,
-                color: filled ? Colors.white : primary.main),
+              width: 22,
+              height: 8,
+              color: filled ? Colors.white : primary.main,
+            ),
           ],
         ),
       ),
@@ -212,9 +229,10 @@ class InvoicePreviewMini extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final thermal = draft.paperSize == PaperSize.thermal;
-    final aspect = thermal
-        ? AppBreakpoints.settingsReceiptAspect
-        : AppBreakpoints.settingsA4Aspect;
+    final aspect =
+        thermal
+            ? AppBreakpoints.settingsReceiptAspect
+            : AppBreakpoints.settingsA4Aspect;
     final mock = thermal ? const Size(220, 440) : const Size(300, 424);
     return PreviewFrame(
       aspect: aspect,
@@ -226,13 +244,21 @@ class InvoicePreviewMini extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: const Color(0xFFDFE3E8)),
           boxShadow: const [
-            BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, 4)),
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
           ],
         ),
         // .merge (not a bare DefaultTextStyle) so the miniature inherits Almarai
         // from the theme and only layers size/colour — never the system font.
         child: DefaultTextStyle.merge(
-          style: const TextStyle(color: Color(0xFF212B36), fontSize: 11, height: 1.3),
+          style: const TextStyle(
+            color: Color(0xFF212B36),
+            fontSize: 11,
+            height: 1.3,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -244,33 +270,51 @@ class InvoicePreviewMini extends StatelessWidget {
                     color: const Color(0xFFF4F6F8),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.storefront_outlined,
-                      size: 22, color: Color(0xFF637381)),
+                  child: const Icon(
+                    Icons.storefront_outlined,
+                    size: 22,
+                    color: Color(0xFF637381),
+                  ),
                 ),
               if (draft.showLogo) const SizedBox(height: 8),
-              Text(draft.storeName,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF212B36))),
+              Text(
+                draft.storeName,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF212B36),
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(draft.invoiceHeader,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF637381))),
+              Text(
+                draft.invoiceHeader,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, color: Color(0xFF637381)),
+              ),
               const SizedBox(height: 10),
               const _DashLine(),
               const SizedBox(height: 8),
+              // Placeholder line items — this is a layout preview of the invoice
+              // template, not real products.
               for (final (n, p) in const [
-                ('عود ملكي × ٢', '٣٠٠'),
-                ('بخور فاخر', '١٢٠'),
-                ('ماء ورد', '٤٥'),
+                ('صنف ١ × ٢', '٣٠٠'),
+                ('صنف ٢', '١٢٠'),
+                ('صنف ٣', '٤٥'),
               ]) ...[
                 Row(
                   children: [
-                    Expanded(child: Text(n, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Expanded(
+                      child: Text(
+                        n,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     Text(p),
                   ],
                 ),
@@ -282,12 +326,21 @@ class InvoicePreviewMini extends StatelessWidget {
               Row(
                 children: [
                   const Expanded(
-                    child: Text('الإجمالي',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                    child: Text(
+                      'الإجمالي',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
-                  Text('${draft.currency.symbol} ٤٦٥',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 12)),
+                  Text(
+                    '${draft.currency.symbol} ٤٦٥',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
               if (draft.taxRate > 0) ...[
@@ -295,21 +348,34 @@ class InvoicePreviewMini extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                        child: Text('الضريبة (${_fmtPct(draft.taxRate)}٪)',
-                            style: const TextStyle(fontSize: 10, color: Color(0xFF637381)))),
-                    Text(_fmtPct(draft.taxRate * 4.65),
-                        style: const TextStyle(fontSize: 10, color: Color(0xFF637381))),
+                      child: Text(
+                        'الضريبة (${_fmtPct(draft.taxRate)}٪)',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF637381),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _fmtPct(draft.taxRate * 4.65),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF637381),
+                      ),
+                    ),
                   ],
                 ),
               ],
               const Spacer(),
               const _DashLine(),
               const SizedBox(height: 6),
-              Text(draft.invoiceFooter,
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9, color: Color(0xFF637381))),
+              Text(
+                draft.invoiceFooter,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 9, color: Color(0xFF637381)),
+              ),
             ],
           ),
         ),
@@ -325,16 +391,17 @@ class _DashLine extends StatelessWidget {
   const _DashLine();
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, c) {
-          const dash = 4.0, gap = 3.0;
-          final count = (c.maxWidth / (dash + gap)).floor().clamp(0, 200);
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(
-              count,
-              (_) => Container(width: dash, height: 1, color: const Color(0xFFC4CDD5)),
-            ),
-          );
-        },
+    builder: (context, c) {
+      const dash = 4.0, gap = 3.0;
+      final count = (c.maxWidth / (dash + gap)).floor().clamp(0, 200);
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(
+          count,
+          (_) =>
+              Container(width: dash, height: 1, color: const Color(0xFFC4CDD5)),
+        ),
       );
+    },
+  );
 }

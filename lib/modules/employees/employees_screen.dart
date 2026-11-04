@@ -92,8 +92,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       _store.employees.where((e) {
         if (_branchFilter != null && e.branchId != _branchFilter) return false;
         if (_statusFilter == 'paid' && !_store.isSalaryPaid(e.id)) return false;
-        if (_statusFilter == 'unpaid' && _store.isSalaryPaid(e.id))
+        if (_statusFilter == 'unpaid' && _store.isSalaryPaid(e.id)) {
           return false;
+        }
         return true;
       }).toList();
 

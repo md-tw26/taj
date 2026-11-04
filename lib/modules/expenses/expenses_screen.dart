@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/demo/demo_models.dart';
 import '../../core/demo/demo_provider.dart';
+import '../../core/demo/demo_store.dart';
 import '../../core/format.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_themes.dart';
@@ -197,9 +198,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           final pad = pagePaddingForWidth(c.maxWidth);
           // PageContainer caps the inner width, so pane calculations must key
           // off the capped width — not the raw viewport — past the cap.
-          final capped = c.maxWidth < AppBreakpoints.expenseContentMaxWidth
-              ? c.maxWidth
-              : AppBreakpoints.expenseContentMaxWidth;
+          final capped =
+              c.maxWidth < AppBreakpoints.expenseContentMaxWidth
+                  ? c.maxWidth
+                  : AppBreakpoints.expenseContentMaxWidth;
 
           if (sidePanel) {
             // Master-detail: log/grid pane + persistent entry-form panel. Cap
@@ -219,7 +221,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           expenses,
                           onPick: _selectForm,
                           // Filters are always inline at these widths.
-                          contentWidth: capped -
+                          contentWidth:
+                              capped -
                               AppBreakpoints.expenseFormPanelWidth -
                               24 -
                               pad * 2,
@@ -327,8 +330,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       e.category,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: text.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       arDinar(e.amount),
@@ -419,9 +423,10 @@ class _CategoryGrid extends StatelessWidget {
     final taj = context.taj;
     final text = Theme.of(context).textTheme;
     const gap = 14.0;
-    final width = availableWidth.isFinite && availableWidth > 0
-        ? availableWidth
-        : MediaQuery.sizeOf(context).width;
+    final width =
+        availableWidth.isFinite && availableWidth > 0
+            ? availableWidth
+            : MediaQuery.sizeOf(context).width;
     final columns = gridColumnsFor(
       width,
       minItemWidth: AppBreakpoints.expenseCategoryMinWidth,
@@ -458,8 +463,9 @@ class _CategoryGrid extends StatelessWidget {
                     cat.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    style: text.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -517,8 +523,11 @@ class _ExpenseRowCard extends StatelessWidget {
               color: taj.primary.lighter,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(_iconFor(expense.category),
-                size: 20, color: taj.primary.dark),
+            child: Icon(
+              _iconFor(expense.category),
+              size: 20,
+              color: taj.primary.dark,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -547,13 +556,13 @@ class _ExpenseRowCard extends StatelessWidget {
                         color: taj.textSecondary,
                       ),
                     ),
-                    Text('•',
-                        style:
-                            text.bodySmall?.copyWith(color: taj.textDisabled)),
+                    Text(
+                      '•',
+                      style: text.bodySmall?.copyWith(color: taj.textDisabled),
+                    ),
                     Text(
                       expense.branch,
-                      style: text.bodySmall
-                          ?.copyWith(color: taj.textSecondary),
+                      style: text.bodySmall?.copyWith(color: taj.textSecondary),
                     ),
                   ],
                 ),
@@ -678,19 +687,24 @@ class _ExpenseFormState extends State<_ExpenseForm> {
       final branchId = _branchId ?? store.branches.first.id;
       await store.addExpense(
         DemoExpense(
-          id: 'EXP-${store.expenses.length + 1}',
+          id: DemoStore.nextPrefixedId(store.expenses.map((e) => e.id), 'EXP-'),
           category: _category,
           amount: amount,
           date: DateTime.now(),
           branchId: branchId,
           method:
-              _method == 'نقدي' ? DemoPaymentMethod.cash : DemoPaymentMethod.bank,
+              _method == 'نقدي'
+                  ? DemoPaymentMethod.cash
+                  : DemoPaymentMethod.bank,
           // Salaries link the expense to the chosen employee's payroll profile
           // (defaulting to the first employee when none was explicitly picked).
-          employeeId: _category == 'مرتبات'
-              ? (_employeeId ??
-                  (store.employees.isNotEmpty ? store.employees.first.id : null))
-              : null,
+          employeeId:
+              _category == 'مرتبات'
+                  ? (_employeeId ??
+                      (store.employees.isNotEmpty
+                          ? store.employees.first.id
+                          : null))
+                  : null,
         ),
       );
     }
@@ -798,8 +812,8 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     );
 
     final branches = DemoStoreProvider.of(context).branches;
-    final selectedBranch = _branchId ??
-        (branches.isNotEmpty ? branches.first.id : null);
+    final selectedBranch =
+        _branchId ?? (branches.isNotEmpty ? branches.first.id : null);
     final branchField = _fieldBlock(
       'الفرع',
       DropdownButtonFormField<String>(
@@ -836,10 +850,11 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         Builder(
           builder: (context) {
             final employees = DemoStoreProvider.of(context).employees;
-            final value = (_employeeId != null &&
-                    employees.any((e) => e.id == _employeeId))
-                ? _employeeId
-                : (employees.isNotEmpty ? employees.first.id : null);
+            final value =
+                (_employeeId != null &&
+                        employees.any((e) => e.id == _employeeId))
+                    ? _employeeId
+                    : (employees.isNotEmpty ? employees.first.id : null);
             return _fieldBlock(
               'الموظف',
               DropdownButtonFormField<String>(
@@ -852,8 +867,11 @@ class _ExpenseFormState extends State<_ExpenseForm> {
                   for (final e in employees)
                     DropdownMenuItem(
                       value: e.id,
-                      child: Text('${e.name} — ${e.title}',
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        '${e.name} — ${e.title}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                 ],
                 onChanged: (v) => setState(() => _employeeId = v),
@@ -919,14 +937,14 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   }
 
   Widget _fieldBlock(String label, Widget field) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(label, style: Theme.of(context).textTheme.labelLarge),
-          ),
-          field,
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+      ),
+      field,
+    ],
+  );
 }
